@@ -1,0 +1,13 @@
+services:
+  app:
+    build: .
+    command: hypercorn --bind 0.0.0.0:5000 --reload taskmates.server.server:app
+    ports:
+      - 5000:5000
+    volumes:
+      - .:/app
+  shell:
+    build: .
+    command: tail -f /dev/null
+    volumes:
+      - .:/app

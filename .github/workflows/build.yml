@@ -1,0 +1,41 @@
+name: Build
+
+on:
+  push:
+    branches: [ main, development ]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.11.1
+          cache: 'poetry'
+      - name: Install dependencies
+        run: |
+          poetry install --sync
+      - name: Run tests
+        env:
+          TASKMATES_TELEMETRY_ENABLED: false
+        run: |
+          poetry run pytest -q --show-capture=no --disable-warnings --tb=auto
+#          poetry run pytest -vv
+#      - uses: actions/upload-artifact@v4
+#        with:
+#          name: pytest-json-report
+#          path: report.json
+#        if: always()
+      - name: Build package
+        run: |
+          poetry build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: package
+          path: dist/*
