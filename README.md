@@ -1,15 +1,18 @@
-# 🤖 Taskmates
+# Taskmates
 
-Taskmates is a suite of AI agents that integrate with developers' daily tools to streamline their development process. It leverages cutting-edge AI and tight integration with developer tools to tackle daily technical hurdles, enabling developers to transform ideas into products with more efficiency.
+Taskmates is a suite of AI agents that integrate with your everyday developer tools to assist you in your development process. It's designed to make you more productive by leveraging AI to tackle daily technical hurdles, while ensuring you maintain full control over the process.
 
-## 🌟 Key Features
+## What is Taskmates?
 
-- 💬 Interact with AI agents (taskmates) using natural language
-- 📝 Store chats and taskmates as plain text files (Markdown)
-- 🔌 Use the most advanced AI models, provider-independent
-- 🏢 Deploy AI models on your own infrastructure for enterprise use
-- 📦 Install and share custom agents tailored to your needs
-- 🛠️ Extend functionality with custom tools
-- 📜 Track changes using version control systems
-- 📓 Leverage Jupyter Notebooks for security, interactivity, and visualizations
+- A set of AI agents (Taskmates) that you can invoke directly from your IDE, CLI, or GitHub
+- Agents are defined in plain text (Markdown) files, making them easy to understand, version, share, and collaborate on
+- Communicate with agents using natural language by @mentioning them followed by your request
 
+## Key Principles
+
+- **You're the expert, AI is the assistant:** Taskmates are opt-in and blend seamlessly with your personal workflow and tools
+- **Incremental adoption:** Use only what's useful to you, as the AI's capabilities expand over time
+- **Maintain full control:** Watch, interrupt, add details, and change your Taskmates' actions whenever you want
+- **Reliable code with passing tests:** Taskmates can write, run, and adjust their own code and tests to deliver working solutions
+
+Taskmates can also help you with a variety of other tasks like data analysis and visualization in Jupyter Notebooks, processing GitHub issues and pull requests, and much more. The goal is to make you more productive by leveraging AI where it excels, while keeping you in control of the development process.
