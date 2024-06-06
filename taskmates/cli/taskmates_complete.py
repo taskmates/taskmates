@@ -24,12 +24,16 @@ if not debug:
     logger.add(sys.stderr, level="ERROR")
 
 
-async def complete(markdown, **completion_opts: Unpack[CompletionOpts]):
+async def async_complete(markdown, **completion_opts: Unpack[CompletionOpts]):
     if completion_opts.get("endpoint"):
         # TODO: review duplicate interrupt logic on perform_websocket_interaction
-        await perform_websocket_completion(markdown, completion_opts)
+        return await perform_websocket_completion(markdown, completion_opts)
     else:
-        await perform_direct_completion(markdown, completion_opts)
+        return await perform_direct_completion(markdown, completion_opts)
+
+
+def complete(markdown, **completion_opts: Unpack[CompletionOpts]):
+    return asyncio.run(async_complete(markdown, **completion_opts))
 
 
 def main():
@@ -72,13 +76,13 @@ def main():
         'max_interactions': args.max_interactions,
     }
 
-    asyncio.run(complete(markdown,
-                         **CompletionOpts(
-                             output=(output if args.output else None),
-                             format=args.format,
-                             endpoint=args.endpoint,
-                             context=context
-                         )))
+    asyncio.run(async_complete(markdown,
+                               **CompletionOpts(
+                                   output=(output if args.output else None),
+                                   format=args.format,
+                                   endpoint=args.endpoint,
+                                   context=context
+                               )))
 
     # # Print the output to stdout
     # with open(output, 'r') as f:
