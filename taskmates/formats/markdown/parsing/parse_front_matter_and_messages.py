@@ -28,7 +28,7 @@ def parse_front_matter_and_messages(source_file: Path,
 
     # prepend **user**
     if not content.lstrip().startswith("**"):
-        content = f"**{implicit_role}** " + content.lstrip()
+        content = f"**{implicit_role}**\n" + content.lstrip()
 
     content = substitute_usernames(content)
 

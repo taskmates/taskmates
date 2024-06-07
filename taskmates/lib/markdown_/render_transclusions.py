@@ -5,6 +5,8 @@ from typing import Union
 from urllib.parse import unquote
 
 import pytest
+
+from taskmates.formats.markdown.processing.extract_transclusion_links import extract_transclusion_links
 from taskmates.formats.markdown.processing.filter_comments import filter_comments
 from taskmates.lib.markdown_.first_sections_with_heading import first_sections_with_heading
 from taskmates.lib.markdown_.language_mappings import language_mappings
@@ -51,6 +53,11 @@ def render_transclusions(text: str,
             transclusion_output[-1] = transclusion_output[-1].rstrip('\n')
         output.extend(transclusion_output)
     final_output = '\n'.join(output) if not is_embedding else ''.join(output)
+
+
+    transclusion_links = extract_transclusion_links(final_output)
+    if transclusion_links:
+        raise ValueError(f"Transclusion links {transclusion_links} not found")
     return final_output
 
 

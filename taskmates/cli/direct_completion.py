@@ -3,7 +3,7 @@ import os
 import signal
 
 from taskmates.assistances.markdown.markdown_completion_assistance import MarkdownCompletionAssistance
-from taskmates.cli.completion_opts import CompletionOpts
+from taskmates.assistances.completion_opts import CompletionOpts
 from taskmates.signals import Signals, SIGNALS
 
 # Global variable to store the received signal

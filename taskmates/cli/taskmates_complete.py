@@ -5,15 +5,13 @@ import logging
 import os
 import sys
 from pathlib import Path
-from typing import Unpack
 from uuid import uuid4
 
 from loguru import logger
 
-from taskmates.cli.completion_context import CompletionContext
-from taskmates.cli.completion_opts import CompletionOpts
-from taskmates.cli.direct_completion import perform_direct_completion
-from taskmates.cli.websocket_completion import perform_websocket_completion
+from taskmates.assistances.completion_context import CompletionContext
+from taskmates.assistances.completion_opts import CompletionOpts
+from taskmates.assistances.async_complete import async_complete
 
 debug = os.environ.get("TASKMATES_DEBUG", "false") in ["1", "true"]
 
@@ -22,18 +20,6 @@ if not debug:
 
     logger.remove()
     logger.add(sys.stderr, level="ERROR")
-
-
-async def async_complete(markdown, **completion_opts: Unpack[CompletionOpts]):
-    if completion_opts.get("endpoint"):
-        # TODO: review duplicate interrupt logic on perform_websocket_interaction
-        return await perform_websocket_completion(markdown, completion_opts)
-    else:
-        return await perform_direct_completion(markdown, completion_opts)
-
-
-def complete(markdown, **completion_opts: Unpack[CompletionOpts]):
-    return asyncio.run(async_complete(markdown, **completion_opts))
 
 
 def main():

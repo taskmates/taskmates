@@ -6,7 +6,7 @@ from taskmates.actions.parse_markdown_chat import parse_markdown_chat
 from taskmates.assistances.chat_completion.markdown_chat_completion_assistance import MarkdownChatCompletionAssistance
 from taskmates.assistances.code_execution.jupyter_.markdown_code_cells_assistance import MarkdownCodeCellsAssistance
 from taskmates.assistances.code_execution.tool_.markdown_tools_assistance import MarkdownToolsAssistance
-from taskmates.cli.completion_context import CompletionContext
+from taskmates.assistances.completion_context import CompletionContext
 from taskmates.signals import Signals
 
 

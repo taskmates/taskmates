@@ -5,7 +5,7 @@ import signal
 import websockets
 from websockets.exceptions import ConnectionClosed
 
-from taskmates.cli.completion_opts import CompletionOpts
+from taskmates.assistances.completion_opts import CompletionOpts
 
 
 async def on_message(message):

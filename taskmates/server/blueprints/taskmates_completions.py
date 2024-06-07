@@ -6,7 +6,7 @@ from quart import Blueprint, Response
 from quart import websocket
 
 from taskmates.assistances.markdown.markdown_completion_assistance import MarkdownCompletionAssistance
-from taskmates.cli.completion_context import CompletionContext
+from taskmates.assistances.completion_context import CompletionContext
 from taskmates.lib.json_.json_utils import snake_case
 from taskmates.lib.logging_.file_logger import file_logger
 from taskmates.signals import SIGNALS, Signals

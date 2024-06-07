@@ -1,20 +1,19 @@
 import os
 import re
 from pathlib import Path
-from urllib.parse import unquote
 
 import pytest
+
+from taskmates.formats.markdown.processing.extract_transclusion_links import extract_transclusion_links
 from taskmates.lib.image_.encode_image import encode_image
 from taskmates.lib.path_.is_image import is_image
 from taskmates.lib.root_path.root_path import root_path
-
-FILE_TRANSCLUSION_PATTERN = re.compile(r"^!\[\[(.+?)(#(.+?))?\]\]$|^!\[(.*?)\]\((.+?)\)$", re.MULTILINE)
 
 
 def render_image_transclusion(content, transclusions_base_dir):
     if not content:
         return content
-    transclusion_links = extract_image_transclusion_links(content)
+    transclusion_links = extract_transclusion_links(content)
     if transclusion_links:
         content_parts = []
         for link in transclusion_links:
@@ -44,18 +43,6 @@ def render_image_transclusion(content, transclusions_base_dir):
         return content_parts
     else:
         return content
-
-
-def extract_image_transclusion_links(content, base_path=None):
-    matches = re.finditer(FILE_TRANSCLUSION_PATTERN, content)
-    links = []
-    for match in matches:
-        if match.group(1) or match.group(5):
-            target_glob = unquote(match.group(1) or match.group(5))
-            if base_path:
-                target_glob = str((Path(base_path) / target_glob).resolve())
-            links.append(target_glob)
-    return links
 
 
 def test_with_image_transclusion(tmp_path):
@@ -105,31 +92,3 @@ def test_without_image_transclusion(tmp_path):
         render_image_transclusion(messages[0]["content"], tmp_path)
 
 
-def test_extract_image_transclusion_links_with_square_brackets():
-    content = "Hello\n![[path/to/image.jpg]]"
-    links = extract_image_transclusion_links(content)
-    assert links == ["path/to/image.jpg"]
-
-
-def test_extract_image_transclusion_links_with_parentheses():
-    content = "Hello\n![alt text](path/to/image.png)"
-    links = extract_image_transclusion_links(content)
-    assert links == ["path/to/image.png"]
-
-
-def test_extract_image_transclusion_links_with_multiple_links():
-    content = "Hello\n![[path/to/image1.jpg]]\n![alt text](path/to/image2.png)"
-    links = extract_image_transclusion_links(content)
-    assert links == ["path/to/image1.jpg", "path/to/image2.png"]
-
-
-def test_extract_image_transclusion_links_with_no_links():
-    content = "Hello, no image links here"
-    links = extract_image_transclusion_links(content)
-    assert links == []
-
-
-def test_extract_image_transclusion_links_with_encoded_url():
-    content = "Hello\n![[path/to/image%20with%20spaces.jpg]]"
-    links = extract_image_transclusion_links(content)
-    assert links == ["path/to/image with spaces.jpg"]
