@@ -3,7 +3,7 @@ from typing import Unpack
 from typeguard import typechecked
 
 from taskmates.assistances.markdown.markdown_completion_assistance import MarkdownCompletionAssistance
-from taskmates.config import COMPLETION_CONTEXT, CompletionOpts, COMPLETION_OPTS
+from taskmates.config import COMPLETION_CONTEXT, CompletionOpts, COMPLETION_OPTS, updated_config
 from taskmates.signals import Signals, SIGNALS
 
 
@@ -12,9 +12,6 @@ async def async_complete(markdown,
                          **completion_opts: Unpack[CompletionOpts]):
     signals = Signals()
     signals_token = SIGNALS.set(signals)
-
-    completion_context = COMPLETION_CONTEXT.get()
-    completion_opts_token = COMPLETION_OPTS.set({**COMPLETION_OPTS.get(), **completion_opts})
 
     completion_chunks = []
 
@@ -28,12 +25,13 @@ async def async_complete(markdown,
     signals.error.connect(process_error)
 
     try:
-        await MarkdownCompletionAssistance().perform_completion(
-            completion_context,
-            markdown,
-            signals)
+        completion_context = COMPLETION_CONTEXT.get()
+        with updated_config(COMPLETION_OPTS, completion_opts):
+            await MarkdownCompletionAssistance().perform_completion(
+                completion_context,
+                markdown,
+                signals)
     finally:
         SIGNALS.reset(signals_token)
-        COMPLETION_OPTS.reset(completion_opts_token)
 
     return "".join(completion_chunks)

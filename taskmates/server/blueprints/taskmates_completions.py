@@ -6,8 +6,8 @@ from quart import Blueprint, Response
 from quart import websocket
 
 from taskmates.assistances.markdown.markdown_completion_assistance import MarkdownCompletionAssistance
-from taskmates.config import CompletionContext, CompletionOpts, ServerConfig, SERVER_CONFIG, \
-    COMPLETION_CONTEXT, COMPLETION_OPTS
+from taskmates.config import CompletionContext, CompletionOpts, COMPLETION_CONTEXT, COMPLETION_OPTS, \
+    updated_config
 from taskmates.lib.json_.json_utils import snake_case
 from taskmates.lib.logging_.file_logger import file_logger
 from taskmates.signals import SIGNALS, Signals
@@ -31,25 +31,14 @@ async def taskmates_completions():
 
         payload: CompletionPayload = snake_case(json.loads(raw_payload))
 
-        server_config: ServerConfig = SERVER_CONFIG.get()
-
         completion_context: CompletionContext = payload["completion_context"]
         completion_opts: CompletionOpts = payload["completion_opts"]
         request_id = completion_context['request_id']
         markdown_chat = payload["markdown_chat"]
 
-        # Merge new values with existing default values
-        merged_completion_context = {**COMPLETION_CONTEXT.get(), **completion_context}
-        merged_completion_opts = {**COMPLETION_OPTS.get(), **completion_opts}
-        merged_server_config = {**SERVER_CONFIG.get(), **server_config}
-
-        # TODO: reset
-        # Set context vars
-        COMPLETION_CONTEXT.set(merged_completion_context)
-        COMPLETION_OPTS.set(merged_completion_opts)
-        SERVER_CONFIG.set(merged_server_config)
-
-        with file_logger.contextualize(request_id=(request_id)):
+        with file_logger.contextualize(request_id=(request_id)), \
+                updated_config(COMPLETION_CONTEXT, completion_context), \
+                updated_config(COMPLETION_OPTS, completion_opts):
             logger.info(f"[{request_id}] CONNECT /v2/taskmates/completions")
 
             file_logger.info("request_payload.yaml", content=payload)
