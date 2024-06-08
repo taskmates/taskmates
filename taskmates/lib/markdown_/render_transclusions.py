@@ -5,15 +5,16 @@ from typing import Union
 from urllib.parse import unquote
 
 import pytest
+from typeguard import typechecked
 
 from taskmates.formats.markdown.processing.extract_transclusion_links import extract_transclusion_links
 from taskmates.formats.markdown.processing.filter_comments import filter_comments
 from taskmates.lib.markdown_.first_sections_with_heading import first_sections_with_heading
 from taskmates.lib.markdown_.language_mappings import language_mappings
 from taskmates.lib.markdown_.transclusion_pattern import match_transclusion
+from taskmates.lib.path_.is_binary_file import is_binary_file
 from taskmates.lib.pdf_.read_pdf import read_pdf
 from taskmates.lib.root_path.root_path import root_path
-from typeguard import typechecked
 
 
 @typechecked
@@ -54,9 +55,10 @@ def render_transclusions(text: str,
         output.extend(transclusion_output)
     final_output = '\n'.join(output) if not is_embedding else ''.join(output)
 
-
     transclusion_links = extract_transclusion_links(final_output)
-    if transclusion_links:
+    non_binary_links = [link for link in transclusion_links if not is_binary_file(link)]
+
+    if non_binary_links:
         raise ValueError(f"Transclusion links {transclusion_links} not found")
     return final_output
 
