@@ -1,6 +1,8 @@
 from abc import ABC, abstractmethod
 
+from taskmates.config import CompletionContext
 from taskmates.signals import Signals
+from taskmates.types import Chat
 
 
 class CompletionAssistance(ABC):
@@ -9,9 +11,9 @@ class CompletionAssistance(ABC):
         pass
 
     @abstractmethod
-    def can_complete(self, chat):
+    def can_complete(self, chat: Chat):
         pass
 
     @abstractmethod
-    async def perform_completion(self, context: dict, chat: dict, signals: Signals):
+    async def perform_completion(self, context: CompletionContext, chat: Chat, signals: Signals):
         pass

@@ -1,9 +1,14 @@
 import textwrap
 
+import pytest
+
+from taskmates.assistances.code_execution.jupyter_.code_cells_editor_completion import CodeCellsEditorCompletion
 from taskmates.assistances.code_execution.jupyter_.execute_markdown_on_local_kernel import \
     execute_markdown_on_local_kernel
 from taskmates.assistances.completion_assistance import CompletionAssistance
-from taskmates.assistances.code_execution.jupyter_.code_cells_editor_completion import CodeCellsEditorCompletion
+from taskmates.config import CompletionContext
+from taskmates.signals import SIGNALS, Signals
+from taskmates.types import Chat
 
 
 class MarkdownCodeCellsAssistance(CompletionAssistance):
@@ -16,12 +21,14 @@ class MarkdownCodeCellsAssistance(CompletionAssistance):
         code_cells = last_message.get("code_cells", [])
         return is_jupyter_enabled and len(code_cells) > 0
 
-    async def perform_completion(self, context, chat, signals):
+    async def perform_completion(self, context: CompletionContext, chat: Chat, signals: Signals):
         markdown_path = context["markdown_path"]
-        messages = chat.get("messages", [])
-        cwd = context.get("cwd")
+        cwd = context["cwd"]
 
-        editor_completion = CodeCellsEditorCompletion(project_dir=cwd, chat_file=markdown_path,
+        messages = chat.get("messages", [])
+
+        editor_completion = CodeCellsEditorCompletion(project_dir=cwd,
+                                                      chat_file=markdown_path,
                                                       signals=signals)
 
         async def on_code_cell_chunk(code_cell_chunk):
@@ -33,10 +40,6 @@ class MarkdownCodeCellsAssistance(CompletionAssistance):
                                                    cwd=cwd)
 
         await editor_completion.process_code_cells_completed()
-
-
-import pytest
-from taskmates.signals import SIGNALS
 
 
 @pytest.mark.asyncio
@@ -80,15 +83,15 @@ async def test_markdown_code_cells_assistance_streaming(tmp_path):
     await assistance.perform_completion(context, chat, signals)
 
     assert "".join(markdown_chunks) == ('###### Cell Output: stdout [cell_0]\n'
-                                          '\n'
-                                          '<pre>\n'
-                                          'Hello\n'
-                                          'Beautiful\n'
-                                          '</pre>\n'
-                                          '\n'
-                                          '###### Cell Output: stdout [cell_1]\n'
-                                          '\n'
-                                          '<pre>\n'
-                                          'World\n'
-                                          '</pre>\n'
-                                          '\n')
+                                        '\n'
+                                        '<pre>\n'
+                                        'Hello\n'
+                                        'Beautiful\n'
+                                        '</pre>\n'
+                                        '\n'
+                                        '###### Cell Output: stdout [cell_1]\n'
+                                        '\n'
+                                        '<pre>\n'
+                                        'World\n'
+                                        '</pre>\n'
+                                        '\n')

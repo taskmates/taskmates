@@ -1,20 +1,26 @@
-import os
-
 from loguru import logger
+from typeguard import typechecked
 
 from taskmates.actions.parse_markdown_chat import parse_markdown_chat
 from taskmates.assistances.chat_completion.markdown_chat_completion_assistance import MarkdownChatCompletionAssistance
 from taskmates.assistances.code_execution.jupyter_.markdown_code_cells_assistance import MarkdownCodeCellsAssistance
 from taskmates.assistances.code_execution.tool_.markdown_tools_assistance import MarkdownToolsAssistance
-from taskmates.assistances.completion_context import CompletionContext
+from taskmates.config import CompletionContext, SERVER_CONFIG, CLIENT_CONFIG, COMPLETION_OPTS, CompletionOpts, \
+    ClientConfig, ServerConfig
 from taskmates.signals import Signals
+from taskmates.types import Chat
 
 
 class MarkdownCompletionAssistance:
+    @typechecked
     async def perform_completion(self, context: CompletionContext, markdown_chat: str, signals: Signals):
         try:
-            taskmates_dir = context.get("taskmates_dir", os.environ.get("TASKMATES_PATH", "/var/tmp/taskmates"))
-            interactive = context.get("interactive", True)
+            server_config: ServerConfig = SERVER_CONFIG.get()
+            client_config: ClientConfig = CLIENT_CONFIG.get()
+            completion_opts: CompletionOpts = COMPLETION_OPTS.get()
+
+            taskmates_dir = server_config.get("taskmates_dir")
+            interactive = client_config["interactive"]
 
             markdown_chunks = []
 
@@ -36,14 +42,14 @@ class MarkdownCompletionAssistance:
 
             interrupted = False
 
-            async def handle_interrupted(sender):
+            async def handle_interrupted(_sender):
                 nonlocal interrupted
                 interrupted = True
 
             await signals.start.send_async({})
 
             current_interaction = 0
-            max_interactions = context.get("max_interactions", float('inf'))
+            max_interactions = completion_opts["max_interactions"]
             while True:
                 with signals.interrupt.connected_to(handle_interrupted), \
                         signals.completion.connected_to(append_markdown):
@@ -55,18 +61,19 @@ class MarkdownCompletionAssistance:
                     current_markdown = "".join(markdown_chunks)
 
                     logger.debug(f"Parsing markdown chat")
-                    chat: dict = await parse_markdown_chat(markdown_chat=current_markdown,
+                    chat: Chat = await parse_markdown_chat(markdown_chat=current_markdown,
                                                            markdown_path=context["markdown_path"],
                                                            taskmates_dir=taskmates_dir,
-                                                           template_params=context.get("template_params"))
-                    if chat["model"] is None:
-                        del chat["model"]
-                    if "model" in context:
-                        chat.setdefault("model", context["model"])
+                                                           template_params=completion_opts["template_params"])
 
-                    if "metadata" in chat and "cwd" in chat["metadata"]:
-                        context = {**context}
-                        context["cwd"] = chat["metadata"].get("cwd")
+
+                    # if "model" in context:
+                    #     chat.setdefault("model", completion_opts["model"])
+                    #
+                    # if "metadata" in chat and "cwd" in chat["metadata"]:
+                    #     context["cwd"] = chat["metadata"].get("cwd")
+                    #
+
 
                     logger.debug(f"Computing next completion assistance")
                     completion_assistance = self.get_next_completion(chat)
@@ -105,7 +112,8 @@ class MarkdownCompletionAssistance:
             await signals.error.send_async(e)
             # raise e
 
-    async def compute_linebreaks(self, current_markdown):
+    @staticmethod
+    async def compute_linebreaks(current_markdown):
         padding = ""
         if not current_markdown.endswith("\n\n"):
             if current_markdown.endswith("\n"):

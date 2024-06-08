@@ -14,6 +14,7 @@ from taskmates.formats.markdown.participants.compute_participants import compute
 from taskmates.formats.markdown.participants.format_username_prompt import format_username_prompt
 from taskmates.formats.openai.get_text_content import get_text_content
 from taskmates.lib.digest_.get_digest import get_digest
+from taskmates.types import Chat
 
 
 @typechecked
@@ -21,7 +22,7 @@ async def parse_markdown_chat(markdown_chat: str,
                               markdown_path: Union[str, Path] | None,
                               taskmates_dir: Union[str, Path] = os.environ.get("TASKMATES_PATH",
                                                                                "/var/tmp/taskmates"),
-                              template_params: dict | None = None) -> dict:
+                              template_params: dict | None = None) -> Chat:
     taskmates_dir = Path(taskmates_dir)
 
     if markdown_path is None:
@@ -56,7 +57,6 @@ async def parse_markdown_chat(markdown_chat: str,
     notebook, code_cells = parse_notebook(get_text_content(messages[-1]))
 
     return {
-        'model': metadata.get('model'),
         'metadata': metadata,
         'messages': messages,
         'participants': (list(participants_configs.keys())),

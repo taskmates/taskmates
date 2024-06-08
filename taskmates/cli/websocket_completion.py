@@ -5,7 +5,7 @@ import signal
 import websockets
 from websockets.exceptions import ConnectionClosed
 
-from taskmates.assistances.completion_opts import CompletionOpts
+from taskmates.config import ClientConfig, COMPLETION_CONTEXT
 
 
 async def on_message(message):
@@ -56,12 +56,12 @@ async def handle_signals(websocket, request_id, received_signal):
         await asyncio.sleep(0.1)
 
 
-async def perform_websocket_completion(markdown, completion_opts: CompletionOpts):
+async def perform_websocket_completion(markdown, client_config: ClientConfig):
     # TODO handle `full` arg
 
-    async with websockets.connect(completion_opts['endpoint']) as websocket:
+    async with websockets.connect(client_config['endpoint']) as websocket:
         try:
-            context = completion_opts['context']
+            context = COMPLETION_CONTEXT.get()
 
             await websocket.send(json.dumps({
                 "type": "completions_request",

@@ -4,10 +4,13 @@ from typing import Dict
 from taskmates.actions.invoke_function import invoke_function
 from taskmates.assistances.completion_assistance import CompletionAssistance
 from taskmates.assistances.markdown.tool_editor_completion import ToolEditorCompletion
+from taskmates.config import CompletionContext
 from taskmates.model.tool_call import ToolCall
 from taskmates.signals import Signals
 from taskmates.tools.function_registry import function_registry
 from typeguard import typechecked
+
+from taskmates.types import Chat
 
 
 class MarkdownToolsAssistance(CompletionAssistance):
@@ -20,10 +23,11 @@ class MarkdownToolsAssistance(CompletionAssistance):
         tool_calls = last_message.get("tool_calls", [])
         return len(tool_calls) > 0
 
-    async def perform_completion(self, context: Dict, chat: Dict, signals: Signals):
+    async def perform_completion(self, context: CompletionContext, chat: Chat, signals: Signals):
+        cwd = context["cwd"]
         markdown_path = context["markdown_path"]
+
         messages = chat.get("messages", [])
-        cwd = context.get("cwd")
 
         tool_calls = messages[-1].get("tool_calls", [])
 

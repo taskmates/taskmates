@@ -3,7 +3,7 @@ import os
 import signal
 
 from taskmates.assistances.markdown.markdown_completion_assistance import MarkdownCompletionAssistance
-from taskmates.assistances.completion_opts import CompletionOpts
+from taskmates.config import CompletionContext, ClientConfig
 from taskmates.signals import Signals, SIGNALS
 
 # Global variable to store the received signal
@@ -33,19 +33,20 @@ async def handle_signals(signals):
         await asyncio.sleep(0.1)
 
 
-async def perform_direct_completion(markdown, completion_opts: CompletionOpts):
-    context = completion_opts.get('context') or {}
+async def perform_direct_completion(markdown,
+                                    context: CompletionContext,
+                                    client_config: ClientConfig):
     signals = Signals()
     SIGNALS.set(signals)
 
     async def process_chunk(token):
         print(token, end="", flush=True)
 
-    if completion_opts.get('format') == 'full':
+    if client_config.get('format') == 'full':
         signals.request.connect(process_chunk)
         signals.formatting.connect(process_chunk)
         signals.responder.connect(process_chunk)
-    if completion_opts.get('format') == 'completion':
+    if client_config.get('format') == 'completion':
         signals.responder.connect(process_chunk)
 
     signals.response.connect(process_chunk)

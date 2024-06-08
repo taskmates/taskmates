@@ -2,12 +2,15 @@ from typeguard import typechecked
 
 from taskmates.assistances.chat_completion.chat_completion_editor_completion import ChatCompletionEditorCompletion
 from taskmates.assistances.completion_assistance import CompletionAssistance
+from taskmates.config import CompletionContext, CompletionOpts, COMPLETION_OPTS
 from taskmates.formats.markdown.metadata.process_model_conf import process_model_conf
 from taskmates.lib.logging_.file_logger import file_logger
 from taskmates.lib.not_set.not_set import NOT_SET
 from taskmates.lib.openai_.inference.api_request import api_request
 from taskmates.lib.tool_schemas_.tool_schema import tool_schema
+from taskmates.signals import Signals
 from taskmates.tools.function_registry import function_registry
+from taskmates.types import Chat
 
 
 class MarkdownChatCompletionAssistance(CompletionAssistance):
@@ -17,10 +20,13 @@ class MarkdownChatCompletionAssistance(CompletionAssistance):
     def can_complete(self, chat):
         last_message = chat["last_message"]
         recipient_role = last_message["recipient_role"]
-        return recipient_role is not None and not recipient_role == "user" and not chat.get("is_echoed", False)
+        return recipient_role is not None and not recipient_role == "user"
 
     @typechecked
-    async def perform_completion(self, context, chat, signals):
+    async def perform_completion(self, context: CompletionContext, chat: Chat, signals: Signals):
+        completion_opts: CompletionOpts = COMPLETION_OPTS.get()
+        model = completion_opts["model"]
+
         chat_completion_editor_completion = ChatCompletionEditorCompletion(chat, signals)
 
         async def restream_completion_chunk(chat_completion_chunk):
@@ -28,7 +34,7 @@ class MarkdownChatCompletionAssistance(CompletionAssistance):
             await chat_completion_editor_completion.process_chat_completion_chunk(choice)
 
         with signals.chat_completion.connected_to(restream_completion_chunk):
-            model_conf = process_model_conf(model_name=chat["model"], chat=chat)
+            model_conf = process_model_conf(model_name=model, messages=chat["messages"])
             tools = list(map(function_registry.__getitem__, chat["available_tools"]))
             tools_schemas = [tool_schema(f) for f in tools]
             # TODO

@@ -9,9 +9,9 @@ from uuid import uuid4
 
 from loguru import logger
 
-from taskmates.assistances.completion_context import CompletionContext
-from taskmates.assistances.completion_opts import CompletionOpts
 from taskmates.assistances.async_complete import async_complete
+from taskmates.config import CompletionContext, ServerConfig, CompletionOpts, ClientConfig, CLIENT_CONFIG, \
+    SERVER_CONFIG, COMPLETION_CONTEXT
 
 debug = os.environ.get("TASKMATES_DEBUG", "false") in ["1", "true"]
 
@@ -45,30 +45,29 @@ def main():
     Path(output).parent.mkdir(parents=True, exist_ok=True)
 
     context: CompletionContext = {
-        # Context
         "request_id": request_id,
-
-        # Config
         "markdown_path": str(Path(os.getcwd()) / f"{request_id}.md"),
-        "taskmates_dir": os.environ.get("TASKMATES_PATH", "/var/tmp/taskmates"),
-
-        # Execution Params
-        "model": args.model,
         "cwd": os.getcwd(),
-        "template_params": merge_template_params(args.template_params),
+    }
+    COMPLETION_CONTEXT.set({**context, **COMPLETION_CONTEXT.get()})
 
-        # Options
-        "interactive": False,
+    client_config = ClientConfig(interactive=False, format=args.format, endpoint=args.endpoint,
+                                 output=(output if args.output else None))
+    CLIENT_CONFIG.set({**client_config, **CLIENT_CONFIG.get()})
+
+    server_config: ServerConfig = {
+        "taskmates_dir": os.environ.get("TASKMATES_PATH", "/var/tmp/taskmates"),
+    }
+    SERVER_CONFIG.set({**server_config, **SERVER_CONFIG.get()})
+
+    completion_opts: CompletionOpts = {
+        "model": args.model,
+        "template_params": merge_template_params(args.template_params),
         'max_interactions': args.max_interactions,
     }
 
     asyncio.run(async_complete(markdown,
-                               **CompletionOpts(
-                                   output=(output if args.output else None),
-                                   format=args.format,
-                                   endpoint=args.endpoint,
-                                   context=context
-                               )))
+                               **completion_opts))
 
     # # Print the output to stdout
     # with open(output, 'r') as f:

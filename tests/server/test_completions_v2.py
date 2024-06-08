@@ -4,7 +4,11 @@ import textwrap
 import pytest
 from quart import Quart
 from quart.testing.connections import WebsocketDisconnectError
+from typeguard import typechecked
+
+from taskmates.config import SERVER_CONFIG
 from taskmates.server.blueprints.taskmates_completions import completions_bp as completions_v2_bp
+from taskmates.types import CompletionPayload
 
 
 @pytest.fixture
@@ -12,6 +16,11 @@ def app():
     app = Quart(__name__)
     app.register_blueprint(completions_v2_bp, name='completions_v2')
     return app
+
+
+@pytest.fixture(autouse=True)
+def server_config(tmp_path):
+    SERVER_CONFIG.set({"taskmates_dir": str(tmp_path / "taskmates")})
 
 
 @pytest.mark.asyncio
@@ -28,16 +37,17 @@ async def test_chat_completion(app, tmp_path):
     
     **user** """)
 
-    test_payload = {
+    test_payload: CompletionPayload = {
         "type": "completions_request",
         "markdown_chat": markdown_chat,
-        "context": {
-            "model": "echo",
+        "completion_context": {
             "request_id": "test_request_id",
             "cwd": str(tmp_path),
             "markdown_path": str(tmp_path / "test.md"),
-            "taskmates_dir": str(tmp_path),
-        }
+        },
+        "completion_opts": {
+            "model": "echo",
+        },
     }
 
     messages = await send_and_collect_messages(test_client, test_payload, '/v2/taskmates/completions')
@@ -63,15 +73,16 @@ async def test_chat_completion_with_mention(app, tmp_path):
     
     **user** """)
 
-    test_payload = {
+    test_payload: CompletionPayload = {
         "type": "completions_request",
         "markdown_chat": markdown_chat,
-        "context": {
-            "model": "echo",
+        "completion_context": {
             "request_id": "test_request_id",
             "cwd": str(tmp_path),
             "markdown_path": str(tmp_path / "test.md"),
-            "taskmates_dir": str(tmp_path / "taskmates"),
+        },
+        "completion_opts": {
+            "model": "echo",
         }
     }
 
@@ -112,16 +123,17 @@ async def test_tool_completion(app, tmp_path):
                          '\n'
                          '**user** ')
 
-    test_payload = {
+    test_payload: CompletionPayload = {
         "type": "completions_request",
         "markdown_chat": markdown_chat,
-        "context": {
-            "model": "echo",
+        "completion_context": {
             "request_id": "test_echo_tool",
             "cwd": str(tmp_path),
             "markdown_path": str(tmp_path / "test.md"),
-            "taskmates_dir": str(tmp_path),
-        }
+        },
+        "completion_opts": {
+            "model": "echo",
+        },
     }
 
     messages = await send_and_collect_messages(test_client, test_payload, '/v2/taskmates/completions')
@@ -158,16 +170,17 @@ async def test_code_cell_completion(app, tmp_path):
 
     **user** ''')
 
-    test_payload = {
+    test_payload: CompletionPayload = {
         "type": "completions_request",
         "markdown_chat": markdown_chat,
-        "context": {
-            "model": "echo",
+        "completion_context": {
             "request_id": "test_echo_code_cell",
             "cwd": str(tmp_path),
             "markdown_path": str(tmp_path / "test.md"),
-            "taskmates_dir": str(tmp_path),
-        }
+        },
+        "completion_opts": {
+            "model": "echo",
+        },
     }
 
     messages = await send_and_collect_messages(test_client, test_payload, '/v2/taskmates/completions')
@@ -186,16 +199,17 @@ async def test_error_completion(app, tmp_path):
         </pre>
     """)
 
-    test_payload = {
+    test_payload: CompletionPayload = {
         "type": "completions_request",
         "markdown_chat": "REQUEST\n\n",
-        "context": {
-            "model": "non-existent-model",
+        "completion_context": {
             "request_id": "test_error_completion",
             "cwd": str(tmp_path),
             "markdown_path": str(tmp_path / "test.md"),
-            "taskmates_dir": str(tmp_path),
-        }
+        },
+        "completion_opts": {
+            "model": "non-existent-model",
+        },
     }
 
     messages = await send_and_collect_messages(test_client, test_payload, '/v2/taskmates/completions')
@@ -232,16 +246,17 @@ async def test_interrupt_tool(app, tmp_path):
                          '-[x] Done\n'
                          '\n')
 
-    test_payload = {
+    test_payload: CompletionPayload = {
         "type": "completions_request",
         "markdown_chat": markdown_chat,
-        "context": {
-            "model": "echo",
+        "completion_context": {
             "request_id": "test_echo_tool",
             "cwd": str(tmp_path),
             "markdown_path": str(tmp_path / "test.md"),
-            "taskmates_dir": str(tmp_path),
-        }
+        },
+        "completion_opts": {
+            "model": "echo",
+        },
     }
 
     async with test_client.websocket('/v2/taskmates/completions') as ws:
@@ -255,7 +270,7 @@ async def test_interrupt_tool(app, tmp_path):
                 if "2" in message["payload"]["markdown_chunk"]:
                     break
 
-        await ws.send(json.dumps({"type": "interrupt", "context": {"request_id": "test_echo_tool"}}))
+        await ws.send(json.dumps({"type": "interrupt", "completion_context": {"request_id": "test_echo_tool"}}))
 
         remaining = await collect_until_closed(ws)
         messages.extend(remaining)
@@ -289,16 +304,17 @@ async def test_code_cell_no_output(app, tmp_path):
                            '**assistant** ###### Cell Output: stdout [cell_0] Done\n'
                            '\n'
                            '**user** ')
-    test_payload = {
+    test_payload: CompletionPayload = {
         "type": "completions_request",
         "markdown_chat": markdown_chat,
-        "context": {
-            "model": "echo",
+        "completion_context": {
             "request_id": "test_echo_code_cell_no_output",
             "cwd": str(tmp_path),
             "markdown_path": str(tmp_path / "test.md"),
-            "taskmates_dir": str(tmp_path),
-        }
+        },
+        "completion_opts": {
+            "model": "echo",
+        },
     }
 
     messages = await send_and_collect_messages(test_client, test_payload, '/v2/taskmates/completions')
@@ -325,16 +341,17 @@ async def test_interrupt_code_cell(app, tmp_path):
     """)
 
     expected_response = '###### Cell Output: stdout [cell_0]\n\n<pre>\n2\r\n^C\r\n</pre>\n\n'
-    test_payload = {
+    test_payload: CompletionPayload = {
         "type": "completions_request",
         "markdown_chat": markdown_chat,
-        "context": {
-            "model": "echo",
+        "completion_context": {
             "request_id": "test_echo_tool",
             "cwd": str(tmp_path),
             "markdown_path": str(tmp_path / "test.md"),
-            "taskmates_dir": str(tmp_path),
-        }
+        },
+        "completion_opts": {
+            "model": "echo",
+        },
     }
 
     async with test_client.websocket('/v2/taskmates/completions') as ws:
@@ -348,7 +365,7 @@ async def test_interrupt_code_cell(app, tmp_path):
                 if "2" in message["payload"]["markdown_chunk"]:
                     break
 
-        await ws.send(json.dumps({"type": "interrupt", "context": {"request_id": "test_echo_tool"}}))
+        await ws.send(json.dumps({"type": "interrupt", "completion_context": {"request_id": "test_echo_tool"}}))
 
         remaining = await collect_until_closed(ws)
         messages.extend(remaining)
@@ -367,7 +384,8 @@ async def get_markdown_response(messages):
     return markdown_response
 
 
-async def send_and_collect_messages(client, payload, endpoint):
+@typechecked
+async def send_and_collect_messages(client, payload: CompletionPayload, endpoint: str):
     async with client.websocket(endpoint) as ws:
         await ws.send(json.dumps(payload))
         return await collect_until_closed(ws)

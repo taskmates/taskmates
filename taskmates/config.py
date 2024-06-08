@@ -1,0 +1,62 @@
+import contextvars
+import os
+from pathlib import Path
+from typing import TypedDict, NotRequired, Literal
+from uuid import uuid4
+
+
+class ServerConfig(TypedDict):
+    taskmates_dir: str
+
+
+class CompletionContext(TypedDict):
+    request_id: str
+    cwd: str
+    markdown_path: str
+
+
+class ClientConfig(TypedDict):
+    endpoint: NotRequired[str]
+    format: NotRequired[Literal["full", "text", "completion"]]
+    output: NotRequired[str]
+    interactive: bool
+
+
+class CompletionOpts(TypedDict):
+    model: str
+    template_params: NotRequired[dict]
+    max_interactions: NotRequired[int]
+    # max_depth: int
+    # max_hops: int
+
+
+CLIENT_CONFIG: contextvars.ContextVar[ClientConfig] = contextvars.ContextVar(
+    "ClientConfig",
+    default={
+        "endpoint": None,
+        "format": "completion",
+        "output": None,
+        "interactive": True,
+    })
+
+COMPLETION_CONTEXT: contextvars.ContextVar[CompletionContext] = contextvars.ContextVar(
+    "CompletionContext",
+    default={
+        "request_id": str(uuid4()),
+        "markdown_path": str(Path(os.getcwd()) / f"{str(uuid4())}.md"),
+        "cwd": os.getcwd()
+    })
+
+COMPLETION_OPTS: contextvars.ContextVar[CompletionOpts] = contextvars.ContextVar(
+    "CompletionOpts",
+    default={
+        "model": 'claude-3-opus-20240229',
+        "template_params": {},
+        "max_interactions": float('inf'),
+    })
+
+SERVER_CONFIG: contextvars.ContextVar[ServerConfig] = contextvars.ContextVar(
+    "ServerConfig",
+    default={
+        "taskmates_dir": os.environ.get("TASKMATES_PATH", "/var/tmp/taskmates"),
+    })

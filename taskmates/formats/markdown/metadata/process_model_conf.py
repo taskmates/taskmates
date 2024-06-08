@@ -2,8 +2,9 @@ import copy
 import json
 import textwrap
 
-from taskmates.lib.openai_.count_tokens import count_tokens
 from typeguard import typechecked
+
+from taskmates.lib.openai_.count_tokens import count_tokens
 
 # https://platform.openai.com/docs/models
 CONTEXT_WINDOWS = {
@@ -28,15 +29,15 @@ CONTEXT_WINDOWS = {
 
 
 @typechecked
-def calculate_max_tokens(payload: dict, model_name: str):
+def calculate_max_tokens(messages: list, model_name: str):
     images = 0
     if "claude" in model_name:
         return 4096
     if "llama" in model_name:
         return 4096
     else:
-        approximate_payload = copy.deepcopy(payload)
-        for message in approximate_payload["messages"]:
+        approximate_payload = copy.deepcopy(messages)
+        for message in approximate_payload:
             if isinstance(message.get("content", None), list):
                 for part in message.get("content", []):
                     if part["type"] != "text":
@@ -49,8 +50,8 @@ def calculate_max_tokens(payload: dict, model_name: str):
 
 
 @typechecked
-def process_model_conf(model_name: str, chat: dict):
-    max_tokens = calculate_max_tokens(chat, model_name)
+def process_model_conf(model_name: str, messages: list):
+    max_tokens = calculate_max_tokens(messages, model_name)
 
     model_conf = {
         **{"model": model_name,
@@ -81,7 +82,7 @@ def test_handling_wrapped_json_in_payload_role():
             }
         ]
     }
-    updated_payload = process_model_conf("gpt-4", payload)
+    updated_payload = process_model_conf("gpt-4", payload["messages"])
     assert updated_payload == {'max_tokens': 4096,
                                'model': 'gpt-4',
                                'stop': ['\n######'],
@@ -108,7 +109,7 @@ def test_handling_wrapped_json_and_extra_text_in_payload_role():
             }
         ]
     }
-    updated_payload = process_model_conf("gpt-4", payload)
+    updated_payload = process_model_conf("gpt-4", payload["messages"])
     assert updated_payload == {'max_tokens': 4096,
                                'model': 'gpt-4',
                                'stop': ['\n######'],

@@ -6,11 +6,13 @@ from quart import Blueprint, Response
 from quart import websocket
 
 from taskmates.assistances.markdown.markdown_completion_assistance import MarkdownCompletionAssistance
-from taskmates.assistances.completion_context import CompletionContext
+from taskmates.config import CompletionContext, CompletionOpts, ServerConfig, SERVER_CONFIG, \
+    COMPLETION_CONTEXT, COMPLETION_OPTS
 from taskmates.lib.json_.json_utils import snake_case
 from taskmates.lib.logging_.file_logger import file_logger
 from taskmates.signals import SIGNALS, Signals
 from taskmates.sinks import WebsocketStreamingSink
+from taskmates.types import CompletionPayload
 
 completions_bp = Blueprint('completions_v2', __name__)
 
@@ -27,11 +29,25 @@ async def taskmates_completions():
         raw_payload = await websocket.receive()
         # print(f"raw_payload: {raw_payload}")
 
-        payload = snake_case(json.loads(raw_payload))
+        payload: CompletionPayload = snake_case(json.loads(raw_payload))
 
-        context: CompletionContext = payload["context"]
-        request_id = context['request_id']
+        server_config: ServerConfig = SERVER_CONFIG.get()
+
+        completion_context: CompletionContext = payload["completion_context"]
+        completion_opts: CompletionOpts = payload["completion_opts"]
+        request_id = completion_context['request_id']
         markdown_chat = payload["markdown_chat"]
+
+        # Merge new values with existing default values
+        merged_completion_context = {**COMPLETION_CONTEXT.get(), **completion_context}
+        merged_completion_opts = {**COMPLETION_OPTS.get(), **completion_opts}
+        merged_server_config = {**SERVER_CONFIG.get(), **server_config}
+
+        # TODO: reset
+        # Set context vars
+        COMPLETION_CONTEXT.set(merged_completion_context)
+        COMPLETION_OPTS.set(merged_completion_opts)
+        SERVER_CONFIG.set(merged_server_config)
 
         with file_logger.contextualize(request_id=(request_id)):
             logger.info(f"[{request_id}] CONNECT /v2/taskmates/completions")
@@ -60,7 +76,7 @@ async def taskmates_completions():
             receive_interrupt_task = asyncio.create_task(handle_interrupt())
 
             completion_task = asyncio.create_task(
-                MarkdownCompletionAssistance().perform_completion(context, markdown_chat, signals)
+                MarkdownCompletionAssistance().perform_completion(completion_context, markdown_chat, signals)
             )
 
             completion_task.add_done_callback(lambda t: receive_interrupt_task.cancel("Completion Task Finished"))
