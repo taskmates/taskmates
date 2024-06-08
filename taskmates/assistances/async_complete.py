@@ -12,7 +12,7 @@ async def async_complete(markdown,
     completion_context = COMPLETION_CONTEXT.get()
     client_config = CLIENT_CONFIG.get()
 
-    token = COMPLETION_OPTS.set(completion_opts)
+    token = COMPLETION_OPTS.set({**COMPLETION_OPTS.get(), **completion_opts})
     try:
         if client_config.get("endpoint"):
             pass

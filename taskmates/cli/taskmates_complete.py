@@ -49,16 +49,16 @@ def main():
         "markdown_path": str(Path(os.getcwd()) / f"{request_id}.md"),
         "cwd": os.getcwd(),
     }
-    COMPLETION_CONTEXT.set({**context, **COMPLETION_CONTEXT.get()})
+    COMPLETION_CONTEXT.set({**COMPLETION_CONTEXT.get(), **context})
 
     client_config = ClientConfig(interactive=False, format=args.format, endpoint=args.endpoint,
                                  output=(output if args.output else None))
-    CLIENT_CONFIG.set({**client_config, **CLIENT_CONFIG.get()})
+    CLIENT_CONFIG.set({**CLIENT_CONFIG.get(), **client_config})
 
     server_config: ServerConfig = {
         "taskmates_dir": os.environ.get("TASKMATES_PATH", "/var/tmp/taskmates"),
     }
-    SERVER_CONFIG.set({**server_config, **SERVER_CONFIG.get()})
+    SERVER_CONFIG.set({**SERVER_CONFIG.get(), **server_config})
 
     completion_opts: CompletionOpts = {
         "model": args.model,
