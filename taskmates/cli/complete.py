@@ -33,19 +33,14 @@ async def handle_signals(signals):
         await asyncio.sleep(0.1)
 
 
-async def perform_direct_completion(markdown,
-                                    context: CompletionContext,
-                                    client_config: ClientConfig):
+async def complete(markdown,
+                   context: CompletionContext,
+                   client_config: ClientConfig):
     signals = Signals()
     SIGNALS.set(signals)
 
-    completion_chunks = []
-
     async def process_chunk(chunk):
         print(chunk, end="", flush=True)
-
-    async def process_response_chunk(chunk):
-        completion_chunks.append(chunk)
 
     if client_config.get('format') == 'full':
         signals.request.connect(process_chunk)
@@ -53,8 +48,6 @@ async def perform_direct_completion(markdown,
         signals.responder.connect(process_chunk)
     if client_config.get('format') == 'completion':
         signals.responder.connect(process_chunk)
-
-    signals.response.connect(process_response_chunk)
 
     signals.response.connect(process_chunk)
     signals.error.connect(process_chunk)
@@ -82,5 +75,3 @@ async def perform_direct_completion(markdown,
 
     for task in pending:
         task.cancel()
-
-    return "".join(completion_chunks)
