@@ -19,6 +19,8 @@ async def async_complete(markdown,
             # TODO: rewrite this
             # return await perform_websocket_completion(markdown, completion_opts)
         else:
-            return await perform_direct_completion(markdown, completion_context, client_config)
+            return await perform_direct_completion(markdown,
+                                                   completion_context,
+                                                   client_config)
     finally:
         COMPLETION_OPTS.reset(token)
