@@ -1,8 +1,12 @@
 import contextvars
 import os
+from contextlib import contextmanager
 from pathlib import Path
+from typing import TypeVar
 from typing import TypedDict, NotRequired, Literal
 from uuid import uuid4
+
+T = TypeVar('T')
 
 
 class ServerConfig(TypedDict):
@@ -60,10 +64,6 @@ SERVER_CONFIG: contextvars.ContextVar[ServerConfig] = contextvars.ContextVar(
     default={
         "taskmates_dir": os.environ.get("TASKMATES_PATH", "/var/tmp/taskmates"),
     })
-from contextlib import contextmanager
-from typing import TypeVar
-
-T = TypeVar('T')
 
 
 @contextmanager
