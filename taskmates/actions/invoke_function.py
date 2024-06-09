@@ -2,15 +2,18 @@ import asyncio
 from contextlib import redirect_stdout, redirect_stderr
 from io import StringIO
 
+from taskmates.lib.restore_stdout import restore_stdout
 from taskmates.signals import Signals
 
 
+# TODO: review this and the duplication with run_shell_command
 async def stream_output(stream_name, stream, signals: Signals):
     while True:
         line = stream.readline()
         if not line:
             break
-        await signals.response.send_async(line)
+        with restore_stdout():
+            await signals.response.send_async(line)
 
 
 async def invoke_function(function, kwargs, signals: Signals):
@@ -28,11 +31,10 @@ async def invoke_function(function, kwargs, signals: Signals):
     stdout_task = asyncio.create_task(stream_output("stdout", stdout_stream, signals))
     stderr_task = asyncio.create_task(stream_output("stderr", stderr_stream, signals))
 
-    # result = await asyncio.get_running_loop().run_in_executor(None, run_function)
     result = await run_function()
 
-    stdout_stream.seek(0)
-    stderr_stream.seek(0)
+    # stdout_stream.seek(0)
+    # stderr_stream.seek(0)
 
     await stdout_task
     await stderr_task

@@ -11,7 +11,7 @@ from loguru import logger
 
 from taskmates.cli.complete import complete
 from taskmates.config import CompletionContext, ServerConfig, CompletionOpts, ClientConfig, CLIENT_CONFIG, \
-    SERVER_CONFIG, COMPLETION_CONTEXT
+    SERVER_CONFIG, COMPLETION_CONTEXT, COMPLETION_OPTS
 
 debug = os.environ.get("TASKMATES_DEBUG", "false") in ["1", "true"]
 
@@ -59,7 +59,9 @@ def main():
     }
     COMPLETION_CONTEXT.set({**COMPLETION_CONTEXT.get(), **context})
 
-    client_config = ClientConfig(interactive=False, format=args.format, endpoint=args.endpoint,
+    client_config = ClientConfig(interactive=False,
+                                 format=args.format,
+                                 endpoint=args.endpoint,
                                  output=(output if args.output else None))
     CLIENT_CONFIG.set({**CLIENT_CONFIG.get(), **client_config})
 
@@ -73,6 +75,8 @@ def main():
         "template_params": merge_template_params(args.template_params),
         'max_interactions': args.max_interactions,
     }
+
+    COMPLETION_OPTS.set({**COMPLETION_OPTS.get(), **completion_opts})
 
     asyncio.run(complete(markdown, context, client_config))
 

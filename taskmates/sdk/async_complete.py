@@ -3,8 +3,8 @@ from typing import Unpack
 from typeguard import typechecked
 
 from taskmates.assistances.markdown.markdown_completion_assistance import MarkdownCompletionAssistance
-from taskmates.config import COMPLETION_CONTEXT, CompletionOpts, COMPLETION_OPTS, updated_config
-from taskmates.signals import Signals, SIGNALS
+from taskmates.config import CompletionOpts, COMPLETION_CONTEXT, updated_config, COMPLETION_OPTS
+from taskmates.signals import SIGNALS, Signals
 
 
 @typechecked
@@ -24,8 +24,8 @@ async def async_complete(markdown,
     signals.response.connect(process_response_chunk)
     signals.error.connect(process_error)
 
+    completion_context = COMPLETION_CONTEXT.get()
     try:
-        completion_context = COMPLETION_CONTEXT.get()
         with updated_config(COMPLETION_OPTS, completion_opts):
             await MarkdownCompletionAssistance().perform_completion(
                 completion_context,

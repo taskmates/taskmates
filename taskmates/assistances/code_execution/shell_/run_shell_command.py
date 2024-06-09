@@ -2,17 +2,24 @@ import asyncio
 import os
 import signal
 import subprocess
+import sys
 
 import pytest
+
+from taskmates.lib.restore_stdout import restore_stdout
 from taskmates.signals import Signals, SIGNALS
 
 
-async def stream_output(stream_name, stream, signals):
+# TODO: review this and the duplication with invoke_function
+async def stream_output(fd, stream, signals):
     while True:
         line = await asyncio.get_event_loop().run_in_executor(None, stream.readline)
         if not line:
             break
-        await signals.response.send_async(line)
+        with restore_stdout():
+            await signals.response.send_async(line)
+        # fd.write(line)
+        # fd.flush()
 
 
 async def run_shell_command(cmd: str) -> str:
@@ -44,8 +51,8 @@ async def run_shell_command(cmd: str) -> str:
 
     with signals.interrupt.connected_to(interrupt_handler), \
             signals.kill.connected_to(kill_handler):
-        stdout_task = asyncio.create_task(stream_output("stdout", process.stdout, signals))
-        stderr_task = asyncio.create_task(stream_output("stderr", process.stderr, signals))
+        stdout_task = asyncio.create_task(stream_output(sys.stdout, process.stdout, signals))
+        stderr_task = asyncio.create_task(stream_output(sys.stderr, process.stderr, signals))
 
         await asyncio.wait([stdout_task, stderr_task])
 

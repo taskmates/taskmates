@@ -43,14 +43,14 @@ async def complete(markdown,
         print(chunk, end="", flush=True)
 
     if client_config.get('format') == 'full':
-        signals.request.connect(process_chunk)
-        signals.formatting.connect(process_chunk)
-        signals.responder.connect(process_chunk)
+        signals.request.connect(process_chunk, weak=False)
+        signals.formatting.connect(process_chunk, weak=False)
+        signals.responder.connect(process_chunk, weak=False)
     if client_config.get('format') == 'completion':
-        signals.responder.connect(process_chunk)
+        signals.responder.connect(process_chunk, weak=False)
 
-    signals.response.connect(process_chunk)
-    signals.error.connect(process_chunk)
+    signals.response.connect(process_chunk, weak=False)
+    signals.error.connect(process_chunk, weak=False)
 
     async def process_return_status(status):
         if status['result']:
@@ -60,7 +60,7 @@ async def complete(markdown,
             # noinspection PyUnresolvedReferences,PyProtectedMember
             os._exit(-1)
 
-    signals.return_status.connect(process_return_status)
+    signals.return_status.connect(process_return_status, weak=False)
 
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)

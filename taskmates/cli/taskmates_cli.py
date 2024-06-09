@@ -1,5 +1,4 @@
 import argparse
-import taskmates
 import asyncio
 import json
 import os
@@ -7,9 +6,10 @@ import subprocess
 import sys
 from datetime import datetime
 
+import taskmates
 from taskmates.actions.invoke_function import invoke_function
 from taskmates.actions.parse_markdown_chat import parse_markdown_chat
-from taskmates.signals import Signals
+from taskmates.signals import Signals, SIGNALS
 
 
 async def take_screenshot(output_path):
@@ -41,8 +41,10 @@ def main():
 
 async def async_main(args, parser):
     if args.command == 'invoke':
+        signals = Signals()
+        token = SIGNALS.set(signals)
         try:
-            result = await invoke_function(args.name, args.arguments, Signals())
+            result = await invoke_function(args.name, args.arguments, signals)
             if result is not None:
                 if isinstance(result, str):
                     print(result)
@@ -50,6 +52,8 @@ async def async_main(args, parser):
                     print(json.dumps(result, ensure_ascii=False))
         except Exception as e:
             raise e
+        finally:
+            SIGNALS.reset(token)
     elif args.command == 'screenshot':
         output_path = args.output
         if not output_path:

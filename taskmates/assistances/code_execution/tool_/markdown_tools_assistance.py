@@ -31,11 +31,11 @@ class MarkdownToolsAssistance(CompletionAssistance):
 
         tool_calls = messages[-1].get("tool_calls", [])
 
-        editor_completion = ToolEditorCompletion(project_dir=cwd, chat_file=markdown_path)
+        editor_completion = ToolEditorCompletion(project_dir=cwd, chat_file=markdown_path, signals=signals)
 
         for tool_call in tool_calls:
             function_title = tool_call["function"]["name"].replace("_", " ").title()
-            await editor_completion.append_tool_execution_header(function_title, tool_call["id"], signals)
+            await editor_completion.append_tool_execution_header(function_title, tool_call["id"])
 
             tool_call_obj = ToolCall.from_dict(tool_call)
 
@@ -51,7 +51,7 @@ class MarkdownToolsAssistance(CompletionAssistance):
                     os.chdir(original_cwd)
 
             await signals.response.send_async(str(return_value))
-            await editor_completion.append_tool_execution_footer(function_title, signals)
+            await editor_completion.append_tool_execution_footer(function_title)
 
     @staticmethod
     @typechecked
