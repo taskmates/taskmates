@@ -1,7 +1,7 @@
 import asyncio
 import os
 
-from tools.chroma_.get_chroma_client import get_chroma_client
+from taskmates.tools.chroma_.get_chroma_client import get_chroma_client
 
 
 async def chromadb_search(query: str, n_results: int = 5):

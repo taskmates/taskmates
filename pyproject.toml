@@ -5,7 +5,7 @@ description = ""
 authors = ["srizzo <rizzolabs@gmail.com>"]
 readme = "README.md"
 exclude = ["tests/", "examples/*", "data/", "pocs/", "notebooks/", "lib/lamma_/", "bin/", "lib/llama_/*"]
-
+include = ["tools/"]
 
 
 [tool.poetry.dependencies]

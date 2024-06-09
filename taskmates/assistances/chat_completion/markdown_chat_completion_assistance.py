@@ -9,7 +9,7 @@ from taskmates.lib.not_set.not_set import NOT_SET
 from taskmates.lib.openai_.inference.api_request import api_request
 from taskmates.lib.tool_schemas_.tool_schema import tool_schema
 from taskmates.signals import Signals
-from taskmates.tools.function_registry import function_registry
+from taskmates.function_registry import function_registry
 from taskmates.types import Chat
 
 
@@ -44,7 +44,7 @@ class MarkdownChatCompletionAssistance(CompletionAssistance):
                 **({"tool_choice": tool_choice} if tool_choice is not None else {})
             )
 
-            file_logger.info(f"[api_request] chat.yaml", content=chat)
-            file_logger.info(f"[api_request] chat.json", content=chat)
+            file_logger.debug(f"[api_request] chat.yaml", content=chat)
+            file_logger.debug(f"[api_request] chat.json", content=chat)
 
             return await api_request(chat["messages"], model_conf, model_params)

@@ -6,14 +6,14 @@ import json
 from typeguard import typechecked
 
 from taskmates.assistances.code_execution.shell_.run_shell_command import run_shell_command
-from tools.chroma_.chromadb_search import chromadb_search
-from tools.dalle_.convert_to_svg import convert_to_svg
-from tools.dalle_.generate_images import generate_images
-from tools.evaluation_.report_evaluation import report_evaluation
-from tools.filesystem_.read_file import read_file
-from tools.filesystem_.write_file import write_file
-from tools.google_.google_search import google_search
-from tools.jira_.jira_ import create_issue, add_comment, update_status, search_issues, delete_issues, dump_context, \
+from taskmates.tools.chroma_.chromadb_search import chromadb_search
+from taskmates.tools.dalle_.convert_to_svg import convert_to_svg
+from taskmates.tools.dalle_.generate_images import generate_images
+from taskmates.tools.evaluation_.report_evaluation import report_evaluation
+from taskmates.tools.filesystem_.read_file import read_file
+from taskmates.tools.filesystem_.write_file import write_file
+from taskmates.tools.google_.google_search import google_search
+from taskmates.tools.jira_.jira_ import create_issue, add_comment, update_status, search_issues, delete_issues, dump_context, \
     read_issue
 
 function_registry = {}

@@ -7,7 +7,7 @@ from taskmates.assistances.markdown.tool_editor_completion import ToolEditorComp
 from taskmates.config import CompletionContext
 from taskmates.model.tool_call import ToolCall
 from taskmates.signals import Signals
-from taskmates.tools.function_registry import function_registry
+from taskmates.function_registry import function_registry
 from typeguard import typechecked
 
 from taskmates.types import Chat

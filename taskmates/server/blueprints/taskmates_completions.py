@@ -41,7 +41,7 @@ async def taskmates_completions():
                 updated_config(COMPLETION_OPTS, completion_opts):
             logger.info(f"[{request_id}] CONNECT /v2/taskmates/completions")
 
-            file_logger.info("request_payload.yaml", content=payload)
+            file_logger.debug("request_payload.yaml", content=payload)
 
             async def handle_interrupt():
                 try:

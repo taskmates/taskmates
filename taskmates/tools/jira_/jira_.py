@@ -4,8 +4,8 @@ import pytest
 import yaml
 from jira import JIRA, Issue
 
-from tools.jira_.get_issue_url import get_issue_url
-from tools.jira_.get_jira_client import get_jira_client
+from taskmates.tools.jira_ import get_issue_url
+from taskmates.tools.jira_ import get_jira_client
 
 """
 This module contains functions for interacting with JIRA.

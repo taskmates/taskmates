@@ -9,7 +9,7 @@ from uuid import uuid4
 
 from loguru import logger
 
-from taskmates.assistances.async_complete import async_complete
+from taskmates.cli.complete import complete
 from taskmates.config import CompletionContext, ServerConfig, CompletionOpts, ClientConfig, CLIENT_CONFIG, \
     SERVER_CONFIG, COMPLETION_CONTEXT
 
@@ -20,6 +20,14 @@ if not debug:
 
     logger.remove()
     logger.add(sys.stderr, level="ERROR")
+    # file_logger.remove()
+
+
+def merge_template_params(template_params: list) -> dict:
+    merged_params = {}
+    for param_dict in template_params:
+        merged_params.update(param_dict)
+    return merged_params
 
 
 def main():
@@ -66,8 +74,7 @@ def main():
         'max_interactions': args.max_interactions,
     }
 
-    asyncio.run(async_complete(markdown,
-                               **completion_opts))
+    asyncio.run(complete(markdown, context, client_config))
 
     # # Print the output to stdout
     # with open(output, 'r') as f:
@@ -97,13 +104,6 @@ def get_markdown(args):
 
 if __name__ == '__main__':
     main()
-
-
-def merge_template_params(template_params):
-    merged_params = {}
-    for param_dict in template_params:
-        merged_params.update(param_dict)
-    return merged_params
 
 
 def test_merge_template_params():

@@ -42,7 +42,7 @@ file_logger.add(sys.stderr,
 #     base_dir = tmp_path / "base_dir"
 #     base_dir.mkdir(parents=True, exist_ok=True)
 #
-#     file_logger.info("foo.txt", content=test_message, base_dir=base_dir)
+#     file_logger.debug("foo.txt", content=test_message, base_dir=base_dir)
 #
 #     logged_files = list(base_dir.glob("logs/*/foo.txt"))
 #     print_dir_tree(tmp_path)

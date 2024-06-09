@@ -34,8 +34,8 @@ async def api_request(messages: list, model_conf: dict, model_params: dict) -> d
     client = get_client(model_conf)
 
     with tracer.start_as_current_span(name="chat-completion"):
-        file_logger.info(f"[api_request] request_payload.yaml", content=llm_client_args)
-        file_logger.info(f"[api_request] request_payload.json", content=llm_client_args)
+        file_logger.debug(f"[api_request] request_payload.yaml", content=llm_client_args)
+        file_logger.debug(f"[api_request] request_payload.json", content=llm_client_args)
 
         interrupted = False
 
@@ -67,17 +67,17 @@ async def api_request(messages: list, model_conf: dict, model_params: dict) -> d
                         await signals.chat_completion.send_async(chat_completion_chunk)
 
                 except asyncio.CancelledError:
-                    file_logger.info(f"[api_request] response_cancelled.yaml", content=True)
+                    file_logger.debug(f"[api_request] response_cancelled.yaml", content=True)
                     await chat_completion.response.aclose()
                     raise
                 except ReadError as e:
-                    file_logger.info(f"[api_request] response_read_error.yaml", content=str(e))
+                    file_logger.debug(f"[api_request] response_read_error.yaml", content=str(e))
 
                 response = streamed_response.payload
             else:
                 response = chat_completion.model_dump()
 
-    file_logger.info(f"[api_request] response.yaml", content=response)
+    file_logger.debug(f"[api_request] response.yaml", content=response)
 
     if not response['choices']:
         # NOTE: this seems to happen when the request is cancelled before any response is received
