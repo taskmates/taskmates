@@ -1,6 +1,5 @@
 [tool.poetry]
 name = "taskmates"
-version = "0.1.0"
 description = ""
 authors = ["srizzo <rizzolabs@gmail.com>"]
 readme = "README.md"
@@ -162,3 +161,5 @@ taskmates-code-ast = "lib.cli_ide.code_ast:main"
 taskmates-google-search = "tools.google_.google_search:main"
 taskmates-complete = "taskmates.cli.taskmates_complete:main"
 taskmates = "taskmates.cli.taskmates_cli:main"
+
+[tool.setuptools_scm]

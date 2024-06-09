@@ -1,4 +1,5 @@
 import argparse
+import taskmates
 import asyncio
 import json
 import os
@@ -18,6 +19,7 @@ async def take_screenshot(output_path):
 
 def main():
     parser = argparse.ArgumentParser(description='Taskmates CLI')
+    parser.add_argument('--version', action='version', version=f'Taskmates {taskmates.__version__}')
     subparsers = parser.add_subparsers(dest='command')
 
     # Subparser for the 'invoke' command
@@ -28,7 +30,6 @@ def main():
     # Subparser for the 'screenshot' command
     screenshot_parser = subparsers.add_parser('screenshot', help='Take a screenshot and save it')
     screenshot_parser.add_argument('--output', help='Output file path for the screenshot')
-
     # Subparser for the 'parse' command
     parse_parser = subparsers.add_parser('parse',
                                          help='Parse a markdown chat file from stdin and print the extracted chat as JSON')
