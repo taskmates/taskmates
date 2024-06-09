@@ -6,7 +6,7 @@ import sys
 
 import pytest
 
-from taskmates.lib.restore_stdout import restore_stdout
+from taskmates.lib.restore_stdout_and_stderr import restore_stdout_and_stderr
 from taskmates.signals import Signals, SIGNALS
 
 
@@ -16,7 +16,7 @@ async def stream_output(fd, stream, signals):
         line = await asyncio.get_event_loop().run_in_executor(None, stream.readline)
         if not line:
             break
-        with restore_stdout():
+        with restore_stdout_and_stderr():
             await signals.response.send_async(line)
         # fd.write(line)
         # fd.flush()

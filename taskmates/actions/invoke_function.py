@@ -2,7 +2,7 @@ import asyncio
 from contextlib import redirect_stdout, redirect_stderr
 from io import StringIO
 
-from taskmates.lib.restore_stdout import restore_stdout
+from taskmates.lib.restore_stdout_and_stderr import restore_stdout_and_stderr
 from taskmates.signals import Signals
 
 
@@ -12,7 +12,7 @@ async def stream_output(stream_name, stream, signals: Signals):
         line = stream.readline()
         if not line:
             break
-        with restore_stdout():
+        with restore_stdout_and_stderr():
             await signals.response.send_async(line)
 
 
