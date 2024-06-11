@@ -7,6 +7,7 @@ from queue import Empty
 
 import pytest
 from jupyter_client import AsyncKernelManager, AsyncKernelClient
+from loguru import logger
 from nbformat import NotebookNode
 
 from taskmates.assistances.code_execution.jupyter_.parse_notebook import parse_notebook
@@ -58,7 +59,7 @@ async def execute_markdown_on_local_kernel(content, path: str = None, cwd: str =
     async def kill_handler(sender):
         nonlocal notebook_finished
         nonlocal cell_finished
-        print("Killing kernel...")
+        logger.info("Killing kernel...")
         notebook_finished = True
         cell_finished = True
         await msg_queue.put(None)
@@ -80,8 +81,7 @@ async def execute_markdown_on_local_kernel(content, path: str = None, cwd: str =
                 cell_finished = False
 
                 msg_id = kernel_client.execute(cell.source)
-                # print("msg_id:", msg_id, flush=True)
-
+                logger.debug("msg_id:", msg_id)
 
                 while True:
                     msg = await msg_queue.get()
@@ -89,14 +89,14 @@ async def execute_markdown_on_local_kernel(content, path: str = None, cwd: str =
                         if cell_finished:
                             break
                         continue
-                    if msg['parent_header']['msg_id'] in setup_msgs:
+                    if msg['parent_header']['msg_id'] in setup_msgs and msg["msg_type"] != "error":
                         continue
 
-                    if msg['parent_header']['msg_id'] != msg_id:
+                    if msg['parent_header']['msg_id'] != msg_id and msg["msg_type"] != "error":
                         continue
 
-                    # print(f"received msg: {msg['msg_type']}, msg_id={msg['parent_header']['msg_id']}", flush=True)
-                    # print(f"    msg: {msg}", flush=True)
+                    logger.debug(f"received msg: {msg['msg_type']}, msg_id={msg['parent_header']['msg_id']}")
+                    logger.debug(f"    msg: {msg}")
 
                     if msg['msg_type'] == 'error':
                         notebook_finished = True
@@ -111,14 +111,12 @@ async def execute_markdown_on_local_kernel(content, path: str = None, cwd: str =
                     if msg['msg_type'] not in ('stream', 'error', 'display_data', 'execute_result'):
                         continue
 
-                    # print("sending msg:", msg["msg_type"], flush=True)
+                    logger.debug("sending msg:", msg["msg_type"])
                     await signals.code_cell_output.send_async({
                         "msg_id": msg_id,
                         "cell_source": cell.source,
                         "msg": msg
                     })
-
-
         finally:
             shell_task.cancel()
             iopub_task.cancel()

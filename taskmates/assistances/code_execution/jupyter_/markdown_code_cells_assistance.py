@@ -1,6 +1,8 @@
+import json
 import textwrap
 
 import pytest
+from loguru import logger
 
 from taskmates.assistances.code_execution.jupyter_.code_cells_editor_completion import CodeCellsEditorCompletion
 from taskmates.assistances.code_execution.jupyter_.execute_markdown_on_local_kernel import \
@@ -16,10 +18,11 @@ class MarkdownCodeCellsAssistance(CompletionAssistance):
         raise NotImplementedError("Not implemented")
 
     def can_complete(self, chat):
-        is_jupyter_enabled = chat.get("metadata", {}).get("jupyter", True)
         last_message = chat.get("last_message", {})
         code_cells = last_message.get("code_cells", [])
-        return is_jupyter_enabled and len(code_cells) > 0
+        logger.debug(f"chat = \n{json.dumps(chat)}")
+        logger.debug(f"len(code_cells) = {len(code_cells)}")
+        return len(code_cells) > 0
 
     async def perform_completion(self, context: CompletionContext, chat: Chat, signals: Signals):
         markdown_path = context["markdown_path"]
