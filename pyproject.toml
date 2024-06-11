@@ -35,7 +35,6 @@ pandas = "^2.1.4"
 pillow = "^10.1.0"
 pydantic = "^2.5.2"
 pypdf = "^3.17.4"
-pytest = "^8.2.0"
 python = "3.11.1"
 pyyaml = "^6.0.1"
 quart = "^0.19.6"
@@ -71,6 +70,13 @@ nbformat = "^5.10.4"
 requests = "^2.32.2"
 websockets = "^12.0"
 ipykernel = "^6.29.4"
+
+# used by code cells
+matplotlib = "^3.9.0"
+matplotlib-inline = "^0.1.7"
+pytest = "^8.2.0"
+pytest-asyncio = "^0.23.7"
+pytest-mock = "^3.14.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest-socket = "^0.7.0"
@@ -137,12 +143,7 @@ patch = "^1.16"
 #unstructured = "^0.11.6"
 #wandb = "^0.16.1"
 #whisperx = { git = "https://github.com/m-bain/whisperx.git" }
-pytest = "^8.2.0"
-pytest-mock = "^3.14.0"
-pytest-asyncio = "^0.23.7"
 coverage = "^7.5.3"
-matplotlib = "^3.9.0"
-matplotlib-inline = "^0.1.7"
 
 [tool.poetry.extras]
 chromadb = ["chromadb"]
