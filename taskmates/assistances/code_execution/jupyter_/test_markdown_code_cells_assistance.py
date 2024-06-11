@@ -1,23 +1,23 @@
 import pytest
 
 from taskmates.assistances.code_execution.jupyter_.markdown_code_cells_assistance import MarkdownCodeCellsAssistance
+from taskmates.types import Chat
 
 
 @pytest.mark.asyncio
 async def test_can_complete():
-    chat = {
+    chat = Chat(**{
         "metadata": {"jupyter": True},
         "last_message": {"code_cells": [{"source": "print('test')"}]}
-    }
+    })
     assistance = MarkdownCodeCellsAssistance()
-    assert assistance.can_complete(chat) == True
+    assert assistance.can_complete(chat) is True
 
-    chat["metadata"]["jupyter"] = False
-    assert assistance.can_complete(chat) == False
+    chat["metadata"]["jupyter_enabled"] = False
+    assert assistance.can_complete(chat) is False
 
     chat["last_message"]["code_cells"] = []
-    assert assistance.can_complete(chat) == False
-
+    assert assistance.can_complete(chat) is False
 
 # @pytest.mark.asyncio
 # async def test_perform_completion(mocker):

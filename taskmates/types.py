@@ -23,6 +23,7 @@ class MarkdownOpts(TypedDict):
     model: NotRequired[str]
     tools: NotRequired[dict]
     participants: NotRequired[dict]
+    jupyter_enabled: NotRequired[bool]
 
 
 class CompletionPayload(TypedDict):
