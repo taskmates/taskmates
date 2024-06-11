@@ -39,7 +39,7 @@ def main():
     parser.add_argument('--endpoint', type=str, default=None,
                         help='The websocket endpoint')
     parser.add_argument('--model', type=str, default='claude-3-opus-20240229', help='The model to use')
-    parser.add_argument('--max-interactions', type=int, default=float('inf'), help='The maximum number of interactions')
+    parser.add_argument('-n', '--max-interactions', type=int, default=float('inf'), help='The maximum number of interactions')
     parser.add_argument('--template-params', type=json.loads, action='append', default=[],
                         help='JSON string with system prompt template parameters (can be specified multiple times)')
     args = parser.parse_args()
