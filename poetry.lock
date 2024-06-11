@@ -3449,7 +3449,10 @@ files = [
 ]
 
 [package.dependencies]
-numpy = {version = ">=1.23.2", markers = "python_version == \"3.11\""}
+numpy = [
+    {version = ">=1.23.2", markers = "python_version == \"3.11\""},
+    {version = ">=1.26.0", markers = "python_version >= \"3.12\""},
+]
 python-dateutil = ">=2.8.2"
 pytz = ">=2020.1"
 tzdata = ">=2022.7"
@@ -5911,5 +5914,5 @@ chromadb = ["chromadb"]
 
 [metadata]
 lock-version = "2.0"
-python-versions = "3.11.1"
-content-hash = "0c8c15506270486580b5ff2cbf0d430f5a609a07765957971f95b973ac5be060"
+python-versions = "^3.11.1"
+content-hash = "74f75bbdbc7abfb3dc45ff7f4a3203500652013568bfb76ef088688a1a1d906a"
