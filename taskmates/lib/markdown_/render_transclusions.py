@@ -56,7 +56,7 @@ def render_transclusions(text: str,
     final_output = '\n'.join(output) if not is_embedding else ''.join(output)
 
     transclusion_links = extract_transclusion_links(final_output)
-    non_binary_links = [link for link in transclusion_links if not is_binary_file(link)]
+    non_binary_links = [link for link in transclusion_links if not is_binary_file(transclusions_base_dir / link)]
 
     if non_binary_links:
         raise ValueError(f"Transclusion links {transclusion_links} not found")
