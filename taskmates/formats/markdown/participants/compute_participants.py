@@ -20,14 +20,6 @@ async def compute_participants(taskmates_dir, front_matter, messages) -> tuple[s
                                                                  name,
                                                                  taskmates_dir)
 
-    # first_message = [message for message in messages if message["role"] in ("user", "assistant")][0]
-    # first_message_mention = parse_mention(get_text_content(first_message), [])
-    #
-    # if first_message_mention:
-    #     history_participants[first_message_mention] = load_participant_config(history_participants,
-    #                                                                           first_message_mention,
-    #                                                                           taskmates_dir)
-
     participants_config_raw = {**history_participants, **front_matter_participants}
 
     if list(participants_config_raw.keys()) == ["user"]:
@@ -39,7 +31,9 @@ async def compute_participants(taskmates_dir, front_matter, messages) -> tuple[s
     compute_and_assign_roles_and_recipients(messages, participants_configs, taskmates_dir)
 
     recipient = messages[-1].get("recipient")
-    logger.debug(f"Recipient: {recipient}")
+    recipient_role = messages[-1].get("recipient_role")
+
+    logger.debug(f"Recipient/Role: {recipient}/{recipient_role}")
 
     return recipient, participants_configs
 
