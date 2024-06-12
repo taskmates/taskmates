@@ -15,7 +15,7 @@ async def compute_participants(taskmates_dir, front_matter, messages) -> tuple[s
     history_participants = {}
     for message in messages:
         if message["role"] == "user" and message["role"] not in front_matter_participants:
-            history_participants[message["role"]] = {"role": "user"}
+            history_participants[message.get("name", "user")] = {"role": "user"}
 
     first_message = [message for message in messages if message["role"] in ("user", "assistant")][0]
     first_message_mention = parse_mention(get_text_content(first_message), [])

@@ -18,7 +18,7 @@ class MarkdownChatCompletionAssistance(CompletionAssistance):
         raise NotImplementedError("Not implemented")
 
     def can_complete(self, chat):
-        last_message = chat["last_message"]
+        last_message = chat["messages"][-1]
         recipient_role = last_message["recipient_role"]
         return recipient_role is not None and not recipient_role == "user"
 

@@ -17,7 +17,7 @@ class MarkdownCodeCellsAssistance(CompletionAssistance):
 
     def can_complete(self, chat):
         is_jupyter_enabled = chat.get("metadata", {}).get("jupyter_enabled", True)
-        last_message = chat.get("last_message", {})
+        last_message = chat['messages'][-1]
         code_cells = last_message.get("code_cells", [])
         return is_jupyter_enabled and len(code_cells) > 0
 

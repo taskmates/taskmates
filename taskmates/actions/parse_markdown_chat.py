@@ -56,16 +56,14 @@ async def parse_markdown_chat(markdown_chat: str,
     metadata = {**front_matter, **{"tools": available_tools}}
     notebook, code_cells = parse_notebook(get_text_content(messages[-1]))
 
+    if code_cells:
+        messages[-1]["code_cells"] = code_cells
+
     return {
         'metadata': metadata,
         'messages': messages,
         'participants': (list(participants_configs.keys())),
-        'available_tools': (list(available_tools.keys())),
-        'last_message': {
-            'recipient': recipient,
-            'recipient_role': recipient_config.get('role'),
-            'code_cells': code_cells
-        }
+        'available_tools': (list(available_tools.keys()))
     }
 
 
@@ -107,7 +105,7 @@ async def test_recipient_by_mention(taskmates_dir, markdown_path):
     assert result['messages'][0]["content"] == f"BROWSER_PROMPT\n\n{format_username_prompt('browser')}\n"
     assert result['messages'][1]["content"] == "@browser search the latest news @not_a_mention\n"
     assert result['available_tools'] == ["BROWSER_TOOL"]
-    assert result['last_message']['recipient'] == 'browser'
+    assert result['messages'][-1]['recipient'] == 'browser'
 
 
 @pytest.mark.asyncio
@@ -139,7 +137,7 @@ async def test_single_participant(taskmates_dir, markdown_path):
 
     assert result['messages'][1]['role'] == 'user'
     assert result['messages'][1]['content'] == 'Please search for the latest news on ai\n'
-    assert result['last_message']['recipient'] == 'browser'
+    assert result['messages'][-1]['recipient'] == 'browser'
     assert result['participants'] == ['user', 'browser']
 
 
@@ -184,5 +182,5 @@ async def test_multiple_participants_and_recipient(taskmates_dir, markdown_path)
 
     assert result['messages'][1]['role'] == 'user'
     assert result['messages'][1]['content'] == '@browser Please search for the latest news on ai\n'
-    assert result['last_message']['recipient'] == 'browser'
+    assert result['messages'][-1]['recipient'] == 'browser'
     assert result['participants'] == ['user', 'browser', 'coder']

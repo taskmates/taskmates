@@ -101,7 +101,7 @@ class MarkdownCompletionAssistance:
                 if line_breaks:
                     await signals.next_responder.send_async(line_breaks)
 
-                recipient = chat["last_message"]["recipient"]
+                recipient = chat["messages"][-1]["recipient"]
                 if recipient:
                     await signals.next_responder.send_async(f"**{recipient}** ")
 
