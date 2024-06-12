@@ -1,7 +1,7 @@
 import pytest
 
 
-def convert_openai_tools_to_anthropic(tools):
+def convert_openai_tools_to_anthropic(tools) -> list[dict]:
     anthropic_tools = []
     for tool in tools:
         anthropic_tool = {

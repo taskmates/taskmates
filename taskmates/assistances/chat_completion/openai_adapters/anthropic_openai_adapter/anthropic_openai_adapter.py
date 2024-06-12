@@ -19,10 +19,12 @@ from taskmates.assistances.chat_completion.openai_adapters.anthropic_openai_adap
     convert_openai_tools_to_anthropic
 from taskmates.assistances.chat_completion.openai_adapters.anthropic_openai_adapter.split_system_message import \
     split_system_message
+from taskmates.function_registry import function_registry
 from taskmates.lib.logging_.file_logger import file_logger
 from taskmates.lib.openai_.model.chat_completion_chunk_model import ChatCompletionChunkModel
 from taskmates.lib.openai_.model.choice_model import ChoiceModel
 from taskmates.lib.openai_.model.delta_model import DeltaModel
+from taskmates.lib.tool_schemas_.tool_schema import tool_schema
 
 
 class AsyncAnthropicOpenAIAdapter:
@@ -46,7 +48,26 @@ class AsyncAnthropicOpenAIAdapter:
             processed_messages = convert_and_merge_messages(messages)
             chat_messages, system_message = split_system_message(processed_messages)
 
-            anthropic_tools = convert_openai_tools_to_anthropic(tools) if tools else None
+            # TODO: It's unfortunate that anthropic enforces tools to be re-declared for each usage.
+            # Hopefully they will change it and this can be removed one day.
+            #
+            # Meanwhile, we should think of a workaround that doesn't expose tools to unrelated taskmates.
+            # Maybe the alternative would be to not send raw text in these cases.
+            anthropic_tools = convert_openai_tools_to_anthropic(tools) if tools else []
+            for message in processed_messages:
+                if isinstance(message["content"], str):
+                    continue
+                for content in message["content"]:
+                    if content["type"] == "tool_use":
+                        function_name = content["name"]
+                        if function_name in [t["name"] for t in anthropic_tools]:
+                            continue
+                        function = function_registry[function_name]
+                        function_schema = tool_schema(function)
+                        anthropic_tools.extend(convert_openai_tools_to_anthropic([function_schema]))
+
+            anthropic_tools = anthropic_tools or None
+
             stop_sequences = stop if stop else None
 
             payload = dict(
