@@ -4,12 +4,12 @@ from taskmates.assistances.chat_completion.chat_completion_editor_completion imp
 from taskmates.assistances.completion_assistance import CompletionAssistance
 from taskmates.config import CompletionContext, CompletionOpts, COMPLETION_OPTS
 from taskmates.formats.markdown.metadata.process_model_conf import process_model_conf
+from taskmates.function_registry import function_registry
 from taskmates.lib.logging_.file_logger import file_logger
 from taskmates.lib.not_set.not_set import NOT_SET
 from taskmates.lib.openai_.inference.api_request import api_request
 from taskmates.lib.tool_schemas_.tool_schema import tool_schema
 from taskmates.signals import Signals
-from taskmates.function_registry import function_registry
 from taskmates.types import Chat
 
 
@@ -34,9 +34,16 @@ class MarkdownChatCompletionAssistance(CompletionAssistance):
             await chat_completion_editor_completion.process_chat_completion_chunk(choice)
 
         with signals.chat_completion.connected_to(restream_completion_chunk):
-            model_conf = process_model_conf(model_name=model, messages=chat["messages"])
+            messages = chat["messages"]
+            model_conf = process_model_conf(model_name=model, messages=messages)
             tools = list(map(function_registry.__getitem__, chat["available_tools"]))
             tools_schemas = [tool_schema(f) for f in tools]
+
+            for message in messages:
+                message.pop("recipient", None)
+                message.pop("recipient_role", None)
+                message.pop("code_cells", None)
+
             # TODO
             tool_choice = NOT_SET
             model_params = dict(
@@ -47,4 +54,4 @@ class MarkdownChatCompletionAssistance(CompletionAssistance):
             file_logger.debug(f"[api_request] chat.yaml", content=chat)
             file_logger.debug(f"[api_request] chat.json", content=chat)
 
-            return await api_request(chat["messages"], model_conf, model_params)
+            return await api_request(messages, model_conf, model_params)
