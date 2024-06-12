@@ -38,7 +38,9 @@ class MarkdownChatCompletionAssistance(CompletionAssistance):
             tools = list(map(function_registry.__getitem__, chat["available_tools"]))
             tools_schemas = [tool_schema(f) for f in tools]
 
-            messages = [{"name": m.get("name"), "role": m["role"], "content": m["content"]} for m in chat["messages"]]
+            messages = [{key: value for key, value in m.items()
+                         if key not in ("recipient", "recipient_role", "code_cells")}
+                        for m in chat["messages"]]
 
             # TODO
             tool_choice = NOT_SET

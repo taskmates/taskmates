@@ -2,7 +2,7 @@ from typeguard import typechecked
 
 
 @typechecked
-def get_text_content(message: dict[str, list] | dict[str, str]) -> str | None:
+def get_text_content(message: dict[str, list | str | None]) -> str | None:
     content = message["content"]
     if content is None:
         return None

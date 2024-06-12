@@ -38,7 +38,7 @@ def compute_recipient(messages, participants_configs) -> str | None:
                      if participant != last_participant_message.get("name", last_participant_message.get("role"))][0]
 
     # default: assistant reply to request
-    elif last_participant_message_role == "assistant":
+    elif last_participant_message_role == "assistant" and len(participant_messages) > 1:
         recipient = participant_messages[-2]["name"]
 
     # re-initiate conversation

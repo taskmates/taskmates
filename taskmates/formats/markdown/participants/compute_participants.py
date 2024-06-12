@@ -3,9 +3,7 @@ from loguru import logger
 from taskmates.environment.participants.load_participant_config import load_participant_config
 from taskmates.formats.markdown.participants.compute_and_reassign_roles import compute_and_reassign_roles
 from taskmates.formats.markdown.participants.compute_recipient import compute_recipient
-from taskmates.formats.markdown.participants.parse_mention import parse_mention
 from taskmates.formats.markdown.participants.process_participants import process_participants
-from taskmates.formats.openai.get_text_content import get_text_content
 
 
 async def compute_participants(taskmates_dir, front_matter, messages) -> tuple[str | None, dict]:
@@ -15,15 +13,20 @@ async def compute_participants(taskmates_dir, front_matter, messages) -> tuple[s
     history_participants = {}
     for message in messages:
         if message["role"] == "user" and message["role"] not in front_matter_participants:
-            history_participants[message.get("name", "user")] = {"role": "user"}
+            # history_participants[message.get("name", "user")] = {"role": "user"}
+            # history_participants[message.get("name", "user")] = {"role": "user"}
+            name = message.get("name", message.get("role"))
+            history_participants[name] = load_participant_config(history_participants,
+                                                                 name,
+                                                                 taskmates_dir)
 
-    first_message = [message for message in messages if message["role"] in ("user", "assistant")][0]
-    first_message_mention = parse_mention(get_text_content(first_message), [])
-
-    if first_message_mention:
-        history_participants[first_message_mention] = load_participant_config(history_participants,
-                                                                              first_message_mention,
-                                                                              taskmates_dir)
+    # first_message = [message for message in messages if message["role"] in ("user", "assistant")][0]
+    # first_message_mention = parse_mention(get_text_content(first_message), [])
+    #
+    # if first_message_mention:
+    #     history_participants[first_message_mention] = load_participant_config(history_participants,
+    #                                                                           first_message_mention,
+    #                                                                           taskmates_dir)
 
     participants_config_raw = {**history_participants, **front_matter_participants}
 

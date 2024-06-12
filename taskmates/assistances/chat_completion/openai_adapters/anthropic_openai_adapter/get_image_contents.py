@@ -2,7 +2,7 @@ from typeguard import typechecked
 
 
 @typechecked
-def get_image_contents(message: dict[str, list] | dict[str, str]) -> list:
+def get_image_contents(message: dict[str, list | str | None]) -> list:
     content = message["content"]
     if not isinstance(content, list):
         return []
