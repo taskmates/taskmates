@@ -34,15 +34,11 @@ class MarkdownChatCompletionAssistance(CompletionAssistance):
             await chat_completion_editor_completion.process_chat_completion_chunk(choice)
 
         with signals.chat_completion.connected_to(restream_completion_chunk):
-            messages = chat["messages"]
-            model_conf = process_model_conf(model_name=model, messages=messages)
+            model_conf = process_model_conf(model_name=model, messages=chat["messages"])
             tools = list(map(function_registry.__getitem__, chat["available_tools"]))
             tools_schemas = [tool_schema(f) for f in tools]
 
-            for message in messages:
-                message.pop("recipient", None)
-                message.pop("recipient_role", None)
-                message.pop("code_cells", None)
+            messages = [{"name": m.get("name"), "role": m["role"], "content": m["content"]} for m in chat["messages"]]
 
             # TODO
             tool_choice = NOT_SET
