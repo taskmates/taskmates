@@ -15,7 +15,7 @@ class Signals:
     error: blinker.Signal
     interrupt: blinker.Signal
     kill: blinker.Signal
-    return_status:  blinker.Signal
+    return_status: blinker.Signal
 
     def __init__(self):
         self.namespace = Namespace()

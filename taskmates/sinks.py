@@ -1,6 +1,7 @@
 import json
 from abc import ABC
 
+from loguru import logger
 from pydantic import BaseModel
 from quart import websocket
 
@@ -22,7 +23,7 @@ class WebsocketStreamingSink(BaseModel, StreamingSink):
     async def send_completion(chunk):
         if chunk is None:
             return
-        # print(f"response {chunk!r}")
+        logger.debug(f"response {chunk!r}")
         dump = json.dumps({
             "type": "completion",
             "payload": {

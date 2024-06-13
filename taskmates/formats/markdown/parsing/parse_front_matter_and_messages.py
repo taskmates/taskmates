@@ -13,6 +13,8 @@ from taskmates.formats.markdown.processing.filter_comments import filter_comment
 from taskmates.formats.markdown.processing.process_image_transclusion import render_image_transclusion
 from taskmates.lib.markdown_.render_transclusions import render_transclusions
 
+HEADER_PATTERN = r'^\*\*([a-z_0-9]+)(?: (.*?))?\*\*(?: )?'
+
 
 @typechecked
 def parse_front_matter_and_messages(source_file: Path,
@@ -99,10 +101,25 @@ def parse_front_matter_and_messages(source_file: Path,
             message["tool_call_id"] = str(global_tool_call_id)
             global_tool_call_id += 1
 
+    # remove duplicate/incomplete messages
+    messages = deduplicate_messages(messages)
+
     return messages, front_matter
 
 
-HEADER_PATTERN = r'^\*\*([a-z_0-9]+)(?: (.*?))?\*\*(?: )?'
+def deduplicate_messages(messages: List[Dict[str, Union[str, list[dict]]]]) -> List[Dict[str, Union[str, list[dict]]]]:
+    deduplicated_messages = []
+    i = 0
+    while i < len(messages):
+        current_message = messages[i]
+        if current_message['role'] == 'assistant':
+            # Check if the next message is a duplicate
+            if i + 1 < len(messages) and messages[i + 1]['role'] == 'assistant' and messages[i + 1].get('name') == current_message.get('name'):
+                i += 1
+                continue
+        deduplicated_messages.append(current_message)
+        i += 1
+    return deduplicated_messages
 
 
 def test_header_pattern_regex():
@@ -395,6 +412,39 @@ def test_parse_chat_messages_with_multiple_tool_calls_in_separate_messages(tmp_p
             'name': 'run_shell_command',
             'tool_call_id': '2',
             'content': '<pre>\nOUTPUT 2\n</pre>\n'
+        }
+    ]
+
+    assert messages == expected_messages
+
+
+def test_parse_chat_messages_with_deduplication(tmp_path):
+    input = textwrap.dedent("""\
+        **user** Text 1
+        
+        **user** Text 2
+        
+        **assistant** Incomplete response
+        
+        **assistant** Complete response
+        """)
+    messages, front_matter = parse_front_matter_and_messages(tmp_path / "main.md", input, "user")
+
+    expected_messages = [
+        {
+            'role': 'user',
+            'name': 'user',
+            'content': 'Text 1\n'
+        },
+        {
+            'role': 'user',
+            'name': 'user',
+            'content': 'Text 2\n'
+        },
+        {
+            'role': 'assistant',
+            'name': 'assistant',
+            'content': 'Complete response\n'
         }
     ]
 
