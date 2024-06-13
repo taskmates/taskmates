@@ -11,6 +11,9 @@ def compute_recipient(messages, participants_configs) -> str | None:
     participants = list(participants_configs.keys())
     participant_messages = [message for message in messages if message["role"] not in ("system", "tool")]
 
+    if not participant_messages:
+        return None
+
     last_participant_message = participant_messages[-1]
     last_participant_message.setdefault("name", last_participant_message.get("role"))
     last_participant_message_role = participants_configs.get(last_participant_message["name"], {}).get("role")

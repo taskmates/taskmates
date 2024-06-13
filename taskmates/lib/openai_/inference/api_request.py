@@ -1,19 +1,15 @@
 import asyncio
-import os
 from random import random
 
-import openai as oai
 import pytest
 from httpx import ReadError
 from typeguard import typechecked
 
-from taskmates.assistances.chat_completion.openai_adapters.anthropic_openai_adapter.anthropic_openai_adapter import \
-    AsyncAnthropicOpenAIAdapter
 from taskmates.assistances.chat_completion.openai_adapters.anthropic_openai_adapter.chat_completion_with_username import \
     ChatCompletionWithUsername
-from taskmates.assistances.chat_completion.openai_adapters.echo.echo import Echo
 from taskmates.lib.logging_.file_logger import file_logger
 from taskmates.lib.not_set.not_set import NOT_SET
+from taskmates.formats.markdown.metadata.get_model_client import get_model_client
 from taskmates.lib.opentelemetry_.tracing import tracer
 from taskmates.server.streamed_response import StreamedResponse
 from taskmates.signals import SIGNALS
@@ -31,7 +27,7 @@ async def api_request(messages: list, model_conf: dict, model_params: dict) -> d
 
     llm_client_args = get_llm_client_args(messages, model_conf, model_params)
 
-    client = get_client(model_conf)
+    client = get_model_client(model_conf)
 
     with tracer.start_as_current_span(name="chat-completion"):
         file_logger.debug(f"[api_request] request_payload.yaml", content=llm_client_args)
@@ -97,23 +93,6 @@ def get_llm_client_args(messages, model_conf, model_params):
     seed = int(random() * 1000000)
     llm_client_args = (dict(messages=messages, **model_conf, **model_params, seed=seed))
     return llm_client_args
-
-
-def get_client(model_conf):
-    if model_conf["model"] in ("mixtral-8x7b-32768", "llama3-70b-8192"):
-        client = oai.AsyncOpenAI(base_url="https://api.groq.com/openai/v1")
-        client.api_key = os.getenv('GROQ_API_KEY')
-    elif "llama" in model_conf["model"]:
-        client = oai.AsyncOpenAI(base_url="http://localhost:8001/v1")
-    elif "claude" in model_conf["model"]:
-        client = AsyncAnthropicOpenAIAdapter()
-    elif "gpt" in model_conf["model"]:
-        client = oai.AsyncOpenAI()
-    elif "echo" in model_conf["model"]:
-        client = Echo()
-    else:
-        raise ValueError(f"Unknown model {model_conf['model']}")
-    return client
 
 
 @pytest.mark.integration

@@ -25,6 +25,8 @@ CONTEXT_WINDOWS = {
     "claude-3-opus-20240229": 4096,
     "claude-3-sonnet-20240229": 4096,
     "echo": 4096,
+    # ollama
+    "codeqwen": 64000,
 }
 
 
@@ -50,7 +52,7 @@ def calculate_max_tokens(messages: list, model_name: str):
 
 
 @typechecked
-def process_model_conf(model_name: str, messages: list):
+def get_model_conf(model_name: str, messages: list):
     max_tokens = calculate_max_tokens(messages, model_name)
 
     model_conf = {
@@ -82,7 +84,7 @@ def test_handling_wrapped_json_in_payload_role():
             }
         ]
     }
-    updated_payload = process_model_conf("gpt-4", payload["messages"])
+    updated_payload = get_model_conf("gpt-4", payload["messages"])
     assert updated_payload == {'max_tokens': 4096,
                                'model': 'gpt-4',
                                'stop': ['\n######'],
@@ -109,7 +111,7 @@ def test_handling_wrapped_json_and_extra_text_in_payload_role():
             }
         ]
     }
-    updated_payload = process_model_conf("gpt-4", payload["messages"])
+    updated_payload = get_model_conf("gpt-4", payload["messages"])
     assert updated_payload == {'max_tokens': 4096,
                                'model': 'gpt-4',
                                'stop': ['\n######'],

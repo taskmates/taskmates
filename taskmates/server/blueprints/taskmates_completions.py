@@ -79,8 +79,10 @@ async def taskmates_completions():
     except asyncio.CancelledError:
         logger.info(f"REQUEST CANCELLED Request cancelled due to client disconnection")
         await signals.kill.send_async(None)
-        receive_interrupt_task.cancel("Request cancelled due to client disconnection")
-        completion_task.cancel("Request cancelled due to client disconnection")
+        if receive_interrupt_task:
+            receive_interrupt_task.cancel("Request cancelled due to client disconnection")
+        if completion_task:
+            completion_task.cancel("Request cancelled due to client disconnection")
     except Exception as e:
         logger.exception(e)
         await signals.error.send_async(e)

@@ -3,7 +3,7 @@ from typeguard import typechecked
 from taskmates.assistances.chat_completion.chat_completion_editor_completion import ChatCompletionEditorCompletion
 from taskmates.assistances.completion_assistance import CompletionAssistance
 from taskmates.config import CompletionContext, CompletionOpts, COMPLETION_OPTS
-from taskmates.formats.markdown.metadata.process_model_conf import process_model_conf
+from taskmates.formats.markdown.metadata.get_model_conf import get_model_conf
 from taskmates.function_registry import function_registry
 from taskmates.lib.logging_.file_logger import file_logger
 from taskmates.lib.not_set.not_set import NOT_SET
@@ -34,7 +34,7 @@ class MarkdownChatCompletionAssistance(CompletionAssistance):
             await chat_completion_editor_completion.process_chat_completion_chunk(choice)
 
         with signals.chat_completion.connected_to(restream_completion_chunk):
-            model_conf = process_model_conf(model_name=model, messages=chat["messages"])
+            model_conf = get_model_conf(model_name=model, messages=chat["messages"])
             tools = list(map(function_registry.__getitem__, chat["available_tools"]))
             tools_schemas = [tool_schema(f) for f in tools]
 
