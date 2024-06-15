@@ -66,7 +66,7 @@ def main():
     CLIENT_CONFIG.set({**CLIENT_CONFIG.get(), **client_config})
 
     server_config: ServerConfig = {
-        "taskmates_dir": os.environ.get("TASKMATES_PATH", "/var/tmp/taskmates"),
+        "taskmates_dir": os.environ.get("TASKMATES_HOME", "/var/tmp/taskmates"),
     }
     SERVER_CONFIG.set({**SERVER_CONFIG.get(), **server_config})
 

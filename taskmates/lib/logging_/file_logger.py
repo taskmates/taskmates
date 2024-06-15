@@ -11,7 +11,7 @@ file_logger = copy.deepcopy(logger)
 logger.add(sys.stderr)
 
 file_logger = file_logger.patch(lambda record: record["extra"].setdefault("base_dir",
-                                                                          os.environ.get("TASKMATES_PATH",
+                                                                          os.environ.get("TASKMATES_HOME",
                                                                                          "/var/tmp/taskmates")))
 file_logger = file_logger.patch(lambda record: record["extra"].setdefault("content", None))
 file_logger = file_logger.patch(lambda record: record["extra"].setdefault("request_id", None))

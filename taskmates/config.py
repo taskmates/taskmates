@@ -62,7 +62,7 @@ COMPLETION_OPTS: contextvars.ContextVar[CompletionOpts] = contextvars.ContextVar
 SERVER_CONFIG: contextvars.ContextVar[ServerConfig] = contextvars.ContextVar(
     "ServerConfig",
     default={
-        "taskmates_dir": os.environ.get("TASKMATES_PATH", "/var/tmp/taskmates"),
+        "taskmates_dir": os.environ.get("TASKMATES_HOME", "/var/tmp/taskmates"),
     })
 
 
