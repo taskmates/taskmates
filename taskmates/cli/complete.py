@@ -35,9 +35,13 @@ async def handle_signals(signals):
 
 async def complete(markdown,
                    context: CompletionContext,
-                   client_config: ClientConfig):
-    signals = Signals()
-    SIGNALS.set(signals)
+                   client_config: ClientConfig,
+                   signals: Signals | None = None):
+    if signals is None:
+        signals = SIGNALS.get(None)
+        if signals is None:
+            signals = Signals()
+            SIGNALS.set(signals)
 
     async def process_chunk(chunk):
         print(chunk, end="", flush=True)
@@ -46,11 +50,21 @@ async def complete(markdown,
         signals.request.connect(process_chunk, weak=False)
         signals.formatting.connect(process_chunk, weak=False)
         signals.responder.connect(process_chunk, weak=False)
-    if client_config.get('format') == 'completion':
-        signals.responder.connect(process_chunk, weak=False)
+        signals.response.connect(process_chunk, weak=False)
+        signals.error.connect(process_chunk, weak=False)
 
-    signals.response.connect(process_chunk, weak=False)
-    signals.error.connect(process_chunk, weak=False)
+    elif client_config.get('format') == 'original':
+        signals.request.connect(process_chunk, weak=False)
+
+    elif client_config.get('format') == 'completion':
+        signals.responder.connect(process_chunk, weak=False)
+        signals.response.connect(process_chunk, weak=False)
+        signals.error.connect(process_chunk, weak=False)
+
+    elif client_config.get('format') == 'text':
+        signals.response.connect(process_chunk, weak=False)
+    else:
+        raise ValueError(f"Invalid format: {client_config.get('format')}")
 
     async def process_return_status(status):
         if status['result']:

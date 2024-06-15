@@ -33,13 +33,14 @@ def merge_template_params(template_params: list) -> dict:
 def main():
     parser = argparse.ArgumentParser(description='Taskmates CLI Tool')
     parser.add_argument('markdown', type=str, help='The markdown content', nargs='?')
-    parser.add_argument('--format', type=str, choices=['full', 'text', 'completion'], default='text',
+    parser.add_argument('--format', type=str, choices=['full', 'original', 'text', 'completion'], default='text',
                         help='The output format')
     parser.add_argument('--output', type=str, help='The output file path')
     parser.add_argument('--endpoint', type=str, default=None,
                         help='The websocket endpoint')
     parser.add_argument('--model', type=str, default='claude-3-opus-20240229', help='The model to use')
-    parser.add_argument('-n', '--max-interactions', type=int, default=float('inf'), help='The maximum number of interactions')
+    parser.add_argument('-n', '--max-interactions', type=int, default=float('inf'),
+                        help='The maximum number of interactions')
     parser.add_argument('--template-params', type=json.loads, action='append', default=[],
                         help='JSON string with system prompt template parameters (can be specified multiple times)')
     args = parser.parse_args()

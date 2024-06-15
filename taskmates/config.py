@@ -21,7 +21,7 @@ class CompletionContext(TypedDict):
 
 class ClientConfig(TypedDict):
     endpoint: NotRequired[str]
-    format: NotRequired[Literal["full", "text", "completion"]]
+    format: NotRequired[Literal["full", "text", "input", "completion"]]
     output: NotRequired[str]
     interactive: bool
 
