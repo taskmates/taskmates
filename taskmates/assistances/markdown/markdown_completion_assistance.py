@@ -23,10 +23,16 @@ class MarkdownCompletionAssistance:
             interactive = client_config["interactive"]
 
             markdown_chunks = []
+            return_status = None
 
             async def append_markdown(markdown):
                 if markdown is not None:
                     markdown_chunks.append(markdown)
+
+            async def process_return_status(status):
+                nonlocal return_status
+                logger.debug(f"Return status: {status}")
+                return_status = status
 
             with signals.request.connected_to(append_markdown), \
                     signals.formatting.connected_to(append_markdown):
@@ -52,7 +58,12 @@ class MarkdownCompletionAssistance:
             max_interactions = completion_opts["max_interactions"]
             while True:
                 with signals.interrupt.connected_to(handle_interrupted), \
-                        signals.completion.connected_to(append_markdown):
+                        signals.completion.connected_to(append_markdown), \
+                        signals.return_status.connected_to(process_return_status):
+
+                    if return_status is not None:
+                        logger.debug(f"Return status is not None: {return_status}")
+                        break
 
                     if interrupted:
                         logger.debug("Interrupted")
@@ -66,14 +77,12 @@ class MarkdownCompletionAssistance:
                                                            taskmates_dir=taskmates_dir,
                                                            template_params=completion_opts["template_params"])
 
-
                     # if "model" in context:
                     #     chat.setdefault("model", completion_opts["model"])
                     #
                     # if "metadata" in chat and "cwd" in chat["metadata"]:
                     #     context["cwd"] = chat["metadata"].get("cwd")
                     #
-
 
                     logger.debug(f"Computing next completion assistance")
                     completion_assistance = self.get_next_completion(chat)
