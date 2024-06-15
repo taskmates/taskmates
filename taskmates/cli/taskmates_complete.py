@@ -86,7 +86,7 @@ def main():
     #     print(f.read())
 
 
-def get_markdown(args):
+def get_markdown(args) -> str:
     # Read markdown from stdin if available
     stdin_markdown = ""
     # if not os.isatty(sys.stdin.fileno()):

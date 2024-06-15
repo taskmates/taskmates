@@ -2,6 +2,8 @@ import asyncio
 import os
 import signal
 
+from typeguard import typechecked
+
 from taskmates.assistances.markdown.markdown_completion_assistance import MarkdownCompletionAssistance
 from taskmates.config import CompletionContext, ClientConfig
 from taskmates.signals import Signals, SIGNALS
@@ -33,7 +35,8 @@ async def handle_signals(signals):
         await asyncio.sleep(0.1)
 
 
-async def complete(markdown,
+@typechecked
+async def complete(markdown: str,
                    context: CompletionContext,
                    client_config: ClientConfig,
                    signals: Signals | None = None):
