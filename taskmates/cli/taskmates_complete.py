@@ -8,6 +8,7 @@ from pathlib import Path
 from uuid import uuid4
 
 from loguru import logger
+from typeguard import typechecked
 
 from taskmates.cli.complete import complete
 from taskmates.config import CompletionContext, ServerConfig, CompletionOpts, ClientConfig, CLIENT_CONFIG, \
@@ -86,6 +87,7 @@ def main():
     #     print(f.read())
 
 
+@typechecked
 def get_markdown(args) -> str:
     # Read markdown from stdin if available
     stdin_markdown = ""
@@ -102,8 +104,10 @@ def get_markdown(args) -> str:
         markdown = stdin_markdown + "\n**user** " + args_markdown
     elif stdin_markdown:
         markdown = stdin_markdown
-    else:
+    elif args_markdown:
         markdown = args_markdown
+    else:
+        raise ValueError("No markdown provided")
     return markdown
 
 
