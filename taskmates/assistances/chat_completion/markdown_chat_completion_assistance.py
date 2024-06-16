@@ -42,8 +42,16 @@ class MarkdownChatCompletionAssistance(CompletionAssistance):
                          if key not in ("recipient", "recipient_role", "code_cells")}
                         for m in chat["messages"]]
 
+            user_participants = ["user"]
+            for name, config in chat["participants"].items():
+                if config["role"] == "user" and name not in user_participants:
+                    user_participants.append(name)
+
+            model_conf.setdefault("stop", []).extend([f"**{u}** " for u in user_participants])
+
             # TODO
             tool_choice = NOT_SET
+
             model_params = dict(
                 **({"tools": tools_schemas} if tools else {}),
                 **({"tool_choice": tool_choice} if tool_choice is not None else {})

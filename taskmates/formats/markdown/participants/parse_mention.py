@@ -1,12 +1,13 @@
 import re
 
-from taskmates.formats.markdown.participants.parse_mentions import parse_mentions, MENTION_PATTERN
 from typeguard import typechecked
+
+from taskmates.formats.markdown.participants.parse_potential_mentions import parse_potential_mentions, MENTION_PATTERN
 
 
 @typechecked
 def parse_mention(content: str, participants: list[str]) -> str | None:
-    mentions = parse_mentions(content)
+    mentions = parse_potential_mentions(content)
     usernames = [mention[1:] for mention in mentions]
     mentioned_assistants = [username for username in usernames
                             if username in participants]
