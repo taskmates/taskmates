@@ -32,11 +32,8 @@ def parse_front_matter_and_messages(source_file: Path,
     if not content.lstrip().startswith("**"):
         content = f"**{implicit_role}**\n" + content.lstrip()
 
+    # TODO: move this into the loop below
     content = substitute_usernames(content)
-
-    # TODO: review this, maybe do this on a message content level
-    # transclusions
-    content = render_transclusions(content, source_file=source_file)
 
     messages: list[dict] = []
 
@@ -65,6 +62,9 @@ def parse_front_matter_and_messages(source_file: Path,
 
         # Extract the message content
         text_content = content[start_index:end_index].lstrip("\n")
+
+        # transclusions
+        text_content = render_transclusions(text_content, source_file=source_file)
 
         # tool_calls
         tool_calls, text_content = substitute_tool_calls(text_content)
@@ -114,7 +114,8 @@ def deduplicate_messages(messages: List[Dict[str, Union[str, list[dict]]]]) -> L
         current_message = messages[i]
         if current_message['role'] == 'assistant':
             # Check if the next message is a duplicate
-            if i + 1 < len(messages) and messages[i + 1]['role'] == 'assistant' and messages[i + 1].get('name') == current_message.get('name'):
+            if i + 1 < len(messages) and messages[i + 1]['role'] == 'assistant' and messages[i + 1].get(
+                    'name') == current_message.get('name'):
                 i += 1
                 continue
         deduplicated_messages.append(current_message)
