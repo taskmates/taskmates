@@ -62,7 +62,7 @@ async def parse_markdown_chat(markdown_chat: str,
     return {
         'metadata': metadata,
         'messages': messages,
-        'participants': (list(participants_configs.keys())),
+        'participants': participants_configs,
         'available_tools': (list(available_tools.keys()))
     }
 
@@ -138,7 +138,7 @@ async def test_single_participant(taskmates_dir, markdown_path):
     assert result['messages'][1]['role'] == 'user'
     assert result['messages'][1]['content'] == 'Please search for the latest news on ai\n'
     assert result['messages'][-1]['recipient'] == 'browser'
-    assert result['participants'] == ['user', 'browser']
+    assert list(result['participants'].keys()) == ['user', 'browser']
 
 
 @pytest.mark.asyncio
@@ -183,4 +183,60 @@ async def test_multiple_participants_and_recipient(taskmates_dir, markdown_path)
     assert result['messages'][1]['role'] == 'user'
     assert result['messages'][1]['content'] == '@browser Please search for the latest news on ai\n'
     assert result['messages'][-1]['recipient'] == 'browser'
-    assert result['participants'] == ['user', 'browser', 'coder']
+    assert list(result['participants'].keys()) == ['user', 'browser', 'coder']
+
+
+@pytest.mark.asyncio
+async def test_empty_participants(markdown_path, taskmates_dir):
+    markdown_chat_content = """\
+    ---
+    participants:
+    ---
+
+    Please search for the latest news on ai
+    """
+
+    result = await parse_markdown_chat(textwrap.dedent(markdown_chat_content),
+                                       markdown_path,
+                                       taskmates_dir)
+
+    assert list(result['participants'].keys()) == ['user', 'assistant']
+
+
+@pytest.mark.asyncio
+async def test_missing_user_participant(markdown_path, taskmates_dir):
+    markdown_chat_content = """\
+    ---
+    participants:
+      browser:
+    ---
+
+    Please search for the latest news on ai
+    """
+
+    result = await parse_markdown_chat(textwrap.dedent(markdown_chat_content), markdown_path,
+                                       taskmates_dir)
+
+    assert list(result['participants'].keys()) == ['user', 'browser']
+
+
+@pytest.mark.asyncio
+async def test_participant_dictionary_format(markdown_path, taskmates_dir):
+    markdown_chat_content = """\
+    ---
+    participants:
+      my_assistant:
+        type: assistant
+        system: My custom system prompt
+        role: My custom role description
+      my_user:
+        type: user
+    ---
+
+    @my_assistant Please search for the latest news on ai
+    """
+
+    result = await parse_markdown_chat(textwrap.dedent(markdown_chat_content), markdown_path,
+                                       taskmates_dir)
+
+    assert list(result['participants'].keys()) == ['user', 'my_assistant', 'my_user']
