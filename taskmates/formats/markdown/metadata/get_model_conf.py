@@ -22,8 +22,10 @@ CONTEXT_WINDOWS = {
     "llama3-70b-8192": 8192,
     "mixtral-8x7b-32768": 32768,
     # anthropic
+    "claude-3-haiku-20240307": 4096,
     "claude-3-opus-20240229": 4096,
     "claude-3-sonnet-20240229": 4096,
+    "claude-3-5-sonnet-20240620": 4096,
     "echo": 4096,
     # ollama
     "codeqwen": 64000,
