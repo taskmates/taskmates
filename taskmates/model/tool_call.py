@@ -53,5 +53,5 @@ class ToolCall:
         def from_dict(data: Dict[str, Any]) -> 'ToolCall.Function':
             return ToolCall.Function(
                 name=data.get("name"),
-                arguments=json.loads(data["arguments"]),
+                arguments=data["arguments"],
             )

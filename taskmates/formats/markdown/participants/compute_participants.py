@@ -9,25 +9,28 @@ from taskmates.formats.markdown.participants.process_participants import process
 async def compute_participants(taskmates_dir, front_matter, messages) -> tuple[str | None, dict]:
     front_matter_participants = front_matter.get("participants") or {}
 
-    # add user to participants_configs if not already present
+    # Add user to participants_configs if not already present
     history_participants = {}
     for message in messages:
         if message["role"] == "user" and message["role"] not in front_matter_participants:
-            # history_participants[message.get("name", "user")] = {"role": "user"}
-            # history_participants[message.get("name", "user")] = {"role": "user"}
             name = message.get("name", message.get("role"))
             history_participants[name] = load_participant_config(history_participants,
                                                                  name,
                                                                  taskmates_dir)
 
+    # Add participants from the front matter
     participants_config_raw = {**history_participants, **front_matter_participants}
 
+    # If there is only one participant, assume it is the user
+    # Add the implicit `assistant` participant
     if list(participants_config_raw.keys()) == ["user"]:
         participants_config_raw["assistant"] = {"role": "assistant"}
 
     participants_configs = process_participants(participants_config_raw,
                                                 taskmates_dir)
 
+
+    # TODO: Everything below this line can be moved to a separate function
     compute_and_assign_roles_and_recipients(messages, participants_configs, taskmates_dir)
 
     recipient = messages[-1].get("recipient")
