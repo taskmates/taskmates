@@ -2,6 +2,7 @@ import textwrap
 
 import pyparsing as pp
 from pyparsing import LineStart
+import pytest
 
 from taskmates.grammar.parsers.front_matter_parser import front_matter_parser
 from taskmates.grammar.parsers.messages_parser import messages_parser
@@ -105,3 +106,37 @@ def test_markdown_with_code_cell_execution():
             'content': '\n\n1 + 1 equals 2.\n\n',
             'name': 'assistant'
         }]
+
+
+@pytest.mark.timeout(0.5)
+def test_performance():
+    pp.enable_all_warnings()
+
+    # partial = textwrap.dedent("""\
+    # **user** a message
+    #
+    # """)
+
+    partial = textwrap.dedent("""\
+        **user**
+        Hello
+        Hello
+        Hello
+
+        """)
+
+    #
+    #     ###### Cell Output: stdout [cell_0]
+    #
+    #     <pre>
+    #     2
+    #     </pre>
+    #
+    #     **user**
+    #
+    #     1 + 1 equals 2.
+    #
+
+    input = partial * 50
+
+    markdown_chat_parser().parseString(input)

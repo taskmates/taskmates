@@ -145,6 +145,7 @@ patch = "^1.16"
 #wandb = "^0.16.1"
 #whisperx = { git = "https://github.com/m-bain/whisperx.git" }
 coverage = "^7.5.3"
+pytest-timeout = "^2.3.1"
 
 [tool.poetry.extras]
 chromadb = ["chromadb"]
