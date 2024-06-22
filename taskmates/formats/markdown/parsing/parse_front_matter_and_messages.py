@@ -33,6 +33,7 @@ def parse_front_matter_and_messages(source_file: Path,
         message = {**({"role": message_dict["role"]} if "role" in message_dict else {}),
                    "name": name,
                    "content": message_dict["content"],
+                   **({"code_cell_id": message_dict["code_cell_id"]} if "code_cell_id" in message_dict else {}),
                    **({"tool_call_id": message_dict["tool_call_id"]} if "tool_call_id" in message_dict else {}),
                    **({"tool_calls": message_dict["tool_calls"]} if "tool_calls" in message_dict else {}),
                    **attributes}
@@ -56,6 +57,14 @@ def parse_front_matter_and_messages(source_file: Path,
         if message.get("tool_call_id"):
             message["tool_call_id"] = str(global_tool_call_id)
             global_tool_call_id += 1
+
+    for message in messages:
+        if message.get("role") == "cell_output":
+            output_name = message["name"]
+            message["name"] = "cell_output"
+            message["role"] = "user"
+            message["content"] = f"###### Cell Output: {output_name} [{message['code_cell_id']}]\n" + message[
+                "content"]
 
     # remove duplicate/incomplete messages
     messages = deduplicate_messages(messages)

@@ -187,7 +187,8 @@ def test_messages_parser_with_code_cell_execution():
                        '\n',
             'name': 'user',
         }, {
-            'name': 'cell_output',
+            'role': 'cell_output',
+            'name': 'stdout',
             'code_cell_id': 'cell_0',
             'content': '\n<pre>\n2\n</pre>\n\n'
         },

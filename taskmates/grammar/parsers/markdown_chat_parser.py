@@ -99,7 +99,8 @@ def test_markdown_with_code_cell_execution():
         },
         {'code_cell_id': 'cell_0',
          'content': '\n<pre>\n2\n</pre>\n\n',
-         'name': 'cell_output'},
+         'role': 'cell_output',
+         'name': 'stdout'},
         {
             'content': '\n\n1 + 1 equals 2.\n\n',
             'name': 'assistant'
