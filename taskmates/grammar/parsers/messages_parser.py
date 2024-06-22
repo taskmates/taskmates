@@ -165,6 +165,52 @@ def test_messages_parser_with_tool_execution():
     assert parsed_messages == expected_messages
 
 
+def test_messages_parser_with_code_cell_execution():
+    input = textwrap.dedent("""\
+        **user** This is a message with code cells.
+        
+        ```python .eval
+        print(1 + 1)
+        ```
+        
+        ###### Cell Output: stdout [cell_0]
+        
+        <pre>
+        2
+        </pre>
+        
+        **assistant** 1 + 1 equals 2.
+        
+        """)
+
+    expected_messages = [
+        {
+            'attributes': {},
+            'content': 'This is a message with code cells.\n'
+                       '\n'
+                       '```python .eval\n'
+                       'print(1 + 1)\n'
+                       '```\n'
+                       '\n',
+            'name': 'user',
+        }, {
+            'name': 'cell_output',
+            'code_cell_id': 'cell_0',
+            'content': '\n<pre>\n2\n</pre>\n\n'
+        },
+        {
+            'attributes': {},
+            'name': 'assistant',
+            'content': '1 + 1 equals 2.\n\n'
+        }
+    ]
+
+    results = messages_parser().parseString(input)
+    parsed_messages = [m.as_dict() for m in results.messages]
+
+    assert parsed_messages == expected_messages
+
+
 def test_messages_parser_single_message_with_implicit_header():
     input = textwrap.dedent("""\
         Hello, assistant!
@@ -176,29 +222,6 @@ def test_messages_parser_single_message_with_implicit_header():
     expected_messages = [{'attributes': {},
                           'content': 'Hello, assistant!\n\nThis is a multiline message.\n\n',
                           'name': 'user'}]
-
-    results = messages_parser().parseString(input)
-
-    assert [m.as_dict() for m in results.messages] == expected_messages
-
-
-def test_messages_parser_mutiple_messages_with_implicit_header():
-    input = textwrap.dedent("""\
-        Hello, assistant!
-        
-        This is a multiline message.
-
-        **assistant** Hi, user!
-        
-        This is the response.
-        """)
-
-    expected_messages = [{'attributes': {},
-                          'content': 'Hello, assistant!\n\nThis is a multiline message.\n\n',
-                          'name': 'user'},
-                         {'attributes': {},
-                          'content': 'Hi, user!\n\nThis is the response.\n',
-                          'name': 'assistant'}]
 
     results = messages_parser().parseString(input)
 

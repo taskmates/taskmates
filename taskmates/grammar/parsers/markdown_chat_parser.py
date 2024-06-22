@@ -12,7 +12,7 @@ def markdown_chat_parser():
     return (pp.Opt(front_matter_parser()) + messages_parser() + pp.string_end).ignore(comments)
 
 
-def test_markdown_chat_parser():
+def test_markdown_with_tool_execution():
     input = textwrap.dedent("""\
         **assistant** Here is a message.
         
@@ -56,3 +56,55 @@ def test_markdown_chat_parser():
             'name': 'user'
         }
     ]
+
+
+def test_markdown_with_code_cell_execution():
+    input = textwrap.dedent("""\
+        print(1 + 1)
+        
+        **assistant**
+        
+        print(1 + 1)
+        
+        ```python .eval
+        print(1 + 1)
+        ```
+
+        ###### Cell Output: stdout [cell_0]
+    
+        <pre>
+        2
+        </pre>
+    
+        **assistant** 
+        
+        1 + 1 equals 2.
+
+        """)
+
+    result = markdown_chat_parser().parseString(input)
+    messages = [m.as_dict() for m in result.messages]
+    assert messages == [
+        {
+            'attributes': {}, 'content': 'print(1 + 1)\n\n', 'name': 'user'
+        },
+        {
+            'attributes': {},
+            'content': '\n'
+                       'print(1 + 1)\n'
+                       '\n'
+                       '```python .eval\n'
+                       'print(1 + 1)\n'
+                       '```\n'
+                       '\n'
+            ,
+            'name': 'assistant'
+        },
+        {'code_cell_id': 'cell_0',
+         'content': '\n<pre>\n2\n</pre>\n\n',
+         'name': 'cell_output'},
+        {
+            'attributes': {},
+            'content': '\n\n1 + 1 equals 2.\n\n',
+            'name': 'assistant'
+        }]
