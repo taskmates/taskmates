@@ -32,7 +32,6 @@ def test_markdown_with_tool_execution():
     messages = [m.as_dict() for m in result.messages]
     assert messages == [
         {
-            'attributes': {},
             'content': 'Here is a message.\n\n',
             'name': 'assistant',
             'tool_calls': [
@@ -51,7 +50,6 @@ def test_markdown_with_tool_execution():
          'role': 'tool',
          'tool_call_id': '1'},
         {
-            'attributes': {},
             'content': 'Here is another message.\n',
             'name': 'user'
         }
@@ -86,10 +84,9 @@ def test_markdown_with_code_cell_execution():
     messages = [m.as_dict() for m in result.messages]
     assert messages == [
         {
-            'attributes': {}, 'content': 'print(1 + 1)\n\n', 'name': 'user'
+            'content': 'print(1 + 1)\n\n', 'name': 'user'
         },
         {
-            'attributes': {},
             'content': '\n'
                        'print(1 + 1)\n'
                        '\n'
@@ -104,7 +101,6 @@ def test_markdown_with_code_cell_execution():
          'content': '\n<pre>\n2\n</pre>\n\n',
          'name': 'cell_output'},
         {
-            'attributes': {},
             'content': '\n\n1 + 1 equals 2.\n\n',
             'name': 'assistant'
         }]

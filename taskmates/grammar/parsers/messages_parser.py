@@ -26,8 +26,7 @@ def test_messages_parser_single_message():
 
         """)
 
-    expected_messages = [{'attributes': {},
-                          'content': 'Hello, assistant!\n\nThis is a multiline message.\n\n',
+    expected_messages = [{'content': 'Hello, assistant!\n\nThis is a multiline message.\n\n',
                           'name': 'user'}]
 
     results = messages_parser().parseString(input)
@@ -46,11 +45,9 @@ def test_messages_parser_mutiple_messages():
         This is the response.
         """)
 
-    expected_messages = [{'attributes': {},
-                          'content': 'Hello, assistant!\n\nThis is a multiline message.\n\n',
+    expected_messages = [{'content': 'Hello, assistant!\n\nThis is a multiline message.\n\n',
                           'name': 'user'},
-                         {'attributes': {},
-                          'content': 'Hi, user!\n\nThis is the response.\n',
+                         {'content': 'Hi, user!\n\nThis is the response.\n',
                           'name': 'assistant'}]
 
     results = messages_parser().parseString(input)
@@ -69,8 +66,7 @@ def test_messages_parser_with_multiple_tool_calls():
         - Read File [3] `{"filename":"test.txt"}`
         
         """)
-    expected_messages = [{'attributes': {},
-                          'content': 'This is a message with multiple tool calls.\n\n',
+    expected_messages = [{'content': 'This is a message with multiple tool calls.\n\n',
                           'name': 'assistant',
                           'tool_calls': [
                               {
@@ -131,7 +127,6 @@ def test_messages_parser_with_tool_execution():
 
     expected_messages = [
         {
-            'attributes': {},
             'content': 'This is a message with tool calls.\n\n',
             'name': 'assistant',
             'tool_calls': [
@@ -153,7 +148,6 @@ def test_messages_parser_with_tool_execution():
             'content': '\n<pre>\nOUTPUT 1\n</pre>\n\n'
         },
         {
-            'attributes': {},
             'name': 'user',
             'content': 'Here is another message.\n\n'
         }
@@ -185,7 +179,6 @@ def test_messages_parser_with_code_cell_execution():
 
     expected_messages = [
         {
-            'attributes': {},
             'content': 'This is a message with code cells.\n'
                        '\n'
                        '```python .eval\n'
@@ -199,7 +192,6 @@ def test_messages_parser_with_code_cell_execution():
             'content': '\n<pre>\n2\n</pre>\n\n'
         },
         {
-            'attributes': {},
             'name': 'assistant',
             'content': '1 + 1 equals 2.\n\n'
         }
@@ -219,8 +211,7 @@ def test_messages_parser_single_message_with_implicit_header():
 
         """)
 
-    expected_messages = [{'attributes': {},
-                          'content': 'Hello, assistant!\n\nThis is a multiline message.\n\n',
+    expected_messages = [{'content': 'Hello, assistant!\n\nThis is a multiline message.\n\n',
                           'name': 'user'}]
 
     results = messages_parser().parseString(input)

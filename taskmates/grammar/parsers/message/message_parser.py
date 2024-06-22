@@ -29,7 +29,6 @@ def first_message_parser():
         "content")
     implicit_message_header = (pp.line_start
                                + pp.Empty().setParseAction(lambda: "user")("name")
-                               + pp.Empty().setParseAction(lambda: {})("attributes")
                                )
     headers = (message_header | tool_execution_header | code_cell_execution_header | implicit_message_header)
 
