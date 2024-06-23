@@ -21,8 +21,8 @@ def message_parser():
 
     message = pp.Group(
         pp.LineStart()
-        + headers_parser().set_debug()
-        + message_content.set_debug()
+        + headers_parser()
+        + message_content
         + pp.Optional(tool_calls_parser())
     )
     return message
