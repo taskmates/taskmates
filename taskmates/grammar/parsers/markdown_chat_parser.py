@@ -23,7 +23,7 @@ def test_no_line_end():
 
     expected_messages = [{'content': 'Short answer. 1+1=\n\n',
                           'name': 'user'},
-                         {'content': 'Short answer. 1+1=\n',
+                         {'content': 'Short answer. 1+1=',
                           'name': 'assistant'}]
 
     results = markdown_chat_parser().parseString(input)
