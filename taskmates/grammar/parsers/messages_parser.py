@@ -20,10 +20,8 @@ message <<= pp.Group(
     + pp.Optional(message_tool_calls))
 
 implicit_header = (pp.line_start + pp.Empty().setParseAction(lambda: "user")("name"))
-first_message_headers = (headers | implicit_header)
-
 first_message = pp.Group(
-    first_message_headers
+    (headers | implicit_header)
     + message_content
     + pp.Optional(message_tool_calls))
 
