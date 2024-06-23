@@ -1,4 +1,5 @@
 import json
+import re
 import textwrap
 
 import pyparsing as pp
@@ -36,10 +37,10 @@ def tool_call_parser():
 
 
 def tool_calls_parser():
-    section_header = pp.LineStart() + pp.Literal("###### Steps")
+    section_header = pp.Regex("^###### Steps", re.MULTILINE).suppress()
     tool_call = tool_call_parser()
 
-    return pp.Group(section_header.suppress()
+    return pp.Group(section_header
                     + pp.OneOrMore(pp.LineEnd()).suppress()
                     + pp.OneOrMore(tool_call
                                    + pp.Optional(pp.LineEnd()).suppress())

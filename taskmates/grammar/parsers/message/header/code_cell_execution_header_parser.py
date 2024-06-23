@@ -1,10 +1,11 @@
+import re
 import textwrap
 
 import pyparsing as pp
 
 
 def code_cell_execution_header_parser():
-    execution_header = pp.Suppress(pp.LineStart() + pp.Literal("###### Cell Output: "))
+    execution_header = pp.Regex("^###### Cell Output: ", re.MULTILINE).suppress()
 
     code_cell_name = pp.Word(pp.alphas)("name")
     code_cell_role = pp.Empty().setParseAction(lambda: "cell_output")("role")

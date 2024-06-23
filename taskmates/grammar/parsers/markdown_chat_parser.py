@@ -9,6 +9,9 @@ from taskmates.grammar.parsers.front_matter_parser import front_matter_parser
 from taskmates.grammar.parsers.messages_parser import messages_parser
 from taskmates.lib.openai_.count_tokens import count_tokens
 
+pp.enable_all_warnings()
+pp.ParserElement.set_default_whitespace_chars("")
+
 
 def markdown_chat_parser():
     comments = pp.Suppress(LineStart() + pp.Literal("[//]: #") + pp.restOfLine)
