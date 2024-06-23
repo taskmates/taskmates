@@ -5,10 +5,9 @@ import sys
 
 import tiktoken
 
-tokenizer = tiktoken.encoding_for_model("gpt-4")
-
 
 def count_tokens(text: str) -> int:
+    tokenizer = tiktoken.encoding_for_model("gpt-4")
     """count the number of tokens in a string"""
     return len(tokenizer.encode(text))
 

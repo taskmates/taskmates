@@ -7,7 +7,7 @@ import pytest
 from taskmates.grammar.parsers.markdown_chat_parser import markdown_chat_parser, generate_input_string
 
 
-@pytest.mark.timeout(2)
+@pytest.mark.timeout(5)
 def test_performance():
     pp.enable_all_warnings()
 
@@ -77,7 +77,7 @@ def test_performance():
     markdown_chat_parser().parseString(generate_input_string(partial))
 
 
-@pytest.mark.timeout(2)
+@pytest.mark.timeout(5)
 def test_performance_single_lines():
     partial = textwrap.dedent("""\
     **user** This is a test message
@@ -86,10 +86,10 @@ def test_performance_single_lines():
     input_string = generate_input_string(partial)
     execution_time = timeit.timeit(lambda: markdown_chat_parser().parseString(input_string), number=1)
     print(f"Single lines message parsing time: {execution_time:.4f} seconds")
-    assert execution_time < 1, f"Parsing took too long: {execution_time:.4f} seconds"
+    assert execution_time < 0.2, f"Parsing took too long: {execution_time:.4f} seconds"
 
 
-@pytest.mark.timeout(2)
+@pytest.mark.timeout(5)
 def test_performance_single_lines_plus_new_line():
     partial = textwrap.dedent("""\
     **user** This is a test message
@@ -99,10 +99,10 @@ def test_performance_single_lines_plus_new_line():
     input_string = generate_input_string(partial)
     execution_time = timeit.timeit(lambda: markdown_chat_parser().parseString(input_string), number=1)
     print(f"Single lines message parsing time: {execution_time:.4f} seconds")
-    assert execution_time < 1, f"Parsing took too long: {execution_time:.4f} seconds"
+    assert execution_time < 0.2, f"Parsing took too long: {execution_time:.4f} seconds"
 
 
-@pytest.mark.timeout(2)
+@pytest.mark.timeout(5)
 def test_performance_line_break_plus_message():
     partial = textwrap.dedent("""\
     **user**
@@ -112,10 +112,10 @@ def test_performance_line_break_plus_message():
     input_string = generate_input_string(partial)
     execution_time = timeit.timeit(lambda: markdown_chat_parser().parseString(input_string), number=1)
     print(f"Single lines message parsing time: {execution_time:.4f} seconds")
-    assert execution_time < 1, f"Parsing took too long: {execution_time:.4f} seconds"
+    assert execution_time < 0.2, f"Parsing took too long: {execution_time:.4f} seconds"
 
 
-@pytest.mark.timeout(2)
+@pytest.mark.timeout(5)
 def test_performance_multiple_lines():
     partial = textwrap.dedent("""\
     **user** This is a test message
@@ -127,10 +127,10 @@ def test_performance_multiple_lines():
     input_string = generate_input_string(partial)
     execution_time = timeit.timeit(lambda: markdown_chat_parser().parseString(input_string), number=1)
     print(f"Multiple lines message parsing time: {execution_time:.4f} seconds")
-    assert execution_time < 1, f"Parsing took too long: {execution_time:.4f} seconds"
+    assert execution_time < 0.2, f"Parsing took too long: {execution_time:.4f} seconds"
 
 
-@pytest.mark.timeout(2)
+@pytest.mark.timeout(5)
 def test_performance_tool_calls():
     partial = textwrap.dedent("""\
     **assistant** Here's an example of tool calls:
@@ -164,10 +164,10 @@ def test_performance_tool_calls():
     input_string = generate_input_string(partial)
     execution_time = timeit.timeit(lambda: markdown_chat_parser().parseString(input_string), number=1)
     print(f"Tool calls message parsing time: {execution_time:.4f} seconds")
-    assert execution_time < 1, f"Parsing took too long: {execution_time:.4f} seconds"
+    assert execution_time < 0.2, f"Parsing took too long: {execution_time:.4f} seconds"
 
 
-@pytest.mark.timeout(2)
+@pytest.mark.timeout(5)
 def test_performance_code_cells():
     partial = textwrap.dedent("""\
     **assistant** Here's an example of how to print "Hello, World!" in Python:
@@ -186,4 +186,4 @@ def test_performance_code_cells():
     input_string = generate_input_string(partial)
     execution_time = timeit.timeit(lambda: markdown_chat_parser().parseString(input_string), number=1)
     print(f"Code cells message parsing time: {execution_time:.4f} seconds")
-    assert execution_time < 1, f"Parsing took too long: {execution_time:.4f} seconds"
+    assert execution_time < 0.2, f"Parsing took too long: {execution_time:.4f} seconds"
