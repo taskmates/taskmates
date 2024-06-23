@@ -12,7 +12,7 @@ def chat_message_header_parser():
                 .setParseAction(lambda t: json.loads(t[0]))("attributes"))
     attributes = (pp.Optional(pp.Suppress(" ") + json_str)).leave_whitespace()
 
-    chat_message_header = (header_delimiter + name("name") + attributes + header_delimiter + pp.Suppress(
+    chat_message_header = (pp.line_start + header_delimiter + name("name") + attributes + header_delimiter + pp.Suppress(
         pp.Literal(" ") | pp.Literal("\n")).leave_whitespace())
     return chat_message_header
 

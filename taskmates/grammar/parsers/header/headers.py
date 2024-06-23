@@ -7,4 +7,8 @@ def headers_parser():
     message_header = chat_message_header_parser()
     tool_execution_header = tool_execution_header_parser()
     code_cell_execution_header = code_cell_execution_header_parser()
-    return (message_header | tool_execution_header | code_cell_execution_header)
+    return (
+            message_header
+            | tool_execution_header
+            | code_cell_execution_header
+    )

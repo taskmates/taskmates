@@ -19,13 +19,15 @@ implicit_header = (pp.line_start + pp.Empty().setParseAction(lambda: "user")("na
 first_message = pp.Group(
     (headers | implicit_header)
     + message_content
-    + pp.Optional(message_tool_calls))
+    + pp.Optional(message_tool_calls)
+)
 
 message <<= pp.Group(
     pp.line_start
     + headers
     + message_content
-    + pp.Optional(message_tool_calls))
+    + pp.Optional(message_tool_calls)
+)
 
 
 def messages_parser():
