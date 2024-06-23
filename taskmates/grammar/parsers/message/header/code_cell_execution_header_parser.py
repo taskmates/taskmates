@@ -12,10 +12,10 @@ def code_cell_execution_header_parser():
 
     # noinspection PyTypeChecker
     code_cell_id = (pp.Suppress("[")
-                    - pp.Combine(pp.Word(pp.identchars) - pp.Word(pp.identbodychars))("code_cell_id")
+                    - pp.Regex(f"[{pp.identchars}][{pp.identbodychars}]*")("code_cell_id")
                     - pp.Suppress("]"))
     code_cell_execution_header = (
-            execution_header +
+            execution_header -
             code_cell_name -
             pp.Literal(" ").suppress() -
             code_cell_id -
