@@ -1,8 +1,9 @@
 import textwrap
+import timeit
 
 import pyparsing as pp
-from pyparsing import LineStart
 import pytest
+from pyparsing import LineStart
 
 from taskmates.grammar.parsers.front_matter_parser import front_matter_parser
 from taskmates.grammar.parsers.messages_parser import messages_parser
@@ -112,31 +113,138 @@ def test_markdown_with_code_cell_execution():
 def test_performance():
     pp.enable_all_warnings()
 
-    # partial = textwrap.dedent("""\
-    # **user** a message
-    #
-    # """)
-
     partial = textwrap.dedent("""\
-        **user**
-        Hello
-        Hello
-        Hello
-
+        **user** This is a messag with multiple lines.
+        This is a messag with multiple lines.
+        This is a messag with multiple lines.
+        
+        **assistant** This is a response.
+        
+        **user {"name": "john"}** This is a message with attributes.
+        
+        **assistant** This is a response from the assistant.
+        
+        **john** This is another message from john.
+        
+        **assistant** This is a message with tool calls.
+        
+        ###### Steps
+        
+        - Run Shell Command [1] `{"cmd":"echo hello"}`
+        - Run Shell Command [2] `{"cmd":"echo world"}`
+        
+        ###### Execution: Run Shell Command [1]
+        
+        <pre class='output' style='display:none'>
+        hello
+        
+        Exit Code: 0
+        </pre>
+        
+        -[x] Done
+        
+        ###### Execution: Run Shell Command [2]
+        
+        <pre class='output' style='display:none'>
+        world
+        
+        Exit Code: 0
+        </pre>
+        
+        -[x] Done
+        
+        **user** This is a message with code cells
+        
+        ```python .eval
+        print("hello")
+        ```
+        
+        ```python .eval
+        print("world")
+        ```
+        
+        ###### Cell Output: stdout [cell_0]
+        
+        <pre>
+        hello
+        </pre>
+        
+        ###### Cell Output: stdout [cell_1]
+        
+        <pre>
+        world
+        </pre>
         """)
-
-    #
-    #     ###### Cell Output: stdout [cell_0]
-    #
-    #     <pre>
-    #     2
-    #     </pre>
-    #
-    #     **user**
-    #
-    #     1 + 1 equals 2.
-    #
 
     input = partial * 50
 
     markdown_chat_parser().parseString(input)
+
+
+@pytest.mark.timeout(2)
+def test_performance_multiple_lines():
+    message = textwrap.dedent("""\
+    **user** This is a test message
+    with multiple lines.
+    It should be parsed quickly.
+    
+    """) * 50
+
+    execution_time = timeit.timeit(lambda: markdown_chat_parser().parseString(message), number=1)
+    print(f"Multiple lines message parsing time: {execution_time:.4f} seconds")
+    assert execution_time < 1, f"Parsing took too long: {execution_time:.4f} seconds"
+
+
+@pytest.mark.timeout(2)
+def test_performance_tool_calls():
+    message = textwrap.dedent("""\
+    **assistant** Here's an example of tool calls:
+
+    ###### Steps
+
+    - Run Shell Command [1] `{"cmd":"echo hello"}`
+    - Run Shell Command [2] `{"cmd":"echo world"}`
+
+    ###### Execution: Run Shell Command [1]
+
+    <pre class='output' style='display:none'>
+    hello
+
+    Exit Code: 0
+    </pre>
+
+    -[x] Done
+
+    ###### Execution: Run Shell Command [2]
+
+    <pre class='output' style='display:none'>
+    world
+
+    Exit Code: 0
+    </pre>
+
+    -[x] Done""") * 50
+
+    execution_time = timeit.timeit(lambda: markdown_chat_parser().parseString(message), number=1)
+    print(f"Tool calls message parsing time: {execution_time:.4f} seconds")
+    assert execution_time < 1, f"Parsing took too long: {execution_time:.4f} seconds"
+
+
+@pytest.mark.timeout(2)
+def test_performance_code_cells():
+    message = textwrap.dedent("""\
+    **assistant** Here's an example of how to print "Hello, World!" in Python:
+
+    ```python
+    print("Hello, World!")
+    ```
+
+    And here's how you would do it in JavaScript:
+
+    ```javascript
+    console.log("Hello, World!");
+    ```""") * 50
+
+    execution_time = timeit.timeit(lambda: markdown_chat_parser().parseString(message), number=1)
+    print(f"Code cells message parsing time: {execution_time:.4f} seconds")
+    assert execution_time < 1, f"Parsing took too long: {execution_time:.4f} seconds"
