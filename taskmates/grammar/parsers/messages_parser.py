@@ -12,7 +12,7 @@ message = pp.Forward()
 headers = headers_parser()
 message_tool_calls = tool_calls_parser()
 
-message_content = (pp.SkipTo(message_tool_calls | message | pp.stringEnd, include=False)("content"))
+message_content = (pp.SkipTo(message_tool_calls | headers | pp.stringEnd, include=False)("content"))
 
 implicit_header = (pp.line_start + pp.Empty().setParseAction(lambda: "user")("name"))
 
