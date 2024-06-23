@@ -236,7 +236,8 @@ def test_performance_tool_calls():
     Exit Code: 0
     </pre>
 
-    -[x] Done""")
+    -[x] Done
+    """)
 
     execution_time = timeit.timeit(lambda: markdown_chat_parser().parseString(generate_input_string(partial)), number=1)
     print(f"Tool calls message parsing time: {execution_time:.4f} seconds")
@@ -256,7 +257,8 @@ def test_performance_code_cells():
 
     ```javascript
     console.log("Hello, World!");
-    ```""")
+    ```
+    """)
 
     execution_time = timeit.timeit(lambda: markdown_chat_parser().parseString(generate_input_string(partial)), number=1)
     print(f"Code cells message parsing time: {execution_time:.4f} seconds")
