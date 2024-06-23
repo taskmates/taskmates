@@ -14,15 +14,16 @@ message_tool_calls = tool_calls_parser()
 
 message_content = (pp.SkipTo(message_tool_calls | message | pp.stringEnd, include=False)("content"))
 
-message <<= pp.Group(
-    pp.line_start
-    + headers
+implicit_header = (pp.line_start + pp.Empty().setParseAction(lambda: "user")("name"))
+
+first_message = pp.Group(
+    (headers | implicit_header)
     + message_content
     + pp.Optional(message_tool_calls))
 
-implicit_header = (pp.line_start + pp.Empty().setParseAction(lambda: "user")("name"))
-first_message = pp.Group(
-    (headers | implicit_header)
+message <<= pp.Group(
+    pp.line_start
+    + headers
     + message_content
     + pp.Optional(message_tool_calls))
 
