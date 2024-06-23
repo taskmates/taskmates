@@ -8,6 +8,7 @@ from taskmates.grammar.parsers.message.header.tool_execution_header_parser impor
 from taskmates.grammar.parsers.message.tool_calls_parser import tool_calls_parser
 
 pp.enable_all_warnings()
+pp.ParserElement.set_default_whitespace_chars("")
 
 header_delimiter = pp.Suppress(pp.Literal("**"))
 
@@ -19,8 +20,7 @@ code_cell_execution_header = code_cell_execution_header_parser()
 message_tool_calls = tool_calls_parser()
 headers = (message_header | tool_execution_header | code_cell_execution_header)
 
-message_content = pp.SkipTo(message_tool_calls | message_entry | pp.stringEnd, include=False).leave_whitespace()(
-    "content")
+message_content = (pp.SkipTo(message_tool_calls | message_entry | pp.stringEnd, include=False)("content"))
 
 message_entry <<= pp.Group(
     headers
@@ -31,15 +31,13 @@ message_entry <<= pp.Group(
 def first_message_parser():
     global message_entry
 
-    message_content = pp.SkipTo(message_tool_calls | message_entry | pp.stringEnd, include=False).leave_whitespace()(
-        "content")
     implicit_message_header = (pp.line_start
                                + pp.Empty().setParseAction(lambda: "user")("name")
                                )
-    headers = (message_header | tool_execution_header | code_cell_execution_header | implicit_message_header)
+    first_message_headers = (headers | implicit_message_header)
 
     first_message = pp.Group(
-        headers
+        first_message_headers
         + message_content
         + pp.Optional(message_tool_calls))
 
