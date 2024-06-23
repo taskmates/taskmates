@@ -91,6 +91,18 @@ def test_performance_single_lines():
 
 
 @pytest.mark.timeout(5)
+def test_performance_long_lines():
+    partial = textwrap.dedent("""\
+    **user** This is a test message This is a test message This is a test message This is a test message This is a test message This is a test message This is a test message
+    """)
+
+    input_string = generate_input_string(partial)
+    execution_time = timeit.timeit(lambda: markdown_chat_parser().parseString(input_string), number=1)
+    print(f"Long lines message parsing time: {execution_time:.4f} seconds")
+    assert execution_time < 0.2, f"Parsing took too long: {execution_time:.4f} seconds"
+
+
+@pytest.mark.timeout(5)
 def test_performance_single_lines_plus_new_line():
     partial = textwrap.dedent("""\
     **user** This is a test message
@@ -99,7 +111,7 @@ def test_performance_single_lines_plus_new_line():
 
     input_string = generate_input_string(partial)
     execution_time = timeit.timeit(lambda: markdown_chat_parser().parseString(input_string), number=1)
-    print(f"Single lines message parsing time: {execution_time:.4f} seconds")
+    print(f"Single lines plus new line message parsing time: {execution_time:.4f} seconds")
     assert execution_time < 0.2, f"Parsing took too long: {execution_time:.4f} seconds"
 
 
@@ -112,7 +124,7 @@ def test_performance_line_break_plus_message():
 
     input_string = generate_input_string(partial)
     execution_time = timeit.timeit(lambda: markdown_chat_parser().parseString(input_string), number=1)
-    print(f"Single lines message parsing time: {execution_time:.4f} seconds")
+    print(f"Line break plus message parsing time: {execution_time:.4f} seconds")
     assert execution_time < 0.2, f"Parsing took too long: {execution_time:.4f} seconds"
 
 
