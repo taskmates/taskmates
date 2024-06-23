@@ -44,7 +44,7 @@ def tool_calls_parser():
                     + pp.OneOrMore(tool_call
                                    + pp.Optional(pp.LineEnd()).suppress())
                     + pp.ZeroOrMore(pp.line_end.suppress())
-                    ).leave_whitespace()("tool_calls")
+                    )("tool_calls")
 
 
 def test_tool_calls_parser():

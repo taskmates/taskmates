@@ -6,21 +6,21 @@ import pyparsing as pp
 def code_cell_execution_header_parser():
     execution_header = pp.Suppress(pp.line_start + pp.Literal("###### Cell Output: "))
 
-    code_cell_name = pp.Word(pp.alphas).leave_whitespace()("name")
+    code_cell_name = pp.Word(pp.alphas)("name")
     code_cell_role = pp.Empty().setParseAction(lambda: "cell_output")("role")
 
     # noinspection PyTypeChecker
-    code_cell_id = pp.Suppress("[") + pp.Combine(pp.Word(pp.identchars) + pp.Word(pp.identbodychars))(
-        "code_cell_id") + pp.Suppress("]")
+    code_cell_id = pp.Suppress("[") - pp.Combine(pp.Word(pp.identchars) - pp.Word(pp.identbodychars))(
+        "code_cell_id") - pp.Suppress("]")
     code_cell_execution_header = (
             execution_header +
-            code_cell_name +
-            pp.Literal(" ").suppress() +
-            code_cell_id +
-            pp.LineEnd() +
+            code_cell_name -
+            pp.Literal(" ").suppress() -
+            code_cell_id -
+            pp.LineEnd() -
             code_cell_role
     )
-    return code_cell_execution_header.leave_whitespace()
+    return code_cell_execution_header
 
 
 def test_code_cell_execution_parser():
