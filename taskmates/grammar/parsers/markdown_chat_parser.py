@@ -5,6 +5,7 @@ import pyparsing as pp
 import pytest
 from pyparsing import LineStart
 
+from taskmates.lib.openai_.count_tokens import count_tokens
 from taskmates.grammar.parsers.front_matter_parser import front_matter_parser
 from taskmates.grammar.parsers.messages_parser import messages_parser
 
@@ -12,6 +13,16 @@ from taskmates.grammar.parsers.messages_parser import messages_parser
 def markdown_chat_parser():
     comments = pp.Suppress(LineStart() + pp.Literal("[//]: #") + pp.restOfLine)
     return (pp.Opt(front_matter_parser()) + messages_parser() + pp.string_end).ignore(comments)
+
+def generate_input_string(base_string: str, target_token_count: int = 5_000) -> str:
+    result = ""
+    current_token_count = 0
+
+    while current_token_count < target_token_count:
+        result += base_string
+        current_token_count = count_tokens(result)
+
+    return result
 
 
 def test_markdown_with_tool_execution():
@@ -176,28 +187,26 @@ def test_performance():
         </pre>
         """)
 
-    input = partial * 50
-
-    markdown_chat_parser().parseString(input)
+    markdown_chat_parser().parseString(generate_input_string(partial))
 
 
 @pytest.mark.timeout(2)
 def test_performance_multiple_lines():
-    message = textwrap.dedent("""\
+    partial = textwrap.dedent("""\
     **user** This is a test message
     with multiple lines.
     It should be parsed quickly.
     
-    """) * 50
+    """)
 
-    execution_time = timeit.timeit(lambda: markdown_chat_parser().parseString(message), number=1)
+    execution_time = timeit.timeit(lambda: markdown_chat_parser().parseString(generate_input_string(partial)), number=1)
     print(f"Multiple lines message parsing time: {execution_time:.4f} seconds")
     assert execution_time < 1, f"Parsing took too long: {execution_time:.4f} seconds"
 
 
 @pytest.mark.timeout(2)
 def test_performance_tool_calls():
-    message = textwrap.dedent("""\
+    partial = textwrap.dedent("""\
     **assistant** Here's an example of tool calls:
 
     ###### Steps
@@ -223,16 +232,16 @@ def test_performance_tool_calls():
     Exit Code: 0
     </pre>
 
-    -[x] Done""") * 50
+    -[x] Done""")
 
-    execution_time = timeit.timeit(lambda: markdown_chat_parser().parseString(message), number=1)
+    execution_time = timeit.timeit(lambda: markdown_chat_parser().parseString(generate_input_string(partial)), number=1)
     print(f"Tool calls message parsing time: {execution_time:.4f} seconds")
     assert execution_time < 1, f"Parsing took too long: {execution_time:.4f} seconds"
 
 
 @pytest.mark.timeout(2)
 def test_performance_code_cells():
-    message = textwrap.dedent("""\
+    partial = textwrap.dedent("""\
     **assistant** Here's an example of how to print "Hello, World!" in Python:
 
     ```python
@@ -243,8 +252,8 @@ def test_performance_code_cells():
 
     ```javascript
     console.log("Hello, World!");
-    ```""") * 50
+    ```""")
 
-    execution_time = timeit.timeit(lambda: markdown_chat_parser().parseString(message), number=1)
+    execution_time = timeit.timeit(lambda: markdown_chat_parser().parseString(generate_input_string(partial)), number=1)
     print(f"Code cells message parsing time: {execution_time:.4f} seconds")
     assert execution_time < 1, f"Parsing took too long: {execution_time:.4f} seconds"
