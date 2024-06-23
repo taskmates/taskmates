@@ -33,7 +33,7 @@ class ChatCompletionWithUsername:
                 continue
 
             # yield the initial chunk, when completing the username
-            match_username = re.match(r'^\*\*([^*]+)\*\*:?$', buffered_content)
+            match_username = re.match(r'^\*\*([^*]+)>\*\*:?$', buffered_content)
             if match_username:
                 self.name = match_username.group(1) if match_username else None
                 yield self._create_chunk(chunk, '', 'assistant', self.name)
@@ -41,7 +41,7 @@ class ChatCompletionWithUsername:
 
             # yield the initial chunk after completing the username, removing any space prefix
             previous_text = "".join(self.buffered_tokens[:-1])
-            previously_matched_username = re.match(r'^\*\*([^*]+)\*\*:?$', previous_text)
+            previously_matched_username = re.match(r'^\*\*([^*]+)>\*\*:?$', previous_text)
             if previously_matched_username:
                 if content[1:] != '':
                     yield self._create_chunk(chunk, content[1:], None, None)
@@ -125,7 +125,7 @@ async def test_buffered_chat_completion_wrapper_with_username(tmp_path):
             model='mock_model'
         )
         yield ChatCompletionChunkModel(
-            choices=[ChoiceModel(delta=DeltaModel(content='hn'))],
+            choices=[ChoiceModel(delta=DeltaModel(content='hn>'))],
             model='mock_model'
         )
         yield ChatCompletionChunkModel(
@@ -184,7 +184,7 @@ async def test_buffered_chat_completion_wrapper_with_username_and_trimming_initi
             model='mock_model'
         )
         yield ChatCompletionChunkModel(
-            choices=[ChoiceModel(delta=DeltaModel(content='hn'))],
+            choices=[ChoiceModel(delta=DeltaModel(content='hn>'))],
             model='mock_model'
         )
         yield ChatCompletionChunkModel(
@@ -231,8 +231,8 @@ async def test_integration():
         model="claude-3-sonnet-20240229",
         stream=True,
         messages=[
-            {"role": "system", "content": "You're `john`, a math expert. Prefix your messages with **john**"},
-            {"role": "user", "content": "**alice** Short answer. 1 + 1=?"}
+            {"role": "system", "content": "You're `john`, a math expert. Prefix your messages with **john>**"},
+            {"role": "user", "content": "**alice>** Short answer. 1 + 1=?"}
         ]
     )
 

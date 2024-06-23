@@ -38,7 +38,7 @@ class MarkdownCompletionAssistance:
                     signals.formatting.connected_to(append_markdown):
 
                 if not markdown_chat.lstrip().startswith("**") and not markdown_chat.lstrip().startswith("--"):
-                    await signals.request.send_async(f"**user** ")
+                    await signals.request.send_async(f"**user>** ")
 
                 await signals.request.send_async(markdown_chat)
 
@@ -112,7 +112,7 @@ class MarkdownCompletionAssistance:
 
                 recipient = chat["messages"][-1]["recipient"]
                 if recipient:
-                    await signals.next_responder.send_async(f"**{recipient}** ")
+                    await signals.next_responder.send_async(f"**{recipient}>** ")
 
             await signals.success.send_async({})
 

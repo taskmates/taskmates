@@ -70,8 +70,8 @@ def convert_and_merge_messages(messages: List[Dict[str, Any]]) -> List[Dict[str,
         # Convert name to prefix
         if 'name' in message and message_role != 'tool':
             name = message.pop("name")
-            if not message_text_content.startswith(f"**{name}** "):
-                message_text_content = f"**{name}** {message_text_content}"
+            if not message_text_content.startswith(f"**{name}>** "):
+                message_text_content = f"**{name}>** {message_text_content}"
 
         if message_text_content:
             message_text_contents = [message_text_content]
@@ -140,13 +140,13 @@ def build_content(previous_tool_use_contents, previous_tool_contents, previous_t
 
 def test_handling_messages_with_names():
     messages = [{"role": "user", "name": "Alice", "content": "Hello"}]
-    expected = [{"role": "user", "content": "**Alice** Hello"}]
+    expected = [{"role": "user", "content": "**Alice>** Hello"}]
     assert convert_and_merge_messages(messages) == expected
 
 
 def test_handling_messages_with_names_in_content():
-    messages = [{"role": "user", "name": "Alice", "content": "**Alice** Hello"}]
-    expected = [{"role": "user", "content": "**Alice** Hello"}]
+    messages = [{"role": "user", "name": "Alice", "content": "**Alice>** Hello"}]
+    expected = [{"role": "user", "content": "**Alice>** Hello"}]
     assert convert_and_merge_messages(messages) == expected
 
 

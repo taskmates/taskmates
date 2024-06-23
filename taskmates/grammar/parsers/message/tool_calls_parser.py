@@ -62,7 +62,7 @@ def test_tool_calls_parser():
         OUTPUT 1
         </pre>
         
-        **user** Here is another message.
+        **user>** Here is another message.
         
         """)
 

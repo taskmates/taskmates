@@ -17,9 +17,9 @@ def markdown_chat_parser():
 
 def test_no_line_end():
     input = textwrap.dedent("""\
-        **user** Short answer. 1+1=
+        **user>** Short answer. 1+1=
         
-        **assistant** Short answer. 1+1=""")
+        **assistant>** Short answer. 1+1=""")
 
     expected_messages = [{'content': 'Short answer. 1+1=\n\n',
                           'name': 'user'},
@@ -33,7 +33,7 @@ def test_no_line_end():
 
 def test_markdown_with_tool_execution():
     input = textwrap.dedent("""\
-        **assistant** Here is a message.
+        **assistant>** Here is a message.
         
         ###### Steps
         - Run Shell Command [1] `{"cmd":"cd /tmp"}`
@@ -44,7 +44,7 @@ def test_markdown_with_tool_execution():
         OUTPUT 1
         </pre>
         
-        **user** Here is another message.
+        **user>** Here is another message.
         """)
 
     result = markdown_chat_parser().parseString(input)
@@ -79,7 +79,7 @@ def test_markdown_with_code_cell_execution():
     input = textwrap.dedent("""\
         print(1 + 1)
         
-        **assistant**
+        **assistant>**
         
         print(1 + 1)
         
@@ -93,7 +93,7 @@ def test_markdown_with_code_cell_execution():
         2
         </pre>
     
-        **assistant** 
+        **assistant>** 
         
         1 + 1 equals 2.
 

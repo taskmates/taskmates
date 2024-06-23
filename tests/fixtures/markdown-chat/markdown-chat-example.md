@@ -1,14 +1,14 @@
-**user** This is a message.
+**user>** This is a message.
 
-**assistant** This is a response.
+**assistant>** This is a response.
 
-**user {"name": "john"}** This is a message with attributes.
+**user {"name": "john"}>** This is a message with attributes.
 
-**assistant** This is a response from the assistant.
+**assistant>** This is a response from the assistant.
 
-**john** This is another message from john.
+**john>** This is another message from john.
 
-**assistant** This is a message with tool calls.
+**assistant>** This is a message with tool calls.
 
 ###### Steps
 
@@ -35,7 +35,7 @@ Exit Code: 0
 
 -[x] Done
 
-**user** This is a message with code cells
+**user>** This is a message with code cells
 
 ```python .eval
 print("hello")

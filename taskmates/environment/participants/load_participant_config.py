@@ -99,7 +99,7 @@ def test_error_on_multiple_messages(sample_data, tmp_path):
     participants_configs, participant_name, taskmates_dir = sample_data
     md_path = taskmates_dir / "taskmates" / f"{participant_name}.md"
     md_path.parent.mkdir(parents=True, exist_ok=True)
-    md_path.write_text("**john**\n\nHello\n\nWorld\n\n**doe**\n\nGoodbye\n\n")
+    md_path.write_text("**john>**\n\nHello\n\nWorld\n\n**doe>**\n\nGoodbye\n\n")
     with pytest.raises(ValueError, match="Multi-messages taskmate definitions not supported yet"):
         load_participant_config(participants_configs, participant_name, taskmates_dir)
 

@@ -54,7 +54,7 @@ def messages_parser():
 
 def test_messages_parser_single_message():
     input = textwrap.dedent("""\
-        **user** Hello, assistant!
+        **user>** Hello, assistant!
         
         This is a multiline message.
 
@@ -72,7 +72,7 @@ def test_messages_with_implicit_header():
     input = textwrap.dedent("""\
         Hello
         
-        **assistant** Hello
+        **assistant>** Hello
         """)
 
     expected_messages = [{'content': 'Hello\n\n',
@@ -87,9 +87,9 @@ def test_messages_with_implicit_header():
 
 def test_messages_with_no_line_end():
     input = textwrap.dedent("""\
-        **john** Hello
+        **john>** Hello
 
-        **alice** Hello""")
+        **alice>** Hello""")
 
     expected_messages = [{'content': 'Hello\n\n',
                           'name': 'john'},
@@ -103,11 +103,11 @@ def test_messages_with_no_line_end():
 
 def test_messages_parser_mutiple_messages():
     input = textwrap.dedent("""\
-        **user** Hello, assistant!
+        **user>** Hello, assistant!
         
         This is a multiline message.
 
-        **assistant** Hi, user!
+        **assistant>** Hi, user!
         
         This is the response.
         """)
@@ -124,7 +124,7 @@ def test_messages_parser_mutiple_messages():
 
 def test_messages_parser_with_multiple_tool_calls():
     input = textwrap.dedent("""\
-        **assistant** This is a message with multiple tool calls.
+        **assistant>** This is a message with multiple tool calls.
         
         ###### Steps
         
@@ -177,7 +177,7 @@ def test_messages_parser_with_multiple_tool_calls():
 
 def test_messages_parser_with_tool_execution():
     input = textwrap.dedent("""\
-        **assistant** This is a message with tool calls.
+        **assistant>** This is a message with tool calls.
         
         ###### Steps
         - Run Shell Command [1] `{"cmd":"cd /tmp"}`
@@ -188,7 +188,7 @@ def test_messages_parser_with_tool_execution():
         OUTPUT 1
         </pre>
         
-        **user** Here is another message.
+        **user>** Here is another message.
         
         """)
 
@@ -228,7 +228,7 @@ def test_messages_parser_with_tool_execution():
 
 def test_messages_parser_with_code_cell_execution():
     input = textwrap.dedent("""\
-        **user** This is a message with code cells.
+        **user>** This is a message with code cells.
         
         ```python .eval
         print(1 + 1)
@@ -240,7 +240,7 @@ def test_messages_parser_with_code_cell_execution():
         2
         </pre>
         
-        **assistant** 1 + 1 equals 2.
+        **assistant>** 1 + 1 equals 2.
         
         """)
 

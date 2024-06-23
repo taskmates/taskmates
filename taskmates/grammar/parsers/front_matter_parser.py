@@ -27,10 +27,10 @@ def test_front_matter_parser():
           - item2
         ---
         
-        **user** Message
+        **user>** Message
         """)
     result = (front_matter_parser() + remaining_content_parser()).parse_string(input)
     assert result.front_matter == {'key1': 'value1', 'key2': ['item1', 'item2']}
     assert result.remaining_content == textwrap.dedent("""\
-        **user** Message
+        **user>** Message
     """)

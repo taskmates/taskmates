@@ -65,7 +65,7 @@ class ChatCompletionEditorCompletion:
         if not self.role and delta.get("role"):
             self.role = delta['role']
             recipient = self.chat["messages"][-1]["recipient"]
-            await self.signals.responder.send_async(f"**{recipient}** ")
+            await self.signals.responder.send_async(f"**{recipient}>** ")
 
     async def append(self, text: str):
         await self.signals.response.send_async(text)

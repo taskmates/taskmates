@@ -13,19 +13,19 @@ def test_performance():
     pp.enable_all_warnings()
 
     partial = textwrap.dedent("""\
-        **user** This is a messag with multiple lines.
+        **user>** This is a messag with multiple lines.
         This is a messag with multiple lines.
         This is a messag with multiple lines.
         
-        **assistant** This is a response.
+        **assistant>** This is a response.
         
-        **user {"name": "john"}** This is a message with attributes.
+        **user {"name": "john"}>** This is a message with attributes.
         
-        **assistant** This is a response from the assistant.
+        **assistant>** This is a response from the assistant.
         
-        **john** This is another message from john.
+        **john>** This is another message from john.
         
-        **assistant** This is a message with tool calls.
+        **assistant>** This is a message with tool calls.
         
         ###### Steps
         
@@ -52,7 +52,7 @@ def test_performance():
         
         -[x] Done
         
-        **user** This is a message with code cells
+        **user>** This is a message with code cells
         
         ```python .eval
         print("hello")
@@ -81,7 +81,7 @@ def test_performance():
 @pytest.mark.timeout(5)
 def test_performance_single_lines():
     partial = textwrap.dedent("""\
-    **user** This is a test message
+    **user>** This is a test message
     """)
 
     input_string = generate_input_string(partial)
@@ -93,7 +93,7 @@ def test_performance_single_lines():
 @pytest.mark.timeout(5)
 def test_performance_long_lines():
     partial = textwrap.dedent("""\
-    **user** This is a test message This is a test message This is a test message This is a test message This is a test message This is a test message This is a test message
+    **user>** This is a test message This is a test message This is a test message This is a test message This is a test message This is a test message This is a test message
     """)
 
     input_string = generate_input_string(partial)
@@ -105,7 +105,7 @@ def test_performance_long_lines():
 @pytest.mark.timeout(5)
 def test_performance_single_lines_plus_new_line():
     partial = textwrap.dedent("""\
-    **user** This is a test message
+    **user>** This is a test message
     
     """)
 
@@ -118,7 +118,7 @@ def test_performance_single_lines_plus_new_line():
 @pytest.mark.timeout(5)
 def test_performance_line_break_plus_message():
     partial = textwrap.dedent("""\
-    **user**
+    **user>**
     This is a test message
     """)
 
@@ -131,7 +131,7 @@ def test_performance_line_break_plus_message():
 @pytest.mark.timeout(5)
 def test_performance_multiple_lines():
     partial = textwrap.dedent("""\
-    **user** This is a test message
+    **user>** This is a test message
     with multiple lines.
     It should be parsed quickly.
     
@@ -146,7 +146,7 @@ def test_performance_multiple_lines():
 @pytest.mark.timeout(5)
 def test_performance_tool_calls():
     partial = textwrap.dedent("""\
-    **assistant** Here's an example of tool calls:
+    **assistant>** Here's an example of tool calls:
 
     ###### Steps
 
@@ -183,7 +183,7 @@ def test_performance_tool_calls():
 @pytest.mark.timeout(5)
 def test_performance_code_cells():
     partial = textwrap.dedent("""\
-    **assistant** Here's an example of how to print "Hello, World!" in Python:
+    **assistant>** Here's an example of how to print "Hello, World!" in Python:
 
     ```python
     print("Hello, World!")

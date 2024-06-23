@@ -47,7 +47,7 @@ class MarkdownChatCompletionAssistance(CompletionAssistance):
                 if config["role"] == "user" and name not in user_participants:
                     user_participants.append(name)
 
-            model_conf.setdefault("stop", []).extend([f"\n**{u}** " for u in user_participants])
+            model_conf.setdefault("stop", []).extend([f"\n**{u}>** " for u in user_participants])
 
             # TODO
             tool_choice = NOT_SET

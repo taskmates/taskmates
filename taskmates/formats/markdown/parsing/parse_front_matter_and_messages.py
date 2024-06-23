@@ -102,11 +102,11 @@ def deduplicate_messages(messages: List[Dict[str, Union[str, list[dict]]]]) -> L
 
 def test_parse_chat_messages_with_internal_header(tmp_path):
     input = """\
-        **user** Here is a message.
+        **user>** Here is a message.
          
         **This one is not** a message
         
-        **assistant** Here is another message.
+        **assistant>** Here is another message.
         """
     messages, front_matter = parse_front_matter_and_messages(tmp_path / "main.md", textwrap.dedent(input), "user")
     expected_messages = [
@@ -124,9 +124,9 @@ def test_parse_chat_messages_with_frontmatter(tmp_path):
           - item1
           - item2
         ---
-        **user** Here is a message.
+        **user>** Here is a message.
         
-        **assistant** Here is a response.
+        **assistant>** Here is a response.
         """
     messages, front_matter = parse_front_matter_and_messages(tmp_path / "main.md", textwrap.dedent(input), "user")
     expected_messages = [
@@ -139,9 +139,9 @@ def test_parse_chat_messages_with_frontmatter(tmp_path):
 
 def test_parse_chat_messages_with_metadata(tmp_path):
     input = """\
-        **user {"name": "john", "age": 30}** Here is a message from John.
+        **user {"name": "john", "age": 30}>** Here is a message from John.
         
-        **assistant {"model": "gpt-3.5-turbo"}** Here is a response from the assistant.
+        **assistant {"model": "gpt-3.5-turbo"}>** Here is a response from the assistant.
         """
     messages, front_matter = parse_front_matter_and_messages(tmp_path / "main.md", textwrap.dedent(input), "user")
     assert len(messages) == 2
@@ -159,9 +159,9 @@ def test_parse_chat_messages_with_system_in_frontmatter(tmp_path):
         ---
         system: This is a system message from the front matter.
         ---
-        **user** Here is a message.
+        **user>** Here is a message.
         
-        **assistant** Here is a response.
+        **assistant>** Here is a response.
         """
     messages, front_matter = parse_front_matter_and_messages(tmp_path / "main.md", textwrap.dedent(input), "user")
     assert len(messages) == 3
@@ -178,11 +178,11 @@ def test_parse_chat_messages_with_system_in_frontmatter_and_content(tmp_path):
         ---
         system: This is a system message from the front matter.
         ---
-        **system** This is a system message from the content.
+        **system>** This is a system message from the content.
         
-        **user** Here is a message.
+        **user>** Here is a message.
         
-        **assistant** Here is a response.
+        **assistant>** Here is a response.
         """
     messages, front_matter = parse_front_matter_and_messages(tmp_path / "main.md", textwrap.dedent(input), "user")
     assert len(messages) == 4
@@ -198,7 +198,7 @@ def test_parse_chat_messages_with_system_in_frontmatter_and_content(tmp_path):
 
 def test_parse_chat_messages_with_tool_calls_and_execution(tmp_path):
     input = """\
-        **assistant** Here is a message.
+        **assistant>** Here is a message.
         
         ###### Steps
         - Run Shell Command [1] `{"cmd":"cd /tmp"}`
@@ -210,7 +210,7 @@ def test_parse_chat_messages_with_tool_calls_and_execution(tmp_path):
         </pre>
         
         
-        **user** Here is another message.
+        **user>** Here is another message.
 
         """
 
@@ -252,7 +252,7 @@ def test_parse_chat_messages_with_multiple_tool_calls_and_missing_execution(tmp_
     input = textwrap.dedent("""\
         USER INSTRUCTION
 
-        **shell**
+        **shell>**
 
         ###### Steps
 
@@ -323,7 +323,7 @@ def test_parse_chat_messages_with_multiple_tool_calls_in_separate_messages(tmp_p
     input = textwrap.dedent("""\
         USER INSTRUCTION
 
-        **shell**
+        **shell>**
 
         ###### Steps
 
@@ -335,7 +335,7 @@ def test_parse_chat_messages_with_multiple_tool_calls_in_separate_messages(tmp_p
         OUTPUT 1
         </pre>
 
-        **shell**
+        **shell>**
 
         ###### Steps
 
@@ -404,13 +404,13 @@ def test_parse_chat_messages_with_multiple_tool_calls_in_separate_messages(tmp_p
 
 def test_parse_chat_messages_with_deduplication(tmp_path):
     input = textwrap.dedent("""\
-        **user** Text 1
+        **user>** Text 1
 
-        **user** Text 2
+        **user>** Text 2
 
-        **assistant** Incomplete response
+        **assistant>** Incomplete response
 
-        **assistant** Complete response
+        **assistant>** Complete response
         """)
     messages, front_matter = parse_front_matter_and_messages(tmp_path / "main.md", input, "user")
 

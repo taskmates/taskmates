@@ -33,9 +33,9 @@ async def test_chat_completion(app, tmp_path):
     """)
 
     expected_response = textwrap.dedent("""\
-    **assistant** Short answer. 1+1=
+    **assistant>** Short answer. 1+1=
     
-    **user** """)
+    **user>** """)
 
     test_payload: CompletionPayload = {
         "type": "completions_request",
@@ -69,9 +69,9 @@ async def test_chat_completion_with_mention(app, tmp_path):
     """)
 
     expected_response = textwrap.dedent("""\
-    **alice** Hey @alice short answer. 1+1=
+    **alice>** Hey @alice short answer. 1+1=
     
-    **user** """)
+    **user>** """)
 
     test_payload: CompletionPayload = {
         "type": "completions_request",
@@ -99,7 +99,7 @@ async def test_tool_completion(app, tmp_path):
     markdown_chat = textwrap.dedent("""\
     How much is 1 + 1?
     
-    **assistant**
+    **assistant>**
     
     How much is 1 + 1?
     
@@ -118,10 +118,10 @@ async def test_tool_completion(app, tmp_path):
                          '</pre>\n'
                          '-[x] Done\n'
                          '\n'
-                         "**assistant** <pre class='output' style='display:none'> 2 Exit Code: 0 "
+                         "**assistant>** <pre class='output' style='display:none'> 2 Exit Code: 0 "
                          '</pre> -[x] Done\n'
                          '\n'
-                         '**user** ')
+                         '**user>** ')
 
     test_payload: CompletionPayload = {
         "type": "completions_request",
@@ -149,7 +149,7 @@ async def test_code_cell_completion(app, tmp_path):
     markdown_chat = textwrap.dedent("""\
     print(1 + 1)
     
-    **assistant**
+    **assistant>**
     
     print(1 + 1)
     
@@ -166,9 +166,9 @@ async def test_code_cell_completion(app, tmp_path):
     2
     </pre>
 
-    **assistant** ###### Cell Output: stdout [cell_0] <pre> 2 </pre>
+    **assistant>** ###### Cell Output: stdout [cell_0] <pre> 2 </pre>
 
-    **user** ''')
+    **user>** ''')
 
     test_payload: CompletionPayload = {
         "type": "completions_request",
@@ -193,7 +193,7 @@ async def test_code_cell_completion(app, tmp_path):
 async def test_error_completion(app, tmp_path):
     test_client = app.test_client()
 
-    expected_completion_prefix = "**error** "
+    expected_completion_prefix = "**error>** "
 
     expected_completion_suffix = textwrap.dedent("""\
         </pre>
@@ -226,7 +226,7 @@ async def test_interrupt_tool(app, tmp_path):
     markdown_chat = textwrap.dedent("""\
     How much is 1 + 1?
     
-    **assistant**
+    **assistant>**
     
     How much is 1 + 1?
     
@@ -287,7 +287,7 @@ async def test_code_cell_no_output(app, tmp_path):
     markdown_chat = textwrap.dedent("""\
     print(1 + 1)
     
-    **assistant**
+    **assistant>**
     
     print(1 + 1)
     
@@ -301,9 +301,9 @@ async def test_code_cell_no_output(app, tmp_path):
                            '\n'
                            'Done\n'
                            '\n'
-                           '**assistant** ###### Cell Output: stdout [cell_0] Done\n'
+                           '**assistant>** ###### Cell Output: stdout [cell_0] Done\n'
                            '\n'
-                           '**user** ')
+                           '**user>** ')
     test_payload: CompletionPayload = {
         "type": "completions_request",
         "markdown_chat": markdown_chat,
@@ -330,7 +330,7 @@ async def test_interrupt_code_cell(app, tmp_path):
     markdown_chat = textwrap.dedent("""\
     How much is 1 + 1?
     
-    **assistant**
+    **assistant>**
     
     How much is 1 + 1?
     
