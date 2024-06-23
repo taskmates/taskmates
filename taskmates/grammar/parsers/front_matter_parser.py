@@ -5,7 +5,7 @@ import yaml
 
 
 def remaining_content_parser():
-    return pp.SkipTo(pp.string_end)("remaining_content")
+    return pp.SkipTo(pp.StringEnd())("remaining_content")
 
 
 def front_matter_parser():

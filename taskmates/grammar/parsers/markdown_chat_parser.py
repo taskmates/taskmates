@@ -12,7 +12,7 @@ from taskmates.lib.openai_.count_tokens import count_tokens
 
 def markdown_chat_parser():
     comments = pp.Suppress(LineStart() + pp.Literal("[//]: #") + pp.restOfLine)
-    return (pp.Opt(front_matter_parser()) + messages_parser() + pp.string_end).ignore(comments)
+    return (pp.Opt(front_matter_parser()) + messages_parser() + pp.StringEnd()).ignore(comments)
 
 
 def generate_input_string(base_string: str, target_token_count: int = 5_000) -> str:

@@ -4,16 +4,16 @@ import pyparsing as pp
 
 
 def chat_message_header_parser():
-    header_delimiter = pp.Suppress("**")
-
-    name = pp.Word(pp.printables, excludeChars=" {*")
+    name = pp.Word(pp.printables, excludeChars=" {*")("name")
 
     json_str = (pp.QuotedString('{', endQuoteChar='}', escChar='\\', unquoteResults=False)
                 .setParseAction(lambda t: json.loads(t[0]))("attributes"))
     attributes = (pp.Optional(pp.Suppress(" ") + json_str))
 
-    chat_message_header = (pp.line_start + header_delimiter + name("name") + attributes + header_delimiter + pp.Suppress(
-        pp.Literal(" ") | pp.Literal("\n")))
+    chat_message_header = (
+            pp.LineStart()
+            + pp.Suppress("**") + name + attributes + pp.Suppress("**")
+            + pp.Suppress(pp.Literal(" ") | pp.Literal("\n")))
     return chat_message_header
 
 

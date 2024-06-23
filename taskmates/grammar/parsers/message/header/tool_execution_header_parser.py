@@ -6,7 +6,7 @@ from taskmates.grammar.parsers.snake_case_action import snake_case_action
 
 
 def tool_execution_header_parser():
-    execution_header = pp.Suppress(pp.line_start + pp.Literal("###### Execution:"))
+    execution_header = pp.Suppress(pp.LineStart() + pp.Literal("###### Execution:"))
     tool_name = pp.Word(pp.alphas + " ").set_parse_action(snake_case_action)("name")
     tool_id = pp.Suppress("[") - pp.Word(pp.nums)("tool_call_id") - pp.Suppress("]")
     role = pp.Empty().set_parse_action(pp.replace_with("tool"))("role")

@@ -11,32 +11,28 @@ pp.ParserElement.set_default_whitespace_chars("")
 
 
 def message_parser():
-    headers = headers_parser()
-    message_tool_calls = tool_calls_parser()
     message_content = (pp.SkipTo(
-        (section_start_anchor() + (message_tool_calls | headers) | pp.stringEnd),
+        (section_start_anchor() + (tool_calls_parser() | headers_parser()) | pp.StringEnd()),
         include=False)("content"))
 
     message = pp.Group(
-        pp.line_start
-        + headers
+        pp.LineStart()
+        + headers_parser()
         + message_content
-        + pp.Optional(message_tool_calls)
+        + pp.Optional(tool_calls_parser())
     )
     return message
 
 
 def first_message_parser():
-    headers = headers_parser()
-    message_tool_calls = tool_calls_parser()
     message_content = (pp.SkipTo(
-        (section_start_anchor() + (message_tool_calls | headers) | pp.stringEnd),
+        (section_start_anchor() + (tool_calls_parser() | headers_parser()) | pp.StringEnd()),
         include=False)("content"))
-    implicit_header = (pp.line_start + pp.Empty().setParseAction(lambda: "user")("name"))
+    implicit_header = (pp.LineStart() + pp.Empty().setParseAction(lambda: "user")("name"))
     first_message = pp.Group(
-        (headers | implicit_header)
+        (headers_parser() | implicit_header)
         + message_content
-        + pp.Optional(message_tool_calls)
+        + pp.Optional(tool_calls_parser())
     )
     return first_message
 

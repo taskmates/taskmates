@@ -36,14 +36,14 @@ def tool_call_parser():
 
 
 def tool_calls_parser():
-    section_header = pp.line_start + pp.Literal("###### Steps")
+    section_header = pp.LineStart() + pp.Literal("###### Steps")
     tool_call = tool_call_parser()
 
     return pp.Group(section_header.suppress()
-                    + pp.OneOrMore(pp.line_end).suppress()
+                    + pp.OneOrMore(pp.LineEnd()).suppress()
                     + pp.OneOrMore(tool_call
                                    + pp.Optional(pp.LineEnd()).suppress())
-                    + pp.ZeroOrMore(pp.line_end.suppress())
+                    + pp.ZeroOrMore(pp.LineEnd().suppress())
                     )("tool_calls")
 
 
@@ -80,7 +80,7 @@ def test_tool_calls_parser():
         }
     ]
 
-    extra_content = pp.SkipTo(pp.stringEnd, include=True)("extra_content")
+    extra_content = pp.SkipTo(pp.StringEnd(), include=True)("extra_content")
     results = (tool_calls_parser() + extra_content).parseString(input)
 
     matched_text = "".join(pp.original_text_for(
