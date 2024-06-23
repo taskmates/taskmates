@@ -4,7 +4,8 @@ import timeit
 import pyparsing as pp
 import pytest
 
-from taskmates.grammar.parsers.markdown_chat_parser import markdown_chat_parser, generate_input_string
+from taskmates.grammar.parsers.markdown_chat_parser import markdown_chat_parser
+from taskmates.lib.openai_.count_tokens import count_tokens
 
 
 @pytest.mark.timeout(5)
@@ -187,3 +188,14 @@ def test_performance_code_cells():
     execution_time = timeit.timeit(lambda: markdown_chat_parser().parseString(input_string), number=1)
     print(f"Code cells message parsing time: {execution_time:.4f} seconds")
     assert execution_time < 0.2, f"Parsing took too long: {execution_time:.4f} seconds"
+
+
+def generate_input_string(base_string: str, target_token_count: int = 10_000) -> str:
+    result = ""
+    current_token_count = 0
+
+    while current_token_count < target_token_count:
+        result += base_string
+        current_token_count = count_tokens(result)
+
+    return result

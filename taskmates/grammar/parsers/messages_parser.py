@@ -13,11 +13,15 @@ pp.ParserElement.set_default_whitespace_chars("")
 
 def message_parser():
     message_content = pp.Combine(
-            pp.Regex(r"((((?<!^)(?<=\*\* )[^\n]*)|(^(?!(\*\*|###### ))[^\n]*))\n)+", re.DOTALL | re.MULTILINE) +
-            pp.SkipTo(
-                (section_start_anchor() + (tool_calls_parser() | headers_parser()) | pp.StringEnd()
-                 ),
-                include=False))("content")
+        pp.Regex(r"((((?<!^)(?<=\*\* )[^\n]*)|(^(?!(\*\*|###### ))[^\n]*))(\n|\Z))+", re.DOTALL | re.MULTILINE) +
+        pp.SkipTo(
+            (
+                    (section_start_anchor()
+                    + (tool_calls_parser() | headers_parser()))
+                    | pp.StringEnd()
+            ),
+            include=False)
+    )("content")
 
     message = pp.Group(
         pp.LineStart()
@@ -58,6 +62,39 @@ def test_messages_parser_single_message():
 
     expected_messages = [{'content': 'Hello, assistant!\n\nThis is a multiline message.\n\n',
                           'name': 'user'}]
+
+    results = messages_parser().parseString(input)
+
+    assert [m.as_dict() for m in results.messages] == expected_messages
+
+
+def test_messages_with_implicit_header():
+    input = textwrap.dedent("""\
+        Hello
+        
+        **assistant** Hello
+        """)
+
+    expected_messages = [{'content': 'Hello\n\n',
+                          'name': 'user'},
+                         {'content': 'Hello\n',
+                          'name': 'assistant'}]
+
+    results = messages_parser().parseString(input)
+
+    assert [m.as_dict() for m in results.messages] == expected_messages
+
+
+def test_messages_with_no_line_end():
+    input = textwrap.dedent("""\
+        **john** Hello
+
+        **alice** Hello""")
+
+    expected_messages = [{'content': 'Hello\n\n',
+                          'name': 'john'},
+                         {'content': 'Hello',
+                          'name': 'alice'}]
 
     results = messages_parser().parseString(input)
 

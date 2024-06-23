@@ -5,7 +5,6 @@ from pyparsing import LineStart
 
 from taskmates.grammar.parsers.front_matter_parser import front_matter_parser
 from taskmates.grammar.parsers.messages_parser import messages_parser
-from taskmates.lib.openai_.count_tokens import count_tokens
 
 pp.enable_all_warnings()
 pp.ParserElement.set_default_whitespace_chars("")
@@ -16,15 +15,20 @@ def markdown_chat_parser():
     return (pp.Opt(front_matter_parser()) + messages_parser() + pp.StringEnd()).ignore(comments)
 
 
-def generate_input_string(base_string: str, target_token_count: int = 10_000) -> str:
-    result = ""
-    current_token_count = 0
+def test_no_line_end():
+    input = textwrap.dedent("""\
+        **user** Short answer. 1+1=
+        
+        **assistant** Short answer. 1+1=""")
 
-    while current_token_count < target_token_count:
-        result += base_string
-        current_token_count = count_tokens(result)
+    expected_messages = [{'content': 'Short answer. 1+1=\n\n',
+                          'name': 'user'},
+                         {'content': 'Short answer. 1+1=\n',
+                          'name': 'assistant'}]
 
-    return result
+    results = markdown_chat_parser().parseString(input)
+
+    assert [m.as_dict() for m in results.messages] == expected_messages
 
 
 def test_markdown_with_tool_execution():
