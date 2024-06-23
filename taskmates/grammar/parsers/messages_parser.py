@@ -1,3 +1,4 @@
+import re
 import textwrap
 
 import pyparsing as pp
@@ -11,14 +12,17 @@ pp.ParserElement.set_default_whitespace_chars("")
 
 
 def message_parser():
-    message_content = (pp.SkipTo(
-        (section_start_anchor() + (tool_calls_parser() | headers_parser()) | pp.StringEnd()),
-        include=False)("content"))
+    message_content = pp.Combine(
+            pp.Regex(r"((((?<!^)(?<=\*\* )[^\n]*)|(^(?!(\*\*|###### ))[^\n]*))\n)+", re.DOTALL | re.MULTILINE) +
+            pp.SkipTo(
+                (section_start_anchor() + (tool_calls_parser() | headers_parser()) | pp.StringEnd()
+                 ),
+                include=False))("content")
 
     message = pp.Group(
         pp.LineStart()
-        + headers_parser()
-        + message_content
+        + headers_parser().set_debug()
+        + message_content.set_debug()
         + pp.Optional(tool_calls_parser())
     )
     return message
