@@ -4,33 +4,45 @@ import pyparsing as pp
 
 from taskmates.grammar.parsers.header.headers import headers_parser
 from taskmates.grammar.parsers.message.tool_calls_parser import tool_calls_parser
+from taskmates.grammar.parsers.section_start_anchor import section_start_anchor
 
 pp.enable_all_warnings()
 pp.ParserElement.set_default_whitespace_chars("")
 
 
 def message_parser():
-    message = pp.Forward()
     headers = headers_parser()
     message_tool_calls = tool_calls_parser()
-    message_content = (pp.SkipTo(message_tool_calls | headers | pp.stringEnd, include=False)("content"))
+    message_content = (pp.SkipTo(
+        (section_start_anchor() + (message_tool_calls | headers) | pp.stringEnd),
+        include=False)("content"))
+
+    message = pp.Group(
+        pp.line_start
+        + headers
+        + message_content
+        + pp.Optional(message_tool_calls)
+    )
+    return message
+
+
+def first_message_parser():
+    headers = headers_parser()
+    message_tool_calls = tool_calls_parser()
+    message_content = (pp.SkipTo(
+        (section_start_anchor() + (message_tool_calls | headers) | pp.stringEnd),
+        include=False)("content"))
     implicit_header = (pp.line_start + pp.Empty().setParseAction(lambda: "user")("name"))
     first_message = pp.Group(
         (headers | implicit_header)
         + message_content
         + pp.Optional(message_tool_calls)
     )
-    message <<= pp.Group(
-        pp.line_start
-        + headers
-        + message_content
-        + pp.Optional(message_tool_calls)
-    )
-    return first_message, message
+    return first_message
 
 
 def messages_parser():
-    first_message, message = message_parser()
+    first_message, message = first_message_parser(), message_parser()
     messages = (first_message + message[...]).set_results_name("messages")
 
     return messages
