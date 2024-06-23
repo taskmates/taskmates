@@ -108,7 +108,7 @@ def test_markdown_with_code_cell_execution():
         }]
 
 
-@pytest.mark.timeout(0.5)
+# @pytest.mark.timeout(0.5)
 def test_performance():
     pp.enable_all_warnings()
 

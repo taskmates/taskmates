@@ -1,19 +1,86 @@
 import textwrap
+from re import RegexFlag
 
 import pyparsing as pp
 
-from taskmates.grammar.parsers.message.message_parser import message_parser, first_message_parser
+from taskmates.grammar.parsers.message.header.chat_message_header_parser import chat_message_header_parser
+from taskmates.grammar.parsers.message.header.code_cell_execution_header_parser import code_cell_execution_header_parser
+from taskmates.grammar.parsers.message.header.tool_execution_header_parser import tool_execution_header_parser
+from taskmates.grammar.parsers.message.tool_calls_parser import tool_calls_parser
 
 pp.enable_all_warnings()
 
 header_delimiter = pp.Suppress(pp.Literal("**"))
+
+# message_entry = pp.Forward()
+
+message_header = chat_message_header_parser()
+tool_execution_header = tool_execution_header_parser()
+code_cell_execution_header = code_cell_execution_header_parser()
+message_tool_calls = tool_calls_parser()
+headers = (message_header | tool_execution_header | code_cell_execution_header)
+
+# TODO: This is really slow
+# message_content = pp.SkipTo(message_tool_calls | message_entry | pp.stringEnd, include=False).leave_whitespace()(
+#     "content")
+
+# TODO: This is eagerly consuming other messages
+# message_content = pp.Regex(".+?\n+(?=(?:(?:###### (?:Steps|Execution|(?:Cell Output))|(?:\*\*[^\n*]+\*\*))))",
+#                            RegexFlag.DOTALL).leave_whitespace()("content")
+
+# TODO: this breaks when content starts with a \n
+# message_content = pp.Regex("[^\n].+?(\n*$|\n+(?=(?:\*\*|###### )))", RegexFlag.DOTALL).leave_whitespace()("content")
+
+message_content = pp.Regex(".+?(\n*$|\n+(?=(?:\*\*|###### )))", RegexFlag.DOTALL).leave_whitespace()("content")
+
+
+# message_content = pp.Regex("[^\n].+",
+#                            RegexFlag.DOTALL).leave_whitespace()("content")
+
+# message_content = pp.Regex("Hello, assistant!\n\nThis is a multiline message.\n\n",
+#                            RegexFlag.DOTALL).leave_whitespace()("content")
+
+
+# message_entry <<= pp.Group(
+#     headers
+#     + message_content
+#     + pp.Optional(message_tool_calls))
+
+
+def first_message_parser():
+    # global message_entry
+
+    # message_content = pp.SkipTo(message_tool_calls | message_entry | pp.stringEnd, include=False).leave_whitespace()(
+    #     "content")
+    implicit_message_header = (pp.line_start + pp.Empty().setParseAction(lambda: "user")("name"))
+    first_message_headers = (headers | implicit_message_header)
+
+    first_message = pp.Group(
+        first_message_headers
+        + message_content
+        + pp.Optional(message_tool_calls))
+
+    return first_message
+
+
+def message_parser():
+    # global message_entry
+    #
+    # return message_entry
+    message = pp.Group(
+        headers
+        + message_content
+        + pp.Optional(message_tool_calls))
+    return message
 
 
 def messages_parser():
     first_message = first_message_parser()
     message = message_parser()
 
-    messages = (first_message + message[...]).set_results_name("messages")
+    messages = (first_message
+                + message[...]
+                + pp.string_end).set_results_name("messages")
 
     return messages
 

@@ -10,7 +10,7 @@ def tool_execution_header_parser():
     role = pp.Empty().set_parse_action(pp.replace_with("tool"))("role")
     tool_name = pp.Word(pp.alphas + " ").set_parse_action(snake_case_action)("name")
     tool_id = pp.Suppress("[") + pp.Word(pp.nums)("tool_call_id") + pp.Suppress("]")
-    tool_execution_header = (role + execution_header + tool_name + tool_id + pp.LineEnd())
+    tool_execution_header = (role + execution_header + tool_name + tool_id + pp.LineEnd().suppress())
     return tool_execution_header.leave_whitespace()
 
 
