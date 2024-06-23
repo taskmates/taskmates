@@ -10,6 +10,7 @@ logger.remove()
 file_logger = copy.deepcopy(logger)
 logger.add(sys.stderr)
 
+
 file_logger = file_logger.patch(lambda record: record["extra"].setdefault("base_dir",
                                                                           os.environ.get("TASKMATES_HOME",
                                                                                          "/var/tmp/taskmates")))
@@ -30,11 +31,11 @@ def file_sink(path_format):
 
 file_logger.add(file_sink(path_format=PATH_FORMAT),
                 serialize=True,
-                level="INFO", )
+                level="DEBUG", )
 
 file_logger.add(sys.stderr,
                 # format=f"[file_logger][{{name}}] Writing to \"{PATH_FORMAT}\"",
-                level="INFO", )
+                level="DEBUG", )
 
 # TODO
 # def test_file_logger(tmp_path):

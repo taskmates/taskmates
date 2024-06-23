@@ -1,10 +1,13 @@
 import textwrap
+import time
 from pathlib import Path
 from typing import Tuple, List, Dict, Union
 
+from loguru import logger
 from typeguard import typechecked
 
 from taskmates.grammar.parsers.markdown_chat_parser import markdown_chat_parser
+from taskmates.lib.logging_.file_logger import file_logger
 
 
 @typechecked
@@ -16,7 +19,16 @@ def parse_front_matter_and_messages(source_file: Path,
 
     messages: list[dict] = []
 
+    start_time = time.time()  # Record the start time
+    logger.debug(f"[parse_front_matter_and_messages] Parsing markdown: {start_time}-chat.md")
+
     parser = markdown_chat_parser()
+
+    end_time = time.time()  # Record the end time
+    time_taken = end_time - start_time
+    logger.debug(f"[parse_front_matter_and_messages] Parsed markdown {start_time}-chat.md in {time_taken:.4f} seconds")
+
+    file_logger.debug(f"[parse_front_matter_and_messages] {start_time}-chat.md", content=content)
 
     parsed_chat = parser.parse_string(content)
     front_matter = parsed_chat.front_matter or {}

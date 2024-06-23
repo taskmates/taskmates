@@ -8,12 +8,20 @@ from taskmates.formats.markdown.parsing.parse_front_matter_and_messages import p
 from taskmates.formats.markdown.processing.filter_comments import filter_comments
 
 
+load_cache = {}
+
+
 @typechecked
 def load_participant_config(participants_configs: dict,
                             participant_name: str,
                             taskmates_dir: Union[str, Path]) -> dict:
+    if participant_name in load_cache:
+        return load_cache[participant_name]
+
     updated_participant_config = (participants_configs.get(participant_name) or {}).copy()
     updated_participant_config["name"] = participant_name
+
+    load_cache[participant_name] = updated_participant_config
 
     def find_config(name):
         matching_files = sorted(Path(taskmates_dir).glob(f"*/{name}"))

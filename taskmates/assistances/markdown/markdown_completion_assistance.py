@@ -1,5 +1,3 @@
-import time
-
 from loguru import logger
 from typeguard import typechecked
 
@@ -74,16 +72,10 @@ class MarkdownCompletionAssistance:
                     current_markdown = "".join(markdown_chunks)
 
                     logger.debug(f"Parsing markdown chat")
-                    start_time = time.time()  # Record the start time
                     chat: Chat = await parse_markdown_chat(markdown_chat=current_markdown,
                                                            markdown_path=context["markdown_path"],
                                                            taskmates_dir=taskmates_dir,
                                                            template_params=completion_opts["template_params"])
-
-                    end_time = time.time()  # Record the end time
-                    time_taken = end_time - start_time
-                    logger.debug(f"Parsed markdown chat in {time_taken:.4f} seconds")
-
 
                     # if "model" in context:
                     #     chat.setdefault("model", completion_opts["model"])

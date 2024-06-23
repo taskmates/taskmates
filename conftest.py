@@ -4,7 +4,7 @@ import pytest
 import pytest_socket
 
 from taskmates.signals import Signals, SIGNALS
-
+from taskmates.environment.participants.load_participant_config import load_cache
 
 def pytest_configure(config):
     # Set up logging
@@ -28,6 +28,12 @@ def pytest_runtest_setup(item):
 @pytest.fixture
 def subject(request):
     return request.getfixturevalue(request.param)
+
+
+
+@pytest.fixture(autouse=True)
+def reset_cache():
+    load_cache.clear()
 
 
 @pytest.fixture(autouse=True)
