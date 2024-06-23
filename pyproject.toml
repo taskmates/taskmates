@@ -41,6 +41,7 @@ quart = "^0.19.6"
 ruamel-yaml = "^0.18.5"
 typeguard = "^4.1.5"
 wrapt = "^1.16.0"
+pyparsing = "^3.1.2"
 
 # experimental
 opentelemetry-api = "^1.23.0"
@@ -144,6 +145,7 @@ patch = "^1.16"
 #wandb = "^0.16.1"
 #whisperx = { git = "https://github.com/m-bain/whisperx.git" }
 coverage = "^7.5.3"
+pytest-timeout = "^2.3.1"
 
 [tool.poetry.extras]
 chromadb = ["chromadb"]

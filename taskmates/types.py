@@ -1,4 +1,4 @@
-from typing import TypedDict, NotRequired
+from typing import TypedDict, NotRequired, Dict, List, Union
 
 from taskmates.config import CompletionContext, CompletionOpts
 
@@ -22,3 +22,11 @@ class CompletionPayload(TypedDict):
     markdown_chat: str
     completion_context: CompletionContext
     completion_opts: CompletionOpts
+
+
+class MarkdownMessageSection(TypedDict):
+    raw_content: str
+    message_body: str
+    role: str
+    attributes: Dict[str, any]
+    messages: NotRequired[List[Dict[str, Union[str, list[dict]]]]]

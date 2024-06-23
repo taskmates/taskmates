@@ -9,7 +9,10 @@ def compute_recipient(messages, participants_configs) -> str | None:
     recipient = None
 
     participants = list(participants_configs.keys())
-    participant_messages = [message for message in messages if message["role"] not in ("system", "tool")]
+    participant_messages = [message for message in messages
+                            if message["role"] not in ("system", "tool")
+                            and message.get("name") not in ("cell_output",)
+                            ]
 
     if not participant_messages:
         return None
@@ -23,12 +26,12 @@ def compute_recipient(messages, participants_configs) -> str | None:
         # parse @mentions
         mention = parse_mention(get_text_content(last_participant_message), participants)
 
-    # tool call: resume conversation
-    if messages[-1]["role"] == "tool":
+    # code cell/tool call: resume conversation with caller
+    if messages[-1]["role"] == "tool" or messages[-1].get("name") == "cell_output":
         recipient = last_participant_message["name"]
 
-    # tool caller: resume conversation
-    elif len(messages) > 2 and messages[-2]["role"] == "tool":
+    # code cell/tool caller: resume conversation with requester
+    elif len(messages) > 2 and (messages[-2]["role"] == "tool" or messages[-2].get("name") == "cell_output"):
         tool_calling_message = participant_messages[-2]
         recipient = tool_calling_message["recipient"]
 
