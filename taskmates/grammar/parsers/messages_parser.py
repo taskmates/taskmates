@@ -15,7 +15,8 @@ message_tool_calls = tool_calls_parser()
 message_content = (pp.SkipTo(message_tool_calls | message | pp.stringEnd, include=False)("content"))
 
 message <<= pp.Group(
-    headers
+    pp.line_start
+    + headers
     + message_content
     + pp.Optional(message_tool_calls))
 

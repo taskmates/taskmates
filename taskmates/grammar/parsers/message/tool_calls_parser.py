@@ -36,7 +36,7 @@ def tool_call_parser():
 
 
 def tool_calls_parser():
-    section_header = pp.Literal("###### Steps")
+    section_header = pp.line_start + pp.Literal("###### Steps")
     tool_call = tool_call_parser()
 
     return pp.Group(section_header.suppress()
