@@ -49,6 +49,13 @@ class MarkdownChatCompletionAssistance(CompletionAssistance):
 
             model_conf.setdefault("stop", []).extend([f"\n**{u}>** " for u in user_participants])
 
+            # TODO: check last message recipient is not assistant (resume)
+            # TODO: check participants !- ["user", "assistant"]
+
+            recipient = chat['messages'][-1]['recipient_role']
+            assistant_prompt = f"**{recipient}>**"
+            messages.append({"content": assistant_prompt, "role": "assistant"})
+
             # TODO
             tool_choice = NOT_SET
 
