@@ -20,14 +20,16 @@ def pytest_configure(config):
 
 
 def pytest_runtest_setup(item):
-    # If the test is marked with 'integration', enable socket connections
-    if "integration" in item.keywords:
-        pytest_socket.enable_socket()
-
     # Force the tiktoken encoding to be downloaded before disabling the network
     tiktoken.encoding_for_model("gpt-4")
 
-    pytest_socket.socket_allow_hosts(['127.0.0.1', '::1', 'fe80::1'])
+    # If the test is marked with 'integration', enable socket connections
+    if "integration" in item.keywords:
+        pytest_socket.enable_socket()
+    else:
+        pytest_socket.socket_allow_hosts(['127.0.0.1', '::1', 'fe80::1'])
+
+
 
 
 @pytest.fixture

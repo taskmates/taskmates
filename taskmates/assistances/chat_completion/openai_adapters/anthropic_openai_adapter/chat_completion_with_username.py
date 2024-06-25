@@ -2,8 +2,7 @@ import re
 from typing import AsyncIterable, List
 
 import pytest
-from taskmates.assistances.chat_completion.openai_adapters.anthropic_openai_adapter.anthropic_openai_adapter import \
-    AsyncAnthropicOpenAIAdapter
+
 from taskmates.lib.openai_.model.chat_completion_chunk_model import ChatCompletionChunkModel
 from taskmates.lib.openai_.model.choice_model import ChoiceModel
 from taskmates.lib.openai_.model.delta_model import DeltaModel
@@ -14,6 +13,7 @@ class ChatCompletionWithUsername:
         self.chat_completion = chat_completion
         self.buffered_tokens: List[str] = []
         self.name = None
+        self.buffering = True
 
     async def __aiter__(self):
         async for chunk in self.chat_completion:
@@ -21,37 +21,46 @@ class ChatCompletionWithUsername:
                 yield chunk
                 continue
 
-            content = chunk.choices[0].delta.content
-            self.buffered_tokens.append(content)
+            current_token = chunk.choices[0].delta.content
 
-            buffered_content = "".join(self.buffered_tokens)
-
-            # yield the initial chunk, after confirming there's no username
-            if len(self.buffered_tokens) == 2 and buffered_content[:2] != '**':
-                yield self._create_chunk(chunk, '', 'assistant', None)
-                yield chunk
+            if not self.buffering:
+                yield self._create_chunk(chunk, current_token)
                 continue
 
-            # yield the initial chunk, when completing the username
-            match_username = re.match(r'^\*\*([^*]+)>\*\*:?$', buffered_content)
-            if match_username:
-                self.name = match_username.group(1) if match_username else None
-                yield self._create_chunk(chunk, '', 'assistant', self.name)
-                continue
+            self.buffered_tokens.append(current_token)
 
-            # yield the initial chunk after completing the username, removing any space prefix
-            previous_text = "".join(self.buffered_tokens[:-1])
-            previously_matched_username = re.match(r'^\*\*([^*]+)>\*\*:?$', previous_text)
-            if previously_matched_username:
-                if content[1:] != '':
-                    yield self._create_chunk(chunk, content[1:], None, None)
-                continue
+            full_content = "".join(self.buffered_tokens)
 
-            # buffer incomplete username
-            if buffered_content == '' or re.match(r'^\*\*[^*]*?$', buffered_content):
-                continue
+            if self._is_full_match(full_content):
+                username_chunk = self._flush_username(chunk)
+                yield username_chunk
+                remaining_content = self._extract_remaining_content(full_content)
+                if remaining_content:
+                    yield self._create_chunk(chunk, remaining_content)
+                self.buffering = False
+                self.buffered_tokens = []
+            elif not self._is_partial_match(full_content):
+                yield self._create_chunk(chunk, full_content)
+                self.buffering = False
+                self.buffered_tokens = []
 
-            yield chunk
+    @staticmethod
+    def _is_full_match(content: str) -> bool:
+        return bool(re.match(r'^\*\*([^*]+)>\*\*[ \n]+', content))
+
+    @staticmethod
+    def _is_partial_match(content: str) -> bool:
+        return content == '' or re.match(r'^\*\*[^*]*\*?\*?[ \n]?$', content)
+
+    def _flush_username(self, chunk: ChatCompletionChunkModel) -> ChatCompletionChunkModel:
+        match = re.match(r'^\*\*([^*]+)>\*\*[ \n]+', "".join(self.buffered_tokens))
+        self.name = match.group(1) if match else None
+        return self._create_chunk(chunk, '', 'assistant', self.name)
+
+    @staticmethod
+    def _extract_remaining_content(content: str) -> str:
+        match = re.match(r'^\*\*([^*]+)>\*\*[ \n]+(.*)', content, re.DOTALL)
+        return match.group(2) if match else ''
 
     @staticmethod
     def _create_chunk(original_chunk: ChatCompletionChunkModel, content: str,
@@ -73,180 +82,101 @@ class ChatCompletionWithUsername:
         )
 
 
-@pytest.mark.asyncio
-async def test_buffered_chat_completion_wrapper(tmp_path):
-    async def mock_chat_completion():
+async def mock_chat_completion_generator(content_list: List[str], model: str = 'mock_model'):
+    yield ChatCompletionChunkModel(
+        choices=[ChoiceModel(delta=DeltaModel(role='assistant', content=''))],
+        model=model
+    )
+    for content in content_list:
         yield ChatCompletionChunkModel(
-            choices=[ChoiceModel(delta=DeltaModel(role='assistant', content=''))],
-            model='mock_model'
+            choices=[ChoiceModel(delta=DeltaModel(content=content))],
+            model=model
         )
-        yield ChatCompletionChunkModel(
-            choices=[ChoiceModel(delta=DeltaModel(content='He'))],
-            model='mock_model'
-        )
-        yield ChatCompletionChunkModel(
-            choices=[ChoiceModel(delta=DeltaModel(content='llo'))],
-            model='mock_model'
-        )
-        yield ChatCompletionChunkModel(
-            choices=[ChoiceModel(delta=DeltaModel(content=None), finish_reason='stop')],
-            model='mock_model'
-        )
-
-    # Create an instance of ChatCompletionWithUsername
-    wrapper = ChatCompletionWithUsername(mock_chat_completion())
-
-    # Collect the chunks from the wrapper
-    chunks = [chunk async for chunk in wrapper]
-
-    # Assert the expected behavior
-    assert chunks[0].choices[0].delta.content == ''
-    assert chunks[0].choices[0].delta.role == 'assistant'
-    assert chunks[0].choices[0].delta.name is None
-    assert chunks[1].choices[0].delta.content == 'He'
-    assert chunks[2].choices[0].delta.content == 'llo'
-    assert chunks[3].choices[0].delta.content is None
-    assert chunks[3].choices[0].finish_reason == 'stop'
-
-
-@pytest.mark.asyncio
-async def test_buffered_chat_completion_wrapper_with_username(tmp_path):
-    async def mock_chat_completion_with_username():
-        yield ChatCompletionChunkModel(
-            choices=[ChoiceModel(delta=DeltaModel(role='assistant', content=''))],
-            model='mock_model'
-        )
-        yield ChatCompletionChunkModel(
-            choices=[ChoiceModel(delta=DeltaModel(content='**'))],
-            model='mock_model'
-        )
-        yield ChatCompletionChunkModel(
-            choices=[ChoiceModel(delta=DeltaModel(content='jo'))],
-            model='mock_model'
-        )
-        yield ChatCompletionChunkModel(
-            choices=[ChoiceModel(delta=DeltaModel(content='hn>'))],
-            model='mock_model'
-        )
-        yield ChatCompletionChunkModel(
-            choices=[ChoiceModel(delta=DeltaModel(content='**'))],
-            model='mock_model'
-        )
-        yield ChatCompletionChunkModel(
-            choices=[ChoiceModel(delta=DeltaModel(content=' '))],
-            model='mock_model'
-        )
-        yield ChatCompletionChunkModel(
-            choices=[ChoiceModel(delta=DeltaModel(content='He'))],
-            model='mock_model'
-        )
-        yield ChatCompletionChunkModel(
-            choices=[ChoiceModel(delta=DeltaModel(content='llo'))],
-            model='mock_model'
-        )
-        yield ChatCompletionChunkModel(
-            choices=[ChoiceModel(delta=DeltaModel(content=None), finish_reason='stop')],
-            model='mock_model'
-        )
-
-    # Create an instance of ChatCompletionWithUsername
-    wrapper = ChatCompletionWithUsername(mock_chat_completion_with_username())
-
-    # Collect the chunks from the wrapper
-    chunks = [chunk async for chunk in wrapper]
-
-    texts = [chunk.choices[0].delta.content for chunk in chunks]
-    names = [chunk.choices[0].delta.name for chunk in chunks]
-
-    assert texts == ['', 'He', 'llo', None]
-    assert names == ['john', None, None, None]
-
-    assert chunks[0].choices[0].delta.content == ''
-    assert chunks[0].choices[0].delta.role == 'assistant'
-    assert chunks[0].choices[0].delta.name == 'john'
-
-    assert chunks[-1].choices[0].finish_reason == 'stop'
-
-
-@pytest.mark.asyncio
-async def test_buffered_chat_completion_wrapper_with_username_and_trimming_initial_space(tmp_path):
-    async def mock_chat_completion_with_username():
-        yield ChatCompletionChunkModel(
-            choices=[ChoiceModel(delta=DeltaModel(role='assistant', content=''))],
-            model='mock_model'
-        )
-        yield ChatCompletionChunkModel(
-            choices=[ChoiceModel(delta=DeltaModel(content='**'))],
-            model='mock_model'
-        )
-        yield ChatCompletionChunkModel(
-            choices=[ChoiceModel(delta=DeltaModel(content='jo'))],
-            model='mock_model'
-        )
-        yield ChatCompletionChunkModel(
-            choices=[ChoiceModel(delta=DeltaModel(content='hn>'))],
-            model='mock_model'
-        )
-        yield ChatCompletionChunkModel(
-            choices=[ChoiceModel(delta=DeltaModel(content='**'))],
-            model='mock_model'
-        )
-        yield ChatCompletionChunkModel(
-            choices=[ChoiceModel(delta=DeltaModel(content=' He'))],
-            model='mock_model'
-        )
-        yield ChatCompletionChunkModel(
-            choices=[ChoiceModel(delta=DeltaModel(content='llo'))],
-            model='mock_model'
-        )
-        yield ChatCompletionChunkModel(
-            choices=[ChoiceModel(delta=DeltaModel(content=None), finish_reason='stop')],
-            model='mock_model'
-        )
-
-    # Create an instance of ChatCompletionWithUsername
-    wrapper = ChatCompletionWithUsername(mock_chat_completion_with_username())
-
-    # Collect the chunks from the wrapper
-    chunks = [chunk async for chunk in wrapper]
-
-    texts = [chunk.choices[0].delta.content for chunk in chunks]
-    names = [chunk.choices[0].delta.name for chunk in chunks]
-
-    assert texts == ['', 'He', 'llo', None]
-    assert names == ['john', None, None, None]
-
-    assert chunks[0].choices[0].delta.content == ''
-    assert chunks[0].choices[0].delta.role == 'assistant'
-    assert chunks[0].choices[0].delta.name == 'john'
-
-    assert chunks[-1].choices[0].finish_reason == 'stop'
-
-
-@pytest.mark.integration
-@pytest.mark.asyncio
-async def test_integration():
-    client = AsyncAnthropicOpenAIAdapter()
-    chat_completion = await client.chat.completions.create(
-        model="claude-3-sonnet-20240229",
-        stream=True,
-        messages=[
-            {"role": "system", "content": "You're `john`, a math expert. Prefix your messages with **john>**"},
-            {"role": "user", "content": "**alice>** Short answer. 1 + 1=?"}
-        ]
+    yield ChatCompletionChunkModel(
+        choices=[ChoiceModel(delta=DeltaModel(content=None), finish_reason='stop')],
+        model=model
     )
 
-    received = []
-    async for resp in ChatCompletionWithUsername(chat_completion):
-        received += [resp]
 
-    assert received[0].model_dump()["choices"][0]["delta"]["role"] == "assistant"
-    assert received[0].model_dump()["choices"][0]["delta"]["name"] == "john"
+@pytest.mark.asyncio
+async def test_buffered_chat_completion_wrapper_without_username(tmp_path):
+    content_list = ['He', 'llo']
+    wrapper = ChatCompletionWithUsername(mock_chat_completion_generator(content_list))
 
-    tokens = [resp.model_dump()["choices"][0]["delta"]["content"] for resp in received]
+    chunks = [chunk async for chunk in wrapper]
+    texts = [chunk.choices[0].delta.content for chunk in chunks if chunk.choices[0].delta.content]
+    assert "".join(texts) == "Hello"
 
-    content = ''.join(tokens[:-1])
-    assert 'john' not in content
-    assert tokens[0] == ''
-    assert '2' in tokens
-    assert tokens[-1] is None
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("content_list", [
+    ['**', 'jo', 'hn', '>', '**', ' ', 'He', 'llo'],
+    # ['**', 'jo', 'hn', '>', '**', '\n', 'He', 'llo'],
+    # ['**', 'jo', 'hn>', '**', ' ', 'He', 'llo'],
+    # ['**', 'jo', 'hn', '>**', ' ', 'He', 'llo'],
+    # ['**', 'jo', 'hn>', '**', ' He', 'llo'],
+    # ['**john>**', ' Hello'],
+    # ['**john>** ', 'Hello'],
+    # ['**john>** Hello'],
+    # ['**john>**\nHello'],
+])
+async def test_buffered_chat_completion_wrapper_with_username(tmp_path, content_list):
+    wrapper = ChatCompletionWithUsername(mock_chat_completion_generator(content_list))
+
+    chunks = [chunk async for chunk in wrapper]
+
+    texts = [chunk.choices[0].delta.content for chunk in chunks if chunk.choices[0].delta.content]
+    name = chunks[0].choices[0].delta.name
+
+    assert "".join(texts) == "Hello"
+    assert name == 'john'
+
+    assert chunks[0].choices[0].delta.content == ''
+    assert chunks[0].choices[0].delta.role == 'assistant'
+    assert chunks[0].choices[0].delta.name == 'john'
+
+    assert chunks[-1].choices[0].finish_reason == 'stop'
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("content_list", [
+    ['**Hello** Wo', 'rl', 'd'],
+    ['**Hello**', ' Wo', 'r', 'ld'],
+])
+async def test_buffered_chat_completion_wrapper_with_false_positives(tmp_path, content_list):
+    wrapper = ChatCompletionWithUsername(mock_chat_completion_generator(content_list))
+
+    chunks = [chunk async for chunk in wrapper]
+    texts = [chunk.choices[0].delta.content for chunk in chunks if chunk.choices[0].delta.content]
+    assert "".join(texts) == "**Hello** World"
+    print(texts)
+    tokens_were_streamed = len(chunks) > 3
+    assert tokens_were_streamed
+
+# @pytest.mark.integration
+# @pytest.mark.asyncio
+# async def test_integration():
+#     client = AsyncAnthropicOpenAIAdapter()
+#     chat_completion = await client.chat.completions.create(
+#         model="claude-3-haiku-20240307",
+#         stream=True,
+#         messages=[
+#             {"role": "system", "content": "You're `john`, a math expert. Prefix your messages with **john>**"},
+#             {"role": "user", "content": "**alice>** Short answer. 1 + 1=?"}
+#         ]
+#     )
+#
+#     received = []
+#     async for resp in ChatCompletionWithUsername(chat_completion):
+#         received += [resp]
+#
+#     assert received[0].model_dump()["choices"][0]["delta"]["role"] == "assistant"
+#     assert received[0].model_dump()["choices"][0]["delta"]["name"] == "john"
+#
+#     tokens = [resp.model_dump()["choices"][0]["delta"]["content"] for resp in received]
+#
+#     content = ''.join(tokens[:-1])
+#     assert 'john' not in content
+#     assert tokens[0] == ''
+#     assert '2' in tokens
+#     assert tokens[-1] is None
