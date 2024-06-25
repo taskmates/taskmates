@@ -12,6 +12,7 @@ class ChatCompletionPreProcessor:
     def __init__(self, chat_completion: AsyncIterable[ChatCompletionChunkModel]):
         self.chat_completion = chat_completion
         self.name = None
+        self.buffering = True
 
     async def __aiter__(self):
         async for chunk in self.chat_completion:
@@ -19,14 +20,18 @@ class ChatCompletionPreProcessor:
                 yield chunk
                 continue
 
-            content = chunk.choices[0].delta.content
-            content = content.lstrip()  # Remove leading spaces from all chunks
+            if not self.buffering:
+                yield chunk
+                continue
 
-            if content and re.match(r'^[#*\->`\[\]{}]', content):
-                content = "\n" + content
+            current_token = chunk.choices[0].delta.content
 
-            if content:  # Skip empty content chunks
-                chunk.choices[0].delta.content = content
+            if current_token and re.match(r'^[#*\->`\[\]{}]', current_token):
+                current_token = "\n" + current_token
+
+            if current_token:
+                self.buffering = False
+                chunk.choices[0].delta.content = current_token
                 yield chunk
 
 
@@ -54,18 +59,18 @@ async def test_chat_completion_pre_processor_no_changes():
     chunks = [chunk async for chunk in pre_processor]
     texts = [chunk.choices[0].delta.content for chunk in chunks if chunk.choices[0].delta.content is not None]
 
-    assert texts == ['Hello', 'World']
+    assert texts == ['Hello', ' World']
 
 
 @pytest.mark.asyncio
 async def test_chat_completion_pre_processor_strip_leading_space():
-    content_list = [' Hello', ' World']
+    content_list = ['Hello', ' World']
     pre_processor = ChatCompletionPreProcessor(mock_chat_completion_generator(content_list))
 
     chunks = [chunk async for chunk in pre_processor]
     texts = [chunk.choices[0].delta.content for chunk in chunks if chunk.choices[0].delta.content is not None]
 
-    assert texts == ['Hello', 'World']
+    assert texts == ['Hello', ' World']
 
 
 @pytest.mark.asyncio
@@ -76,7 +81,7 @@ async def test_chat_completion_pre_processor_add_newline_list():
     chunks = [chunk async for chunk in pre_processor]
     texts = [chunk.choices[0].delta.content for chunk in chunks if chunk.choices[0].delta.content is not None]
 
-    assert texts == ['\n* Hello', 'World']
+    assert texts == ['\n* Hello', ' World']
 
 
 @pytest.mark.asyncio
@@ -87,7 +92,7 @@ async def test_chat_completion_pre_processor_add_newline_heading():
     chunks = [chunk async for chunk in pre_processor]
     texts = [chunk.choices[0].delta.content for chunk in chunks if chunk.choices[0].delta.content is not None]
 
-    assert texts == ['\n# Hello', 'World']
+    assert texts == ['\n# Hello', ' World']
 
 
 @pytest.mark.asyncio
@@ -109,18 +114,18 @@ async def test_chat_completion_pre_processor_no_newline_regular_text():
     chunks = [chunk async for chunk in pre_processor]
     texts = [chunk.choices[0].delta.content for chunk in chunks if chunk.choices[0].delta.content is not None]
 
-    assert texts == ['This is regular text', 'without Markdown']
+    assert texts == ['This is regular text', ' without Markdown']
 
 
 @pytest.mark.asyncio
 async def test_chat_completion_pre_processor_multiple_chunks():
-    content_list = [' # Heading', ' * List item', ' > Blockquote', ' Regular text']
+    content_list = ['# Heading', '* List item', '> Blockquote', ' Regular text']
     pre_processor = ChatCompletionPreProcessor(mock_chat_completion_generator(content_list))
 
     chunks = [chunk async for chunk in pre_processor]
     texts = [chunk.choices[0].delta.content for chunk in chunks if chunk.choices[0].delta.content is not None]
 
-    assert texts == ['\n# Heading', '\n* List item', '\n> Blockquote', 'Regular text']
+    assert texts == ['\n# Heading', '* List item', '> Blockquote', ' Regular text']
 
 
 @pytest.mark.asyncio
@@ -132,3 +137,25 @@ async def test_chat_completion_pre_processor_no_content():
     texts = [chunk.choices[0].delta.content for chunk in chunks if chunk.choices[0].delta.content is not None]
 
     assert texts == []
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("content_list, expected_output", [
+    ([' Leading space', '  Double leading space'],
+     [' Leading space', '  Double leading space']),
+    (['# Heading', '## Subheading'],
+     ['\n# Heading', '## Subheading']),
+    (['* List item', '- Another list item'],
+     ['\n* List item', '- Another list item']),
+    (['> Blockquote', '>> Nested blockquote'],
+     ['\n> Blockquote', '>> Nested blockquote']),
+    (['```python', 'print("Hello")'],
+     ['\n```python', 'print("Hello")'])
+])
+async def test_chat_completion_pre_processor_various_content(content_list, expected_output):
+    pre_processor = ChatCompletionPreProcessor(mock_chat_completion_generator(content_list))
+
+    chunks = [chunk async for chunk in pre_processor]
+    texts = [chunk.choices[0].delta.content for chunk in chunks if chunk.choices[0].delta.content is not None]
+
+    assert texts == expected_output
