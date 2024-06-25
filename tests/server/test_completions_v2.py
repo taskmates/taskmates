@@ -33,7 +33,10 @@ async def test_chat_completion(app, tmp_path):
     """)
 
     expected_response = textwrap.dedent("""\
-    **assistant>** Short answer. 1+1=
+    **assistant>** 
+    > Short answer. 1+1=
+    > 
+    > 
     
     **user>** """)
 
@@ -46,7 +49,7 @@ async def test_chat_completion(app, tmp_path):
             "markdown_path": str(tmp_path / "test.md"),
         },
         "completion_opts": {
-            "model": "echo",
+            "model": "quote",
         },
     }
 
@@ -69,7 +72,10 @@ async def test_chat_completion_with_mention(app, tmp_path):
     """)
 
     expected_response = textwrap.dedent("""\
-    **alice>** Hey @alice short answer. 1+1=
+    **alice>** 
+    > Hey @alice short answer. 1+1=
+    > 
+    > 
     
     **user>** """)
 
@@ -82,7 +88,7 @@ async def test_chat_completion_with_mention(app, tmp_path):
             "markdown_path": str(tmp_path / "test.md"),
         },
         "completion_opts": {
-            "model": "echo",
+            "model": "quote",
         }
     }
 
@@ -118,8 +124,16 @@ async def test_tool_completion(app, tmp_path):
                          '</pre>\n'
                          '-[x] Done\n'
                          '\n'
-                         "**assistant>** <pre class='output' style='display:none'> 2 Exit Code: 0 "
-                         '</pre> -[x] Done\n'
+                         "**assistant>** \n"
+                         "> \n"
+                         "> <pre class='output' style='display:none'>\n"
+                         "> 2\n"
+                         "> \n"
+                         "> Exit Code: 0\n"
+                         '> </pre>\n'
+                         '> -[x] Done\n'
+                         '> \n'
+                         '> \n'
                          '\n'
                          '**user>** ')
 
@@ -132,7 +146,7 @@ async def test_tool_completion(app, tmp_path):
             "markdown_path": str(tmp_path / "test.md"),
         },
         "completion_opts": {
-            "model": "echo",
+            "model": "quote",
         },
     }
 
@@ -166,8 +180,15 @@ async def test_code_cell_completion(app, tmp_path):
     2
     </pre>
 
-    **assistant>** ###### Cell Output: stdout [cell_0] <pre> 2 </pre>
-
+    **assistant>** 
+    > ###### Cell Output: stdout [cell_0]
+    > 
+    > <pre>
+    > 2
+    > </pre>
+    > 
+    > 
+    
     **user>** ''')
 
     test_payload: CompletionPayload = {
@@ -179,7 +200,7 @@ async def test_code_cell_completion(app, tmp_path):
             "markdown_path": str(tmp_path / "test.md"),
         },
         "completion_opts": {
-            "model": "echo",
+            "model": "quote",
         },
     }
 
@@ -255,7 +276,7 @@ async def test_interrupt_tool(app, tmp_path):
             "markdown_path": str(tmp_path / "test.md"),
         },
         "completion_opts": {
-            "model": "echo",
+            "model": "quote",
         },
     }
 
@@ -301,7 +322,12 @@ async def test_code_cell_no_output(app, tmp_path):
                            '\n'
                            'Done\n'
                            '\n'
-                           '**assistant>** ###### Cell Output: stdout [cell_0] Done\n'
+                           '**assistant>** \n'
+                           '> ###### Cell Output: stdout [cell_0]\n'
+                           '> \n'
+                           '> Done\n'
+                           '> \n'
+                           '> \n'
                            '\n'
                            '**user>** ')
     test_payload: CompletionPayload = {
@@ -313,7 +339,7 @@ async def test_code_cell_no_output(app, tmp_path):
             "markdown_path": str(tmp_path / "test.md"),
         },
         "completion_opts": {
-            "model": "echo",
+            "model": "quote",
         },
     }
 
@@ -350,7 +376,7 @@ async def test_interrupt_code_cell(app, tmp_path):
             "markdown_path": str(tmp_path / "test.md"),
         },
         "completion_opts": {
-            "model": "echo",
+            "model": "quote",
         },
     }
 

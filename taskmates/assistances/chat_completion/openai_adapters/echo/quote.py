@@ -8,7 +8,7 @@ from taskmates.lib.openai_.model.choice_model import ChoiceModel
 from taskmates.lib.openai_.model.delta_model import DeltaModel
 
 
-class Echo:
+class Quote:
     async def create(self,
                      model: str,
                      stream: bool,
@@ -29,6 +29,7 @@ class Echo:
             )
 
             content = messages[-1]["content"]
+            content = '\n'.join('> ' + line for line in content.split('\n'))
 
             enc = tiktoken.encoding_for_model("gpt-4")
             encoded = enc.encode(content)
@@ -60,9 +61,9 @@ class Echo:
 
 @pytest.mark.asyncio
 async def test_mock_client():
-    client = Echo()
+    client = Quote()
     chat_completion = await client.chat.completions.create(
-        model="mock_model",
+        model="quote",
         stream=True,
         messages=[{"role": "user", "content": "Short answer. 1 + 1=?"}]
     )
@@ -75,8 +76,7 @@ async def test_mock_client():
     tokens = [chunk.choices[0].delta.content
               for chunk in received
               if chunk.choices[0].delta.content is not None]
-    assert 'Short answer. 1 + 1=?' == ''.join(tokens).strip()
-    assert tokens == ['', 'Short', ' answer', '.', ' ', '1', ' +', ' ', '1', '=?']
+    assert ''.join(tokens).strip() == '> Short answer. 1 + 1=?'
 
     assert received[-1].choices[0].delta.content is None
     assert received[-1].choices[0].finish_reason == "stop"

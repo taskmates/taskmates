@@ -27,6 +27,7 @@ CONTEXT_WINDOWS = {
     "claude-3-sonnet-20240229": 4096,
     "claude-3-5-sonnet-20240620": 4096,
     "echo": 4096,
+    "quote": 4096,
     # ollama
     "codeqwen": 64000,
 }

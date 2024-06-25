@@ -10,7 +10,7 @@ async def echo():
         message = await websocket.receive()
         print(f'Received message: {message}')
 
-        enc = tiktoken.get_encoding("o200k_base")
+        enc = tiktoken.encoding_for_model("gpt-4")
         encoded = enc.encode(message)
         for token in encoded:
             await websocket.send(enc.decode([token]))

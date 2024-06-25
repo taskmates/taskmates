@@ -5,6 +5,7 @@ import openai as oai
 from taskmates.assistances.chat_completion.openai_adapters.anthropic_openai_adapter.anthropic_openai_adapter import \
     AsyncAnthropicOpenAIAdapter
 from taskmates.assistances.chat_completion.openai_adapters.echo.echo import Echo
+from taskmates.assistances.chat_completion.openai_adapters.echo.quote import Quote
 
 
 def get_model_client(model_conf: dict):
@@ -22,6 +23,8 @@ def get_model_client(model_conf: dict):
         client = oai.AsyncOpenAI()
     elif "echo" in model_conf["model"]:
         client = Echo()
+    elif "quote" in model_conf["model"]:
+        client = Quote()
     else:
         raise ValueError(f"Unknown model {model_conf['model']}")
     return client

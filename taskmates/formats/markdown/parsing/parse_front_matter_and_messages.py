@@ -3,6 +3,7 @@ import time
 from pathlib import Path
 from typing import Tuple, List, Dict, Union
 
+import pyparsing
 from loguru import logger
 from typeguard import typechecked
 
@@ -30,7 +31,16 @@ def parse_front_matter_and_messages(source_file: Path,
 
     file_logger.debug(f"[parse_front_matter_and_messages] {start_time}-chat.md", content=content)
 
-    parsed_chat = parser.parse_string(content)
+    try:
+        parsed_chat = parser.parse_string(content)
+    except pyparsing.exceptions.ParseSyntaxException as e:
+        import pyparsing as pp
+        ppt = pp.testing
+        print(ppt.with_line_numbers(content))
+
+        logger.error(f"Failed to parse markdown: /var/tmp/taskmates/logs/{start_time}-chat.md")
+        logger.error(e)
+        raise
     front_matter = parsed_chat.front_matter or {}
 
     # If the front_matter contains a `system` key, prepend it as the system message
