@@ -111,14 +111,14 @@ async def test_buffered_chat_completion_wrapper_without_username(tmp_path):
 @pytest.mark.asyncio
 @pytest.mark.parametrize("content_list", [
     ['**', 'jo', 'hn', '>', '**', ' ', 'He', 'llo'],
-    # ['**', 'jo', 'hn', '>', '**', '\n', 'He', 'llo'],
-    # ['**', 'jo', 'hn>', '**', ' ', 'He', 'llo'],
-    # ['**', 'jo', 'hn', '>**', ' ', 'He', 'llo'],
-    # ['**', 'jo', 'hn>', '**', ' He', 'llo'],
-    # ['**john>**', ' Hello'],
-    # ['**john>** ', 'Hello'],
-    # ['**john>** Hello'],
-    # ['**john>**\nHello'],
+    ['**', 'jo', 'hn', '>', '**', '\n', 'He', 'llo'],
+    ['**', 'jo', 'hn>', '**', ' ', 'He', 'llo'],
+    ['**', 'jo', 'hn', '>**', ' ', 'He', 'llo'],
+    ['**', 'jo', 'hn>', '**', ' He', 'llo'],
+    ['**john>**', ' Hello'],
+    ['**john>** ', 'Hello'],
+    ['**john>** Hello'],
+    ['**john>**\nHello'],
 ])
 async def test_buffered_chat_completion_wrapper_with_username(tmp_path, content_list):
     wrapper = ChatCompletionWithUsername(mock_chat_completion_generator(content_list))
