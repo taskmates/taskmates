@@ -34,9 +34,9 @@ def parse_front_matter_and_messages(source_file: Path,
     try:
         parsed_chat = parser.parse_string(content)
     except pyparsing.exceptions.ParseSyntaxException as e:
-        import pyparsing as pp
-        ppt = pp.testing
-        print(ppt.with_line_numbers(content))
+        # import pyparsing as pp
+        # ppt = pp.testing
+        # print(ppt.with_line_numbers(content))
 
         logger.error(f"Failed to parse markdown: /var/tmp/taskmates/logs/{start_time}-chat.md")
         logger.error(e)
