@@ -1,3 +1,5 @@
+import json
+
 from typeguard import typechecked
 
 from taskmates.assistances.chat_completion.chat_completion_editor_completion import ChatCompletionEditorCompletion
@@ -41,6 +43,11 @@ class MarkdownChatCompletionAssistance(CompletionAssistance):
             messages = [{key: value for key, value in m.items()
                          if key not in ("recipient", "recipient_role", "code_cells")}
                         for m in chat["messages"]]
+
+            for message in messages:
+                tool_calls = message.get("tool_calls", [])
+                for tool_call in tool_calls:
+                    tool_call["function"]["arguments"] = json.dumps(tool_call["function"]["arguments"])
 
             user_participants = ["user"]
             for name, config in chat["participants"].items():

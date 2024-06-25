@@ -7,6 +7,8 @@ from typeguard import typechecked
 
 from taskmates.assistances.chat_completion.openai_adapters.anthropic_openai_adapter.chat_completion_pre_processor import \
     ChatCompletionPreProcessor
+from taskmates.assistances.chat_completion.openai_adapters.anthropic_openai_adapter.chat_completion_with_username import \
+    ChatCompletionWithUsername
 from taskmates.formats.markdown.metadata.get_model_client import get_model_client
 from taskmates.lib.logging_.file_logger import file_logger
 from taskmates.lib.not_set.not_set import NOT_SET
@@ -53,12 +55,14 @@ async def api_request(messages: list, model_conf: dict, model_params: dict) -> d
 
             if model_conf["stream"]:
                 try:
-                    async for chat_completion_chunk in ChatCompletionPreProcessor(chat_completion):
+                    async for chat_completion_chunk in \
+                            ChatCompletionWithUsername(ChatCompletionPreProcessor(chat_completion)):
                         if interrupted:
                             break
                         for choice in chat_completion_chunk.choices:
                             if choice.delta.content:
                                 content: str = choice.delta.content
+                                # TODO move this to ChatCompletionPreProcessor
                                 choice.delta.content = content.replace("\r", "")
                         await signals.chat_completion.send_async(chat_completion_chunk)
 

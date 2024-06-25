@@ -12,7 +12,6 @@ class ChatCompletionWithUsername:
     def __init__(self, chat_completion: AsyncIterable[ChatCompletionChunkModel]):
         self.chat_completion = chat_completion
         self.buffered_tokens: List[str] = []
-        self.name = None
         self.buffering = True
 
     async def __aiter__(self):
@@ -32,14 +31,16 @@ class ChatCompletionWithUsername:
             full_content = "".join(self.buffered_tokens)
 
             if self._is_full_match(full_content):
-                username_chunk = self._flush_username(chunk)
-                yield username_chunk
+                match = re.match(r'^\*\*([^*]+)>\*\*[ \n]+', "".join(self.buffered_tokens))
+                username = match.group(1)
+                yield self._flush_username(chunk, username)
                 remaining_content = self._extract_remaining_content(full_content)
                 if remaining_content:
                     yield self._create_chunk(chunk, remaining_content)
                 self.buffering = False
                 self.buffered_tokens = []
             elif not self._is_partial_match(full_content):
+                yield self._flush_username(chunk, None)
                 yield self._create_chunk(chunk, full_content)
                 self.buffering = False
                 self.buffered_tokens = []
@@ -52,10 +53,8 @@ class ChatCompletionWithUsername:
     def _is_partial_match(content: str) -> bool:
         return content == '' or re.match(r'^\*\*[^*]*\*?\*?[ \n]?$', content)
 
-    def _flush_username(self, chunk: ChatCompletionChunkModel) -> ChatCompletionChunkModel:
-        match = re.match(r'^\*\*([^*]+)>\*\*[ \n]+', "".join(self.buffered_tokens))
-        self.name = match.group(1) if match else None
-        return self._create_chunk(chunk, '', 'assistant', self.name)
+    def _flush_username(self, chunk: ChatCompletionChunkModel, username) -> ChatCompletionChunkModel:
+        return self._create_chunk(chunk, '', 'assistant', username)
 
     @staticmethod
     def _extract_remaining_content(content: str) -> str:
@@ -149,9 +148,15 @@ async def test_buffered_chat_completion_wrapper_with_false_positives(tmp_path, c
     chunks = [chunk async for chunk in wrapper]
     texts = [chunk.choices[0].delta.content for chunk in chunks if chunk.choices[0].delta.content]
     assert "".join(texts) == "**Hello** World"
-    print(texts)
+
     tokens_were_streamed = len(chunks) > 3
     assert tokens_were_streamed
+
+    assert chunks[0].choices[0].delta.content == ''
+    assert chunks[0].choices[0].delta.role == 'assistant'
+    assert chunks[0].choices[0].delta.name is None
+
+    assert chunks[-1].choices[0].finish_reason == 'stop'
 
 # @pytest.mark.integration
 # @pytest.mark.asyncio
