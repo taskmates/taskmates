@@ -31,7 +31,7 @@ class ChatCompletionWithUsername:
             full_content = "".join(self.buffered_tokens)
 
             if self._is_full_match(full_content):
-                match = re.match(r'^\*\*([^*]+)>\*\*[ \n]+', "".join(self.buffered_tokens))
+                match = re.match(r'^[ \n]*\*\*([^*]+)>\*\*[ \n]+', "".join(self.buffered_tokens))
                 username = match.group(1)
                 yield self._flush_username(chunk, username)
                 remaining_content = self._extract_remaining_content(full_content)
@@ -47,18 +47,18 @@ class ChatCompletionWithUsername:
 
     @staticmethod
     def _is_full_match(content: str) -> bool:
-        return bool(re.match(r'^\*\*([^*]+)>\*\*[ \n]+', content))
+        return bool(re.match(r'^[ \n]*\*\*([^*]+)>\*\*[ \n]+', content))
 
     @staticmethod
     def _is_partial_match(content: str) -> bool:
-        return content == '' or re.match(r'^\*\*[^*]*\*?\*?[ \n]?$', content)
+        return content == '' or re.match(r'^[ \n]*\*\*[^*]*\*?\*?[ \n]?$', content)
 
     def _flush_username(self, chunk: ChatCompletionChunkModel, username) -> ChatCompletionChunkModel:
         return self._create_chunk(chunk, '', 'assistant', username)
 
     @staticmethod
     def _extract_remaining_content(content: str) -> str:
-        match = re.match(r'^\*\*([^*]+)>\*\*[ \n]+(.*)', content, re.DOTALL)
+        match = re.match(r'^[ \n]*\*\*([^*]+)>\*\*[ \n]+(.*)', content, re.DOTALL)
         return match.group(2) if match else ''
 
     @staticmethod
@@ -118,6 +118,8 @@ async def test_buffered_chat_completion_wrapper_without_username(tmp_path):
     ['**john>** ', 'Hello'],
     ['**john>** Hello'],
     ['**john>**\nHello'],
+    ['  **john>** Hello'],
+    ['\n\n**john>**\nHello'],
 ])
 async def test_buffered_chat_completion_wrapper_with_username(tmp_path, content_list):
     wrapper = ChatCompletionWithUsername(mock_chat_completion_generator(content_list))
