@@ -17,7 +17,7 @@ def message_parser():
         pp.SkipTo(
             (
                     (section_start_anchor()
-                    + (tool_calls_parser() | headers_parser()))
+                     + (tool_calls_parser() | headers_parser()))
                     | pp.StringEnd()
             ),
             include=False)
@@ -32,11 +32,11 @@ def message_parser():
     return message
 
 
-def first_message_parser():
+def first_message_parser(implicit_role: str = "user"):
     message_content = (pp.SkipTo(
         (section_start_anchor() + (tool_calls_parser() | headers_parser()) | pp.StringEnd()),
         include=False)("content"))
-    implicit_header = (pp.LineStart() + pp.Empty().setParseAction(lambda: "user")("name"))
+    implicit_header = (pp.LineStart() + pp.Empty().setParseAction(lambda: implicit_role)("name"))
     first_message = pp.Group(
         (headers_parser() | implicit_header)
         + message_content
@@ -45,8 +45,8 @@ def first_message_parser():
     return first_message
 
 
-def messages_parser():
-    first_message, message = first_message_parser(), message_parser()
+def messages_parser(implicit_role: str = "user"):
+    first_message, message = first_message_parser(implicit_role=implicit_role), message_parser()
     messages = (first_message + message[...]).set_results_name("messages")
 
     return messages

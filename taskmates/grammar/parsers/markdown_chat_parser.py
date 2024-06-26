@@ -10,9 +10,9 @@ pp.enable_all_warnings()
 pp.ParserElement.set_default_whitespace_chars("")
 
 
-def markdown_chat_parser():
+def markdown_chat_parser(implicit_role: str = "user"):
     comments = pp.Suppress(LineStart() + pp.Literal("[//]: #") + pp.restOfLine)
-    return (pp.Opt(front_matter_parser()) + messages_parser() + pp.StringEnd()).ignore(comments)
+    return (pp.Opt(front_matter_parser()) + messages_parser(implicit_role=implicit_role) + pp.StringEnd()).ignore(comments)
 
 
 def test_no_line_end():

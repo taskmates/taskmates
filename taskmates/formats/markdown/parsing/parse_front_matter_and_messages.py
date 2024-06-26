@@ -7,8 +7,13 @@ import pyparsing
 from loguru import logger
 from typeguard import typechecked
 
+from taskmates.formats.markdown.processing.process_image_transclusion import render_image_transclusion
+from taskmates.formats.openai.get_text_content import get_text_content
+from taskmates.formats.openai.set_text_content import set_text_content
 from taskmates.grammar.parsers.markdown_chat_parser import markdown_chat_parser
 from taskmates.lib.logging_.file_logger import file_logger
+from taskmates.lib.markdown_.render_transclusions import render_transclusions
+from taskmates.lib.root_path.root_path import root_path
 
 
 @typechecked
@@ -23,7 +28,7 @@ def parse_front_matter_and_messages(source_file: Path,
     start_time = time.time()  # Record the start time
     logger.debug(f"[parse_front_matter_and_messages] Parsing markdown: {start_time}-chat.md")
 
-    parser = markdown_chat_parser()
+    parser = markdown_chat_parser(implicit_role=implicit_role)
 
     end_time = time.time()  # Record the end time
     time_taken = end_time - start_time
@@ -60,9 +65,17 @@ def parse_front_matter_and_messages(source_file: Path,
                    **({"tool_calls": message_dict["tool_calls"]} if "tool_calls" in message_dict else {}),
                    **attributes}
 
-        messages.append(message)
+        text_content = get_text_content(message_dict)
 
-        # TODO: process cell outputs here
+        # transclusions
+        text_content = render_transclusions(text_content, source_file=source_file)
+
+        # image_transclusion
+        text_content = render_image_transclusion(text_content, transclusions_base_dir=transclusions_base_dir)
+
+        set_text_content(message, text_content)
+
+        messages.append(message)
 
     # set assistant roles
     for message in messages:
@@ -443,3 +456,47 @@ def test_parse_chat_messages_with_deduplication(tmp_path):
     ]
 
     assert messages == expected_messages
+
+
+def test_parse_chat_messages_with_text_transclusion(tmp_path):
+    transcluded_file = tmp_path / "transcluded_content.md"
+    transcluded_file.write_text("This is transcluded content.\nIt should appear in the parsed message.")
+
+    input = f"""\
+        **user>** Here is a message with transclusion.
+        
+        #[[{transcluded_file}]]
+        
+        **assistant>** Here is a response.
+        """
+    messages, front_matter = parse_front_matter_and_messages(tmp_path / "main.md", textwrap.dedent(input), "user")
+    expected_messages = [
+        {'role': 'user', 'name': 'user',
+         'content': f'Here is a message with transclusion.\n\nThe following are the contents of the file {transcluded_file}:\n\n""""\nThis is transcluded content.\nIt should appear in the parsed message.\n""""\n\n'},
+        {'role': 'assistant', 'name': 'assistant', 'content': 'Here is a response.\n'}
+    ]
+    assert messages == expected_messages
+
+
+def test_parse_chat_messages_with_image_transclusion(tmp_path):
+    image_file = root_path() / "tests/fixtures/image.jpg"
+
+    input = f"""\
+        **user>** Here is a message with image transclusion.
+        
+        ![[{image_file}]]
+        
+        **assistant>** Here is a response.
+        """
+    messages, front_matter = parse_front_matter_and_messages(tmp_path / "main.md", textwrap.dedent(input), "user")
+    assert len(messages) == 2
+    assert messages[0]['role'] == 'user'
+    assert messages[0]['name'] == 'user'
+    assert isinstance(messages[0]['content'], list)
+    assert messages[0]['content'][0]['type'] == 'text'
+    assert messages[0]['content'][0]['text'] == f'Here is a message with image transclusion.\n\n![[{image_file}]]\n\n'
+    assert messages[0]['content'][1]['type'] == 'image_url'
+    assert messages[0]['content'][1]['image_url']['url'].startswith('data:image/jpg;base64,')
+    assert messages[1]['role'] == 'assistant'
+    assert messages[1]['name'] == 'assistant'
+    assert messages[1]['content'] == 'Here is a response.\n'

@@ -20,7 +20,7 @@ def get_image_contents(message: dict[str, list | str | None]) -> list:
         image["type"] = "image"
         image["source"] = {
             "type": "base64",
-            "media_type": media_type.rstrip(";base64"),
+            "media_type": media_type.rstrip(";base64").replace("jpg", "jpeg"),
             "data": base64_image
         }
         images.append(image)
