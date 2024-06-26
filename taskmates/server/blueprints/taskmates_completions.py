@@ -5,6 +5,7 @@ from loguru import logger
 from quart import Blueprint, Response
 from quart import websocket
 
+import taskmates
 from taskmates.assistances.markdown.markdown_completion_assistance import MarkdownCompletionAssistance
 from taskmates.config import CompletionContext, CompletionOpts, COMPLETION_CONTEXT, COMPLETION_OPTS, \
     updated_config
@@ -30,6 +31,10 @@ async def taskmates_completions():
         # print(f"raw_payload: {raw_payload}")
 
         payload: CompletionPayload = snake_case(json.loads(raw_payload))
+
+        client_version = payload['version']
+        if client_version != taskmates.__version__:
+            raise ValueError(f"Invalid client version {client_version}. Expected v2")
 
         completion_context: CompletionContext = payload["completion_context"]
         completion_opts: CompletionOpts = payload["completion_opts"]

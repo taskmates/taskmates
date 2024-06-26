@@ -20,6 +20,7 @@ class MarkdownOpts(TypedDict):
 
 class CompletionPayload(TypedDict):
     type: str
+    version: str
     markdown_chat: str
     completion_context: CompletionContext
     completion_opts: CompletionOpts

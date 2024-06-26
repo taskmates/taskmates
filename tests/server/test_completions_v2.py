@@ -6,6 +6,7 @@ from quart import Quart
 from quart.testing.connections import WebsocketDisconnectError
 from typeguard import typechecked
 
+import taskmates
 from taskmates.config import SERVER_CONFIG
 from taskmates.server.blueprints.taskmates_completions import completions_bp as completions_v2_bp
 from taskmates.types import CompletionPayload
@@ -42,6 +43,7 @@ async def test_chat_completion(app, tmp_path):
 
     test_payload: CompletionPayload = {
         "type": "completions_request",
+        "version": taskmates.__version__,
         "markdown_chat": markdown_chat,
         "completion_context": {
             "request_id": "test_request_id",
@@ -81,6 +83,7 @@ async def test_chat_completion_with_mention(app, tmp_path):
 
     test_payload: CompletionPayload = {
         "type": "completions_request",
+        "version": taskmates.__version__,
         "markdown_chat": markdown_chat,
         "completion_context": {
             "request_id": "test_request_id",
@@ -128,6 +131,7 @@ async def test_tool_completion(app, tmp_path):
 
     test_payload: CompletionPayload = {
         "type": "completions_request",
+        "version": taskmates.__version__,
         "markdown_chat": markdown_chat,
         "completion_context": {
             "request_id": "test_echo_tool",
@@ -173,6 +177,7 @@ async def test_code_cell_completion(app, tmp_path):
 
     test_payload: CompletionPayload = {
         "type": "completions_request",
+        "version": taskmates.__version__,
         "markdown_chat": markdown_chat,
         "completion_context": {
             "request_id": "test_echo_code_cell",
@@ -202,6 +207,7 @@ async def test_error_completion(app, tmp_path):
 
     test_payload: CompletionPayload = {
         "type": "completions_request",
+        "version": taskmates.__version__,
         "markdown_chat": "REQUEST\n\n",
         "completion_context": {
             "request_id": "test_error_completion",
@@ -249,6 +255,7 @@ async def test_interrupt_tool(app, tmp_path):
 
     test_payload: CompletionPayload = {
         "type": "completions_request",
+        "version": taskmates.__version__,
         "markdown_chat": markdown_chat,
         "completion_context": {
             "request_id": "test_echo_tool",
@@ -305,6 +312,7 @@ async def test_code_cell_no_output(app, tmp_path):
                            '**assistant>** ')
     test_payload: CompletionPayload = {
         "type": "completions_request",
+        "version": taskmates.__version__,
         "markdown_chat": markdown_chat,
         "completion_context": {
             "request_id": "test_echo_code_cell_no_output",
@@ -342,6 +350,7 @@ async def test_interrupt_code_cell(app, tmp_path):
     expected_response = '###### Cell Output: stdout [cell_0]\n\n<pre>\n2\r\n^C\r\n</pre>\n\n'
     test_payload: CompletionPayload = {
         "type": "completions_request",
+        "version": taskmates.__version__,
         "markdown_chat": markdown_chat,
         "completion_context": {
             "request_id": "test_echo_tool",
