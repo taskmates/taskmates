@@ -12,6 +12,7 @@ class Chat(TypedDict):
 
 class MarkdownOpts(TypedDict):
     model: NotRequired[str]
+    max_interactions: NotRequired[int]
     tools: NotRequired[dict]
     participants: NotRequired[dict]
     jupyter_enabled: NotRequired[bool]

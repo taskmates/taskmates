@@ -18,8 +18,19 @@ from taskmates.tools.jira_.jira_ import create_issue, add_comment, update_status
 
 function_registry = {}
 
+async def echo(message: str):
+    """
+    Echo the message back to the user.
+
+    :param message:
+    :return:
+    """
+    return message
 
 def initialize_function_registry(function_registry):
+    # debugging
+    function_registry["echo"] = echo
+
     # return status
     function_registry["report_evaluation"] = report_evaluation
 

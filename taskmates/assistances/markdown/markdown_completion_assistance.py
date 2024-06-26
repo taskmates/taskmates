@@ -37,6 +37,7 @@ class MarkdownCompletionAssistance:
             with signals.request.connected_to(append_markdown), \
                     signals.formatting.connected_to(append_markdown):
 
+                # TODO: Is this still needed?
                 if not markdown_chat.lstrip().startswith("**") and not markdown_chat.lstrip().startswith("--"):
                     await signals.request.send_async(f"**user>** ")
 
@@ -77,12 +78,11 @@ class MarkdownCompletionAssistance:
                                                            taskmates_dir=taskmates_dir,
                                                            template_params=completion_opts["template_params"])
 
-                    # if "model" in context:
-                    #     chat.setdefault("model", completion_opts["model"])
-                    #
-                    # if "metadata" in chat and "cwd" in chat["metadata"]:
-                    #     context["cwd"] = chat["metadata"].get("cwd")
-                    #
+                    if "model" in chat["metadata"]:
+                        completion_opts["model"] = chat["metadata"]["model"]
+
+                    if completion_opts["model"] in ("quote", "echo"):
+                        max_interactions = 1
 
                     logger.debug(f"Computing next completion assistance")
                     completion_assistance = self.get_next_completion(chat)
