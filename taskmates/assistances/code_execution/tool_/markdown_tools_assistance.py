@@ -1,15 +1,15 @@
 import os
 from typing import Dict
 
+from typeguard import typechecked
+
 from taskmates.actions.invoke_function import invoke_function
 from taskmates.assistances.completion_assistance import CompletionAssistance
 from taskmates.assistances.markdown.tool_editor_completion import ToolEditorCompletion
 from taskmates.config import CompletionContext
+from taskmates.function_registry import function_registry
 from taskmates.model.tool_call import ToolCall
 from taskmates.signals import Signals
-from taskmates.function_registry import function_registry
-from typeguard import typechecked
-
 from taskmates.types import Chat
 
 
@@ -45,7 +45,10 @@ class MarkdownToolsAssistance(CompletionAssistance):
             with signals.interrupted.connected_to(handle_interrupted):
                 original_cwd = os.getcwd()
                 try:
-                    os.chdir(cwd)
+                    try:
+                        os.chdir(cwd)
+                    except FileNotFoundError:
+                        pass
                     return_value = await self.execute_task(context, tool_call_obj, signals)
                 finally:
                     os.chdir(original_cwd)
