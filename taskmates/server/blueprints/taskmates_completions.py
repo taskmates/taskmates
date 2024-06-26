@@ -32,9 +32,9 @@ async def taskmates_completions():
 
         payload: CompletionPayload = snake_case(json.loads(raw_payload))
 
-        client_version = payload['version']
+        client_version = payload.get("version", "None")
         if client_version != taskmates.__version__:
-            raise ValueError(f"Invalid client version {client_version}. Expected v2")
+            raise ValueError(f"Incompatible client version: {client_version}. Expected: {taskmates.__version__}")
 
         completion_context: CompletionContext = payload["completion_context"]
         completion_opts: CompletionOpts = payload["completion_opts"]
