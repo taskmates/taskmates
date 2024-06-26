@@ -124,18 +124,7 @@ async def test_tool_completion(app, tmp_path):
                          '</pre>\n'
                          '-[x] Done\n'
                          '\n'
-                         "**assistant>** \n"
-                         "> \n"
-                         "> <pre class='output' style='display:none'>\n"
-                         "> 2\n"
-                         "> \n"
-                         "> Exit Code: 0\n"
-                         '> </pre>\n'
-                         '> -[x] Done\n'
-                         '> \n'
-                         '> \n'
-                         '\n'
-                         '**user>** ')
+                         "**assistant>** ")
 
     test_payload: CompletionPayload = {
         "type": "completions_request",
@@ -180,16 +169,7 @@ async def test_code_cell_completion(app, tmp_path):
     2
     </pre>
 
-    **assistant>** 
-    > ###### Cell Output: stdout [cell_0]
-    > 
-    > <pre>
-    > 2
-    > </pre>
-    > 
-    > 
-    
-    **user>** ''')
+    **assistant>** ''')
 
     test_payload: CompletionPayload = {
         "type": "completions_request",
@@ -322,14 +302,7 @@ async def test_code_cell_no_output(app, tmp_path):
                            '\n'
                            'Done\n'
                            '\n'
-                           '**assistant>** \n'
-                           '> ###### Cell Output: stdout [cell_0]\n'
-                           '> \n'
-                           '> Done\n'
-                           '> \n'
-                           '> \n'
-                           '\n'
-                           '**user>** ')
+                           '**assistant>** ')
     test_payload: CompletionPayload = {
         "type": "completions_request",
         "markdown_chat": markdown_chat,
