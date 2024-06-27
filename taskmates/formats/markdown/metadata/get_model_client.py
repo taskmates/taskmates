@@ -21,10 +21,8 @@ def get_model_client(model_name: str):
 
     if client_type == 'openai':
         client = oai.AsyncOpenAI(base_url=endpoint)
-        if api_key.startswith('env:'):
+        if api_key and api_key.startswith('env:'):
             client.api_key = os.getenv(api_key[4:])
-        elif api_key != 'not-needed':
-            client.api_key = api_key
     elif client_type == 'anthropic':
         client = AsyncAnthropicOpenAIAdapter()
     elif client_type == 'echo':
