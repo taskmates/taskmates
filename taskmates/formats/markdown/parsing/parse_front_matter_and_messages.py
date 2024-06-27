@@ -98,8 +98,9 @@ def parse_front_matter_and_messages(source_file: Path,
             output_name = message["name"]
             message["name"] = "cell_output"
             message["role"] = "user"
-            message["content"] = f"###### Cell Output: {output_name} [{message['code_cell_id']}]\n" + message[
-                "content"]
+            set_text_content(message,
+                             f"###### Cell Output: {output_name} [{message['code_cell_id']}]\n"
+                             + get_text_content(message))
 
     # remove duplicate/incomplete messages
     messages = deduplicate_messages(messages)
