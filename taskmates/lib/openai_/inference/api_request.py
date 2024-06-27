@@ -29,7 +29,7 @@ async def api_request(messages: list, model_conf: dict, model_params: dict) -> d
 
     llm_client_args = get_llm_client_args(messages, model_conf, model_params)
 
-    client = get_model_client(model_conf)
+    client = get_model_client(model_conf["model"])
 
     with tracer.start_as_current_span(name="chat-completion"):
         file_logger.debug(f"[api_request] request_payload.yaml", content=llm_client_args)
