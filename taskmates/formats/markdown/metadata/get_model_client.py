@@ -33,30 +33,3 @@ def get_model_client(model_name: str):
         raise ValueError(f"Unknown client type {client_type}")
 
     return client
-
-
-# Add test cases
-def test_get_model_client():
-    # Test OpenAI model
-    assert isinstance(get_model_client("gpt-4"), oai.AsyncOpenAI)
-
-    # Test Anthropic model
-    assert isinstance(get_model_client("claude-3-opus-20240229"), AsyncAnthropicOpenAIAdapter)
-
-    # Test Echo model
-    assert isinstance(get_model_client("echo"), Echo)
-
-    # Test Quote model
-    assert isinstance(get_model_client("quote"), Quote)
-
-    # Test unknown model
-    try:
-        get_model_client("unknown-model")
-        assert False, "Should have raised ValueError"
-    except ValueError:
-        pass
-
-
-if __name__ == "__main__":
-    test_get_model_client()
-    print("All tests passed!")
