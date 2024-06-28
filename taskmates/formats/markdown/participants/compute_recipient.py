@@ -26,17 +26,17 @@ def compute_recipient(messages, participants_configs) -> str | None:
         # parse @mentions
         mention = parse_mention(get_text_content(last_participant_message), participants)
 
+    if mention and mention != messages[-1].get("name"):
+        recipient = mention
+
     # code cell/tool call: resume conversation with caller
-    if messages[-1]["role"] == "tool" or messages[-1].get("name") == "cell_output":
+    elif messages[-1]["role"] == "tool" or messages[-1].get("name") == "cell_output":
         recipient = last_participant_message["name"]
 
     # code cell/tool caller: resume conversation with requester
     elif len(messages) > 2 and (messages[-2]["role"] == "tool" or messages[-2].get("name") == "cell_output"):
         tool_calling_message = participant_messages[-2]
         recipient = tool_calling_message["recipient"]
-
-    elif mention and mention != messages[-1].get("name"):
-        recipient = mention
 
     # alternating participants
     elif len(participants) == 2 and "user" in participants:
