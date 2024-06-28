@@ -82,7 +82,7 @@ claude-3-5-sonnet-20240620:
 
 codeqwen:
   client_type: openai
-  endpoint: http://localhost:8001/v1
+  endpoint: http://localhost:11434/v1
   max_context_window: 64000
   model_name: codequeen
 
