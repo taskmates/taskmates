@@ -42,8 +42,14 @@ class ChatCompletionEditorCompletion:
     async def append_tool_calls(self, tool_call_json: Dict):
         function = tool_call_json.get("function", {})
         if tool_call_json.get("id") is not None:
+            last_tool_call_id = 1
+
+            for m in self.chat['messages']:
+                if m.get('tool_calls'):
+                    last_tool_call_id = int(m.get('tool_calls')[-1].get('id'))
+
             index = tool_call_json.get("index", 0)
-            code_cell_id = index + 1
+            code_cell_id = last_tool_call_id + 1 + index
 
             if index == 0:
                 await self.append("\n\n###### Steps\n\n")
