@@ -5,8 +5,6 @@ from typing import Tuple, List, Dict, Union
 
 import pyparsing
 from loguru import logger
-from typeguard import typechecked
-
 from taskmates.formats.markdown.processing.process_image_transclusion import render_image_transclusion
 from taskmates.formats.openai.get_text_content import get_text_content
 from taskmates.formats.openai.set_text_content import set_text_content
@@ -14,6 +12,7 @@ from taskmates.grammar.parsers.markdown_chat_parser import markdown_chat_parser
 from taskmates.lib.logging_.file_logger import file_logger
 from taskmates.lib.markdown_.render_transclusions import render_transclusions
 from taskmates.lib.root_path.root_path import root_path
+from typeguard import typechecked
 
 
 @typechecked
@@ -39,10 +38,6 @@ def parse_front_matter_and_messages(source_file: Path,
     try:
         parsed_chat = parser.parse_string(content)
     except pyparsing.exceptions.ParseSyntaxException as e:
-        # import pyparsing as pp
-        # ppt = pp.testing
-        # print(ppt.with_line_numbers(content))
-
         logger.error(f"Failed to parse markdown: /var/tmp/taskmates/logs/{start_time}-chat.md")
         logger.error(e)
         raise
@@ -51,6 +46,9 @@ def parse_front_matter_and_messages(source_file: Path,
     # If the front_matter contains a `system` key, prepend it as the system message
     if 'system' in front_matter:
         messages = [{"role": "system", "content": front_matter['system']}] + messages
+
+    global_tool_call_id = 1
+    global_tool_call_execution_id = 1
 
     for parsed_message in parsed_chat.messages:
         message_dict = parsed_message.as_dict()
@@ -62,8 +60,14 @@ def parse_front_matter_and_messages(source_file: Path,
                    "content": message_dict["content"],
                    **({"code_cell_id": message_dict["code_cell_id"]} if "code_cell_id" in message_dict else {}),
                    **({"tool_call_id": message_dict["tool_call_id"]} if "tool_call_id" in message_dict else {}),
-                   **({"tool_calls": message_dict["tool_calls"]} if "tool_calls" in message_dict else {}),
                    **attributes}
+
+        if "tool_calls" in message_dict:
+            tool_calls = message_dict["tool_calls"]
+            for tool_call in tool_calls:
+                tool_call["id"] = str(global_tool_call_id)
+                global_tool_call_id += 1
+            message["tool_calls"] = tool_calls
 
         text_content = get_text_content(message_dict)
 
@@ -86,12 +90,11 @@ def parse_front_matter_and_messages(source_file: Path,
         else:
             message["role"] = "user"
 
-    # set proper tool_call_ids
-    global_tool_call_id = 1
+    # set proper tool_call_ids for tool executions
     for message in messages:
         if message.get("tool_call_id"):
-            message["tool_call_id"] = str(global_tool_call_id)
-            global_tool_call_id += 1
+            message["tool_call_id"] = str(global_tool_call_execution_id)
+            global_tool_call_execution_id += 1
 
     for message in messages:
         if message.get("role") == "cell_output":
@@ -363,9 +366,9 @@ def test_parse_chat_messages_with_multiple_tool_calls_in_separate_messages(tmp_p
 
         ###### Steps
 
-        - Run Shell Command [2] `{"cmd": "date"}`
+        - Run Shell Command [1] `{"cmd": "date"}`
 
-        ###### Execution: Run Shell Command [2]
+        ###### Execution: Run Shell Command [1]
 
         <pre>
         OUTPUT 2
