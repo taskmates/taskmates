@@ -23,7 +23,13 @@ def message_parser():
     return message
 
 
-PROBABLE_MESSAGE_CONTENT = r"((((?<!^)(?<=\*\* )[^\n]*)|(^(?!(\*\*|###### ))[^\n]*))(\n|\Z))+"
+END_OF_CHAT_HEADER = r"(>\*\*[ \n])"
+END_OF_CHAT_HEADER_BEHIND = fr"((?<={END_OF_CHAT_HEADER}))"
+BEGINING_OF_SESSION_HEADER = r"(^(\*\*|###### ))"
+NOT_BEGINNING_OF_SESSION_HEADER_AHEAD = fr"(?!{BEGINING_OF_SESSION_HEADER})"
+END_OF_LINE_OR_STRING = r"(\n|\Z)"
+
+PROBABLE_MESSAGE_CONTENT = fr"(^|{END_OF_CHAT_HEADER_BEHIND})({NOT_BEGINNING_OF_SESSION_HEADER_AHEAD}[^\n]*{END_OF_LINE_OR_STRING})+"
 
 
 def message_content_parser():
