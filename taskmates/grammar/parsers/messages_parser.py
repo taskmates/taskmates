@@ -23,9 +23,16 @@ def message_parser():
     return message
 
 
+END_OF_CHAT_HEADER_BEHIND = r"((?<=>\*\* )[^\n]*)"
+BEGINING_OF_SESSION_HEADER = r"(^(\*\*|###### ))"
+NOT_BEGINNING_OF_SESSION_HEADER_AHEAD = fr"(?!{BEGINING_OF_SESSION_HEADER})"
+END_OF_LINE_OR_STRING = r"(\n|\Z)"
+PROBABLE_MESSAGE_CONTENT = fr"(^|{END_OF_CHAT_HEADER_BEHIND})({NOT_BEGINNING_OF_SESSION_HEADER_AHEAD}.)+{END_OF_LINE_OR_STRING}"
+
+
 def message_content_parser():
     return pp.Combine(
-        pp.Regex(r"((((?<!^)(?<=\*\* )[^\n]*)|(^(?!(\*\*|###### ))[^\n]*))(\n|\Z))+", re.DOTALL | re.MULTILINE) +
+        pp.Regex(PROBABLE_MESSAGE_CONTENT, re.DOTALL | re.MULTILINE) +
         pp.SkipTo(
             (
                     (section_start_anchor()
