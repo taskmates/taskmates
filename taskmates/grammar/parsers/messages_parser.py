@@ -10,6 +10,14 @@ from taskmates.grammar.parsers.section_start_anchor import section_start_anchor
 pp.enable_all_warnings()
 pp.ParserElement.set_default_whitespace_chars("")
 
+END_OF_CHAT_HEADER = r"(>\*\*[ \n])"
+END_OF_CHAT_HEADER_BEHIND = fr"((?<={END_OF_CHAT_HEADER}))"
+BEGINING_OF_SECTION_HEADER = r"(^(\*\*|###### ))"
+NOT_BEGINNING_OF_SECTION_HEADER_AHEAD = fr"(?!{BEGINING_OF_SECTION_HEADER})"
+END_OF_LINE_OR_STRING = r"(\n|\Z)"
+
+PROBABLE_MESSAGE_CONTENT = fr"({NOT_BEGINNING_OF_SECTION_HEADER_AHEAD}[^\n]*{END_OF_LINE_OR_STRING})+"
+
 
 def message_parser():
     message_content = message_content_parser()
@@ -21,15 +29,6 @@ def message_parser():
         + pp.Optional(tool_calls_parser())
     )
     return message
-
-
-END_OF_CHAT_HEADER = r"(>\*\*[ \n])"
-END_OF_CHAT_HEADER_BEHIND = fr"((?<={END_OF_CHAT_HEADER}))"
-BEGINING_OF_SESSION_HEADER = r"(^(\*\*|###### ))"
-NOT_BEGINNING_OF_SESSION_HEADER_AHEAD = fr"(?!{BEGINING_OF_SESSION_HEADER})"
-END_OF_LINE_OR_STRING = r"(\n|\Z)"
-
-PROBABLE_MESSAGE_CONTENT = fr"(^|{END_OF_CHAT_HEADER_BEHIND})({NOT_BEGINNING_OF_SESSION_HEADER_AHEAD}[^\n]*{END_OF_LINE_OR_STRING})+"
 
 
 def message_content_parser():
