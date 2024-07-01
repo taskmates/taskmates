@@ -16,7 +16,7 @@ BEGINING_OF_SECTION_HEADER = r"(^(\*\*|###### ))"
 NOT_BEGINNING_OF_SECTION_HEADER_AHEAD = fr"(?!{BEGINING_OF_SECTION_HEADER})"
 END_OF_LINE_OR_STRING = r"(\n|\Z)"
 
-PROBABLE_MESSAGE_CONTENT = fr"({NOT_BEGINNING_OF_SECTION_HEADER_AHEAD}[^\n]*{END_OF_LINE_OR_STRING})+"
+PROBABLE_MESSAGE_CONTENT = fr"({NOT_BEGINNING_OF_SECTION_HEADER_AHEAD}[^\n]+{END_OF_LINE_OR_STRING})+"
 
 
 def message_parser():
@@ -33,7 +33,7 @@ def message_parser():
 
 def message_content_parser():
     return pp.Combine(
-        pp.Regex(PROBABLE_MESSAGE_CONTENT, re.DOTALL | re.MULTILINE) +
+        pp.Optional(pp.Regex(PROBABLE_MESSAGE_CONTENT, re.DOTALL | re.MULTILINE)) +
         pp.SkipTo(
             (
                     (section_start_anchor()
