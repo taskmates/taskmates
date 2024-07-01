@@ -12,16 +12,7 @@ pp.ParserElement.set_default_whitespace_chars("")
 
 
 def message_parser():
-    message_content = pp.Combine(
-        pp.Regex(r"((((?<!^)(?<=\*\* )[^\n]*)|(^(?!(\*\*|###### ))[^\n]*))(\n|\Z))+", re.DOTALL | re.MULTILINE) +
-        pp.SkipTo(
-            (
-                    (section_start_anchor()
-                     + (tool_calls_parser() | headers_parser()))
-                    | pp.StringEnd()
-            ),
-            include=False)
-    )("content")
+    message_content = message_content_parser()
 
     message = pp.Group(
         pp.LineStart()
@@ -32,10 +23,21 @@ def message_parser():
     return message
 
 
+def message_content_parser():
+    return pp.Combine(
+        pp.Regex(r"((((?<!^)(?<=\*\* )[^\n]*)|(^(?!(\*\*|###### ))[^\n]*))(\n|\Z))+", re.DOTALL | re.MULTILINE) +
+        pp.SkipTo(
+            (
+                    (section_start_anchor()
+                     + (tool_calls_parser() | headers_parser()))
+                    | pp.StringEnd()
+            ),
+            include=False)
+    )("content")
+
+
 def first_message_parser(implicit_role: str = "user"):
-    message_content = (pp.SkipTo(
-        (section_start_anchor() + (tool_calls_parser() | headers_parser()) | pp.StringEnd()),
-        include=False)("content"))
+    message_content = message_content_parser()
     implicit_header = (pp.LineStart() + pp.Empty().setParseAction(lambda: implicit_role)("name"))
     first_message = pp.Group(
         (headers_parser() | implicit_header)

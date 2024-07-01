@@ -5,9 +5,11 @@ import pyparsing as pp
 
 from taskmates.grammar.parsers.snake_case_action import snake_case_action
 
+TOOL_EXECUTION_START_REGEX = r"^###### Execution: "
+
 
 def tool_execution_header_parser():
-    execution_header =pp.Regex("^###### Execution: ", re.MULTILINE).suppress()
+    execution_header = pp.Regex(TOOL_EXECUTION_START_REGEX, re.MULTILINE).suppress()
     tool_name = pp.Word(pp.alphas + " ").set_parse_action(snake_case_action)("name")
     tool_id = pp.Suppress("[") - pp.Word(pp.nums)("tool_call_id") - pp.Suppress("]")
     role = pp.Empty().set_parse_action(pp.replace_with("tool"))("role")

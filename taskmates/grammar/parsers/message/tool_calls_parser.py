@@ -6,6 +6,8 @@ import pyparsing as pp
 
 from taskmates.grammar.parsers.snake_case import snake_case
 
+TOOL_CALLS_START_REGEX = r"^###### Steps"
+
 
 def parse_tool_call(string, location, tokens):
     tool_call = tokens[0]
@@ -37,7 +39,7 @@ def tool_call_parser():
 
 
 def tool_calls_parser():
-    section_header = pp.Regex("^###### Steps", re.MULTILINE).suppress()
+    section_header = pp.Regex(TOOL_CALLS_START_REGEX, re.MULTILINE).suppress()
     tool_call = tool_call_parser()
 
     return pp.Group(section_header
