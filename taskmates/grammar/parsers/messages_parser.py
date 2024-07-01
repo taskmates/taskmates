@@ -23,11 +23,7 @@ def message_parser():
     return message
 
 
-END_OF_CHAT_HEADER_BEHIND = r"((?<=>\*\* )[^\n]*)"
-BEGINING_OF_SESSION_HEADER = r"(^(\*\*|###### ))"
-NOT_BEGINNING_OF_SESSION_HEADER_AHEAD = fr"(?!{BEGINING_OF_SESSION_HEADER})"
-END_OF_LINE_OR_STRING = r"(\n|\Z)"
-PROBABLE_MESSAGE_CONTENT = fr"(^|{END_OF_CHAT_HEADER_BEHIND})({NOT_BEGINNING_OF_SESSION_HEADER_AHEAD}.)+{END_OF_LINE_OR_STRING}"
+PROBABLE_MESSAGE_CONTENT = r"((((?<!^)(?<=\*\* )[^\n]*)|(^(?!(\*\*|###### ))[^\n]*))(\n|\Z))+"
 
 
 def message_content_parser():
@@ -226,6 +222,88 @@ def test_messages_parser_with_tool_execution():
         {
             'name': 'user',
             'content': 'Here is another message.\n\n'
+        }
+    ]
+
+    results = messages_parser().parseString(input)
+    parsed_messages = [m.as_dict() for m in results.messages]
+
+    assert parsed_messages == expected_messages
+
+
+def test_messages_parser_with_multiple_tool_executions():
+    input = textwrap.dedent("""\
+        USER INSTRUCTION
+
+        **shell>**
+
+        ###### Steps
+
+        - Run Shell Command [1] `{"cmd": "cd /tmp && ls"}`
+
+        ###### Execution: Run Shell Command [1]
+
+        <pre>
+        OUTPUT 1
+        </pre>
+
+        **shell>**
+
+        ###### Steps
+
+        - Run Shell Command [2] `{"cmd": "date"}`
+
+        ###### Execution: Run Shell Command [2]
+
+        <pre>
+        OUTPUT 2
+        </pre>
+        """)
+
+    expected_messages = [
+        {
+            'name': 'user',
+            'content': 'USER INSTRUCTION\n\n'
+        },
+        {
+            'name': 'shell',
+            'content': '\n',
+            'tool_calls': [
+                {
+                    'id': '1',
+                    'type': 'function',
+                    'function': {
+                        'name': 'run_shell_command',
+                        'arguments': {'cmd': 'cd /tmp && ls'}
+                    }
+                }
+            ]
+        },
+        {
+            'role': 'tool',
+            'name': 'run_shell_command',
+            'tool_call_id': '1',
+            'content': '\n<pre>\nOUTPUT 1\n</pre>\n\n'
+        },
+        {
+            'name': 'shell',
+            'content': '\n',
+            'tool_calls': [
+                {
+                    'id': '2',
+                    'type': 'function',
+                    'function': {
+                        'name': 'run_shell_command',
+                        'arguments': {'cmd': 'date'}
+                    }
+                }
+            ]
+        },
+        {
+            'role': 'tool',
+            'name': 'run_shell_command',
+            'tool_call_id': '2',
+            'content': '\n<pre>\nOUTPUT 2\n</pre>\n'
         }
     ]
 
