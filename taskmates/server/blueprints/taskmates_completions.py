@@ -48,13 +48,22 @@ async def taskmates_completions():
 
             file_logger.debug("request_payload.yaml", content=payload)
 
+            interrupt_requested = False
+
             async def handle_interrupt_or_kill():
+                nonlocal interrupt_requested
                 while True:
                     try:
                         raw_payload = await websocket.receive()
                         payload = snake_case(json.loads(raw_payload))
                         if payload.get("type") == "interrupt":
+                            if interrupt_requested:
+                                logger.info(
+                                    f"KILL Received second interrupt message for request {request_id}. Killing the request.")
+                                await signals.kill.send_async(None)
+                                continue
                             logger.info(f"INTERRUPT Received interrupt message for request {request_id}")
+                            interrupt_requested = True
                             await signals.interrupt.send_async(None)
                         elif payload.get("type") == "kill":
                             logger.info(f"KILL Received kill message for request {request_id}")
