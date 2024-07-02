@@ -10,7 +10,7 @@ def convert_anthropic_tool_call_to_openai(tool_call: ToolUseBlock):
         "index": 0,
         "id": f"call_{tool_call.id}",
         "function": {
-            "arguments": json.dumps(tool_call.input),
+            "arguments": json.dumps(tool_call.input, ensure_ascii=False),
             "name": tool_call.name
         }
     }

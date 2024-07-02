@@ -1,3 +1,4 @@
+import json
 import re
 from typing import Dict
 
@@ -61,7 +62,8 @@ class ChatCompletionEditorCompletion:
             tool_call_completion = f"- {function_title} [{code_cell_id}] `"
             await self.append(tool_call_completion)
 
-        await self.append(function.get("arguments", ""))
+        argument_completion = function.get("arguments", "")
+        await self.append(argument_completion)
 
     async def on_received_content(self, choice: dict):
         if choice["delta"].get("content"):

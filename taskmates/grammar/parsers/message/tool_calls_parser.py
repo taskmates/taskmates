@@ -12,12 +12,16 @@ TOOL_CALLS_START_REGEX = r"^###### Steps"
 def parse_tool_call(string, location, tokens):
     tool_call = tokens[0]
     tool_call_name = tool_call['name']
+
+    # pyparsing bug https://stackoverflow.com/a/23332407/1553243
+    arguments = tool_call['arguments'].replace("\n", "\\n")
+
     return {
         "id": tool_call['id'],
         "type": "function",
         "function": {
             "name": snake_case(tool_call_name),
-            "arguments": json.loads(tool_call['arguments'])
+            "arguments": json.loads(arguments)
         }
     }
 
@@ -25,7 +29,7 @@ def parse_tool_call(string, location, tokens):
 def tool_call_parser():
     tool_name = pp.Word(pp.alphas + " ")("name")
     tool_id = pp.Suppress("[") + pp.Word(pp.nums)("id") + pp.Suppress("]")
-    tool_args = pp.QuotedString(quoteChar="`", unquoteResults=True)("arguments")
+    tool_args = pp.QuotedString(quoteChar="`", unquoteResults=True, escChar=None)("arguments")
 
     tool_call = pp.Group(
         pp.Suppress("-") +
@@ -53,7 +57,7 @@ def tool_calls_parser():
 def test_tool_calls_parser():
     matching_content = textwrap.dedent("""\
         ###### Steps
-        - Run Shell Command [1] `{"cmd":"cd /tmp"}`
+        - Run Shell Command [1] `{"cmd":"cd /tmp\\npwd"}`
         
         """)
 
@@ -77,7 +81,7 @@ def test_tool_calls_parser():
             "function": {
                 "name": "run_shell_command",
                 "arguments": {
-                    "cmd": "cd /tmp"
+                    "cmd": "cd /tmp\npwd"
                 }
             }
         }

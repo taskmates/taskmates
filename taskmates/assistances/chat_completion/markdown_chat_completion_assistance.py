@@ -47,7 +47,8 @@ class MarkdownChatCompletionAssistance(CompletionAssistance):
             for message in messages:
                 tool_calls = message.get("tool_calls", [])
                 for tool_call in tool_calls:
-                    tool_call["function"]["arguments"] = json.dumps(tool_call["function"]["arguments"])
+                    tool_call["function"]["arguments"] = json.dumps(tool_call["function"]["arguments"],
+                                                                    ensure_ascii=False)
 
             user_participants = ["user"]
             for name, config in chat["participants"].items():
