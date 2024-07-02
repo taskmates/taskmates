@@ -47,7 +47,7 @@ async def run_shell_command(cmd: str) -> str:
 
     async def kill_handler(sender):
         os.killpg(os.getpgid(process.pid), signal.SIGKILL)
-        await signals.interrupted.send_async(None)
+        await signals.killed.send_async(None)
 
     with signals.interrupt.connected_to(interrupt_handler), \
             signals.kill.connected_to(kill_handler):

@@ -68,7 +68,7 @@ async def execute_markdown_on_local_kernel(content, path: str = None, cwd: str =
         iopub_task.cancel()
         shell_task.cancel()
         await kernel_manager.shutdown_kernel(now=True)
-        await signals.interrupted.send_async(None)
+        await signals.killed.send_async(None)
 
     with signals.interrupt.connected_to(interrupt_handler), \
             signals.kill.connected_to(kill_handler):

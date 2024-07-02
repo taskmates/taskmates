@@ -408,3 +408,117 @@ async def collect_until_closed(ws):
     except WebsocketDisconnectError:
         pass
     return messages
+
+@pytest.mark.asyncio
+async def test_kill_tool(app, tmp_path):
+    test_client = app.test_client()
+
+    markdown_chat = textwrap.dedent("""\
+    Run a command that ignores SIGINT
+    
+    **assistant>**
+    
+    Certainly! I'll run a command that ignores the SIGINT signal.
+    
+    ###### Steps
+    
+    - Run Shell Command [1] `{"cmd":"trap '' INT; echo Starting; sleep 60; echo fail"}`
+    
+    """)
+
+    expected_response = ('###### Execution: Run Shell Command [1]\n'
+                         '\n'
+                         "<pre class='output' style='display:none'>\n"
+                         'Starting\n'
+                         '--- KILLED ---\n'
+                         'Exit Code: -9\n'
+                         '</pre>\n'
+                         '-[x] Done\n'
+                         '\n')
+
+    test_payload: CompletionPayload = {
+        "type": "completions_request",
+        "version": taskmates.__version__,
+        "markdown_chat": markdown_chat,
+        "completion_context": {
+            "request_id": "test_kill_tool",
+            "cwd": str(tmp_path),
+            "markdown_path": str(tmp_path / "test.md"),
+        },
+        "completion_opts": {
+            "model": "quote",
+        },
+    }
+
+    async with test_client.websocket('/v2/taskmates/completions') as ws:
+        await ws.send(json.dumps(test_payload))
+        messages = []
+
+        while True:
+            message = json.loads(await ws.receive())
+            messages.append(message)
+            if message["type"] == "completion":
+                if "Starting" in message["payload"]["markdown_chunk"]:
+                    break
+
+        await ws.send(json.dumps({"type": "kill", "completion_context": {"request_id": "test_kill_tool"}}))
+
+        remaining = await collect_until_closed(ws)
+        messages.extend(remaining)
+
+    markdown_response = await get_markdown_response(messages)
+
+    assert markdown_response == expected_response
+
+@pytest.mark.asyncio
+async def test_kill_code_cell(app, tmp_path):
+    test_client = app.test_client()
+
+    markdown_chat = textwrap.dedent("""\
+    Run a command that ignores SIGINT in a code cell
+    
+    **assistant>**
+    
+    Certainly! I'll run a command that ignores the SIGINT signal in a code cell.
+    
+    ```python .eval
+    !trap '' INT; echo Starting; sleep 60; echo fail
+    ```
+    
+    """)
+
+    expected_response = '###### Cell Output: stdout [cell_0]\n\n<pre>\nStarting\r\n</pre>\n\n'
+
+    test_payload: CompletionPayload = {
+        "type": "completions_request",
+        "version": taskmates.__version__,
+        "markdown_chat": markdown_chat,
+        "completion_context": {
+            "request_id": "test_kill_code_cell",
+            "cwd": str(tmp_path),
+            "markdown_path": str(tmp_path / "test.md"),
+        },
+        "completion_opts": {
+            "model": "quote",
+        },
+    }
+
+    async with test_client.websocket('/v2/taskmates/completions') as ws:
+        await ws.send(json.dumps(test_payload))
+        messages = []
+
+        while True:
+            message = json.loads(await ws.receive())
+            messages.append(message)
+            if message["type"] == "completion":
+                if "Starting" in message["payload"]["markdown_chunk"]:
+                    break
+
+        await ws.send(json.dumps({"type": "kill", "completion_context": {"request_id": "test_kill_code_cell"}}))
+
+        remaining = await collect_until_closed(ws)
+        messages.extend(remaining)
+
+    markdown_response = await get_markdown_response(messages)
+
+    assert markdown_response == expected_response

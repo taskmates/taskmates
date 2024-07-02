@@ -31,6 +31,7 @@ class Signals:
         self.chat_completion = self.namespace.signal('chat_completion')
         self.code_cell_output = self.namespace.signal('code_cell_output')
         self.interrupted = self.namespace.signal('interrupted')
+        self.killed = self.namespace.signal('killed')
 
         # external
         self.start = self.namespace.signal('start')

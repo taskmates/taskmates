@@ -35,19 +35,19 @@ async def api_request(messages: list, model_conf: dict, model_params: dict) -> d
         file_logger.debug(f"[api_request] request_payload.yaml", content=llm_client_args)
         file_logger.debug(f"[api_request] request_payload.json", content=llm_client_args)
 
-        interrupted = False
+        interrupted_or_killed = False
 
         async def interrupt_handler(sender):
-            nonlocal interrupted
-            interrupted = True
+            nonlocal interrupted_or_killed
+            interrupted_or_killed = True
             await chat_completion.response.aclose()
             await signals.interrupted.send_async(None)
 
         async def kill_handler(sender):
-            nonlocal interrupted
-            interrupted = True
+            nonlocal interrupted_or_killed
+            interrupted_or_killed = True
             await chat_completion.response.aclose()
-            await signals.interrupted.send_async(None)
+            await signals.killed.send_async(None)
 
         with signals.interrupt.connected_to(interrupt_handler), \
                 signals.kill.connected_to(kill_handler):
@@ -57,7 +57,7 @@ async def api_request(messages: list, model_conf: dict, model_params: dict) -> d
                 try:
                     async for chat_completion_chunk in \
                             ChatCompletionWithUsername(ChatCompletionPreProcessor(chat_completion)):
-                        if interrupted:
+                        if interrupted_or_killed:
                             break
                         for choice in chat_completion_chunk.choices:
                             if choice.delta.content:

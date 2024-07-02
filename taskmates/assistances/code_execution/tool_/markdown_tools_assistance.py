@@ -42,7 +42,11 @@ class MarkdownToolsAssistance(CompletionAssistance):
             async def handle_interrupted(sender):
                 await signals.response.send_async("--- INTERRUPTED ---")
 
-            with signals.interrupted.connected_to(handle_interrupted):
+            async def handle_killed(sender):
+                await signals.response.send_async("--- KILLED ---")
+
+            with signals.interrupted.connected_to(handle_interrupted), \
+                    signals.killed.connected_to(handle_killed):
                 original_cwd = os.getcwd()
                 try:
                     try:

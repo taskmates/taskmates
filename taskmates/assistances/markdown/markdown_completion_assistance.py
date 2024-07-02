@@ -47,18 +47,19 @@ class MarkdownCompletionAssistance:
                 if line_breaks:
                     await signals.formatting.send_async(line_breaks)
 
-            interrupted = False
+            interrupted_or_killed = False
 
-            async def handle_interrupted(_sender):
-                nonlocal interrupted
-                interrupted = True
+            async def handle_interrupted_or_killed(_sender):
+                nonlocal interrupted_or_killed
+                interrupted_or_killed = True
 
             await signals.start.send_async({})
 
             current_interaction = 0
             max_interactions = completion_opts["max_interactions"]
             while True:
-                with signals.interrupt.connected_to(handle_interrupted), \
+                with signals.interrupt.connected_to(handle_interrupted_or_killed), \
+                        signals.kill.connected_to(handle_interrupted_or_killed), \
                         signals.completion.connected_to(append_markdown), \
                         signals.return_status.connected_to(process_return_status):
 
@@ -66,7 +67,7 @@ class MarkdownCompletionAssistance:
                         logger.debug(f"Return status is not None: {return_status}")
                         break
 
-                    if interrupted:
+                    if interrupted_or_killed:
                         logger.debug("Interrupted")
                         break
 
@@ -105,7 +106,7 @@ class MarkdownCompletionAssistance:
 
             logger.debug(f"Finished completion assistance")
 
-            if interactive and not interrupted:
+            if interactive and not interrupted_or_killed:
                 line_breaks = await self.compute_linebreaks(current_markdown)
                 if line_breaks:
                     await signals.next_responder.send_async(line_breaks)
