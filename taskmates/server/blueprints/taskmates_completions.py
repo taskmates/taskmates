@@ -48,26 +48,21 @@ async def taskmates_completions():
 
             file_logger.debug("request_payload.yaml", content=payload)
 
-            async def handle_interrupt():
-                try:
-                    raw_payload = await websocket.receive()
-                    payload = snake_case(json.loads(raw_payload))
-                    if payload.get("type") == "interrupt":
-                        logger.info(f"INTERRUPT Received interrupt message for request {request_id}")
-                        await signals.interrupt.send_async(None)
-                        return
-                    elif payload.get("type") == "kill":
-                        logger.info(f"KILL Received kill message for request {request_id}")
-                        await signals.kill.send_async(None)
-                        return
-                except asyncio.CancelledError:
-                    # logger.info(f"INTERRUPT TASK CANCELLED Interrupt task for request {request_id} was cancelled")
-                    pass
-                finally:
-                    pass
-                    # logger.info(f"Interrupt task for request {request_id} finished")
+            async def handle_interrupt_or_kill():
+                while True:
+                    try:
+                        raw_payload = await websocket.receive()
+                        payload = snake_case(json.loads(raw_payload))
+                        if payload.get("type") == "interrupt":
+                            logger.info(f"INTERRUPT Received interrupt message for request {request_id}")
+                            await signals.interrupt.send_async(None)
+                        elif payload.get("type") == "kill":
+                            logger.info(f"KILL Received kill message for request {request_id}")
+                            await signals.kill.send_async(None)
+                    except asyncio.CancelledError:
+                        break
 
-            receive_interrupt_task = asyncio.create_task(handle_interrupt())
+            receive_interrupt_task = asyncio.create_task(handle_interrupt_or_kill())
 
             completion_task = asyncio.create_task(
                 MarkdownCompletionAssistance().perform_completion(completion_context, markdown_chat, signals)

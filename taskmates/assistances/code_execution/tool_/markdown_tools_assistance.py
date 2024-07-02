@@ -40,10 +40,10 @@ class MarkdownToolsAssistance(CompletionAssistance):
             tool_call_obj = ToolCall.from_dict(tool_call)
 
             async def handle_interrupted(sender):
-                await signals.response.send_async("--- INTERRUPTED ---")
+                await signals.response.send_async("--- INTERRUPT ---\n")
 
             async def handle_killed(sender):
-                await signals.response.send_async("--- KILLED ---")
+                await signals.response.send_async("--- KILL ---\n")
 
             with signals.interrupted.connected_to(handle_interrupted), \
                     signals.killed.connected_to(handle_killed):

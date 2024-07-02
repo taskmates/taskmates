@@ -247,7 +247,7 @@ async def test_interrupt_tool(app, tmp_path):
                          '\n'
                          "<pre class='output' style='display:none'>\n"
                          '2\n'
-                         '--- INTERRUPTED ---\n'
+                         '--- INTERRUPT ---\n\n'
                          'Exit Code: -2\n'
                          '</pre>\n'
                          '-[x] Done\n'
@@ -430,7 +430,7 @@ async def test_kill_tool(app, tmp_path):
                          '\n'
                          "<pre class='output' style='display:none'>\n"
                          'Starting\n'
-                         '--- KILLED ---\n'
+                         '--- KILL ---\n\n'
                          'Exit Code: -9\n'
                          '</pre>\n'
                          '-[x] Done\n'

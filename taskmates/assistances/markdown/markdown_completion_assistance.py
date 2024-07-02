@@ -58,8 +58,8 @@ class MarkdownCompletionAssistance:
             current_interaction = 0
             max_interactions = completion_opts["max_interactions"]
             while True:
-                with signals.interrupt.connected_to(handle_interrupted_or_killed), \
-                        signals.kill.connected_to(handle_interrupted_or_killed), \
+                with signals.interrupted.connected_to(handle_interrupted_or_killed), \
+                        signals.killed.connected_to(handle_interrupted_or_killed), \
                         signals.completion.connected_to(append_markdown), \
                         signals.return_status.connected_to(process_return_status):
 
