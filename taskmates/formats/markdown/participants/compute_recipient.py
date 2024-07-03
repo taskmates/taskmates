@@ -26,11 +26,15 @@ def compute_recipient(messages, participants_configs) -> str | None:
         # parse @mentions
         mention = parse_mention(get_text_content(last_participant_message), participants)
 
-    if mention and mention != messages[-1].get("name"):
+    is_self_mention = mention == messages[-1].get("name")
+    is_tool_reply = messages[-1]["role"] == "tool"
+    is_code_cell_reply = messages[-1].get("name") == "cell_output"
+
+    if mention and not is_self_mention and not is_tool_reply:
         recipient = mention
 
     # code cell/tool call: resume conversation with caller
-    elif messages[-1]["role"] == "tool" or messages[-1].get("name") == "cell_output":
+    elif is_tool_reply or is_code_cell_reply:
         recipient = last_participant_message["name"]
 
     # code cell/tool caller: resume conversation with requester
