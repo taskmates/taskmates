@@ -164,7 +164,6 @@ taskmates-jupyter-enterprise-gateway = "taskmates.clients.jupyter_.jupyter_enter
 taskmates-code-ls = "lib.cli_ide.code_ls:main"
 taskmates-code-ast = "lib.cli_ide.code_ast:main"
 taskmates-google-search = "tools.google_.google_search:main"
-taskmates-complete = "taskmates.cli.taskmates_complete:main"
-taskmates = "taskmates.cli.taskmates_cli:main"
+taskmates = "taskmates.cli.main:main"
 
 [tool.setuptools_scm]
