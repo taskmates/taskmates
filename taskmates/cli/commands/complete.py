@@ -18,7 +18,8 @@ class CompleteCommand(Command):
         parser.add_argument('markdown', type=str, help='The markdown content', nargs='?')
         parser.add_argument('--format', type=str, choices=['full', 'original', 'text', 'completion'], default='text',
                             help='The output format')
-        parser.add_argument('--output', type=str, help='The output file path')
+        # TODO: commented out because it's not currently implemented
+        # parser.add_argument('--output', type=str, help='The output file path')
         parser.add_argument('--endpoint', type=str, default=None,
                             help='The websocket endpoint')
         parser.add_argument('--model', type=str, default='claude-3-5-sonnet-20240620', help='The model to use')
