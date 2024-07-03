@@ -21,6 +21,7 @@ class Signals:
         self.namespace = Namespace()
 
         # control
+        self.interrupt_request = self.namespace.signal('interrupt_request')
         self.interrupt = self.namespace.signal('interrupt')
         self.kill = self.namespace.signal('kill')
 

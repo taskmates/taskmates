@@ -53,12 +53,25 @@ class MarkdownCompletionAssistance:
                 nonlocal interrupted_or_killed
                 interrupted_or_killed = True
 
+            interrupt_requested = False
+
+            async def handle_interrupt_request(_sender):
+                nonlocal interrupt_requested
+                if interrupt_requested:
+                    logger.info("Interrupt requested again. Killing the request.")
+                    await signals.kill.send_async({})
+                else:
+                    logger.info("Interrupt requested")
+                    await signals.interrupt.send_async({})
+                    interrupt_requested = True
+
             await signals.start.send_async({})
 
             current_interaction = 0
             max_interactions = completion_opts["max_interactions"]
             while True:
-                with signals.interrupted.connected_to(handle_interrupted_or_killed), \
+                with signals.interrupt_request.connected_to(handle_interrupt_request), \
+                        signals.interrupted.connected_to(handle_interrupted_or_killed), \
                         signals.killed.connected_to(handle_interrupted_or_killed), \
                         signals.completion.connected_to(append_markdown), \
                         signals.return_status.connected_to(process_return_status):
