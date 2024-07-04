@@ -29,7 +29,6 @@ async def execute_markdown_on_local_kernel(content, path: str = None, cwd: str =
     msg_queue = asyncio.Queue()
 
     notebook_finished = False
-    execution_interrrupted = False
 
     async def handle_shell_msg():
         while True:
@@ -63,7 +62,7 @@ async def execute_markdown_on_local_kernel(content, path: str = None, cwd: str =
         notebook_finished = True
         cell_finished = True
         await msg_queue.put(None)
-        # NOTE: note sure this works on windows
+        # TODO: note sure this works on windows
         await kernel_manager.signal_kernel(signal.SIGKILL)
         iopub_task.cancel()
         shell_task.cancel()

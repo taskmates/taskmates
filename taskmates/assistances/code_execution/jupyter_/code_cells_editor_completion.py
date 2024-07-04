@@ -62,6 +62,11 @@ class CodeCellsEditorCompletion:
                 output["text"] = formatted_traceback
             else:
                 output["text"] = error_message + "\n" + formatted_traceback
+
+            # TODO: Remove this when the issue is fixed
+            if "Exception in callback BaseAsyncIOLoop._handle_events" in output["text"] and \
+                    "RuntimeError: cannot enter context" in output["text"]:
+                return
         elif msg_type == 'display_data':
             display_data = content['data']
             image_mime_type = None
