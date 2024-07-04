@@ -1,7 +1,6 @@
 import asyncio
 import json
 
-from loguru import logger
 from quart import Blueprint, Response
 from quart import websocket
 
@@ -10,7 +9,8 @@ from taskmates.assistances.markdown.markdown_completion_assistance import Markdo
 from taskmates.config import CompletionContext, CompletionOpts, COMPLETION_CONTEXT, COMPLETION_OPTS, \
     updated_config
 from taskmates.lib.json_.json_utils import snake_case
-from taskmates.lib.logging_.file_logger import file_logger
+from taskmates.logging import file_logger
+from taskmates.logging import logger
 from taskmates.signals import SIGNALS, Signals
 from taskmates.sinks import WebsocketStreamingSink
 from taskmates.types import CompletionPayload
@@ -86,7 +86,7 @@ async def taskmates_completions():
         logger.exception(e)
         await signals.error.send_async(e)
 
-    print("DONE Closing websocket connection")
+    logger.info("DONE Closing websocket connection")
     # return Response("Done", status=200)
 
 

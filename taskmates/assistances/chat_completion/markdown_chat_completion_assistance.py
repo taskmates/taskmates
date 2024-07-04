@@ -7,7 +7,7 @@ from taskmates.assistances.completion_assistance import CompletionAssistance
 from taskmates.config import CompletionContext, CompletionOpts, COMPLETION_OPTS
 from taskmates.formats.markdown.metadata.get_model_conf import get_model_conf
 from taskmates.function_registry import function_registry
-from taskmates.lib.logging_.file_logger import file_logger
+from taskmates.logging import file_logger
 from taskmates.lib.not_set.not_set import NOT_SET
 from taskmates.lib.openai_.inference.api_request import api_request
 from taskmates.lib.tool_schemas_.tool_schema import tool_schema

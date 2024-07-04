@@ -1,8 +1,10 @@
 import argparse
 import json
 import sys
-from taskmates.cli.commands.base import Command
+
 from taskmates.actions.parse_markdown_chat import parse_markdown_chat
+from taskmates.cli.commands.base import Command
+
 
 class ParseCommand(Command):
     def add_arguments(self, parser: argparse.ArgumentParser):

@@ -1,12 +1,11 @@
 import asyncio
-import logging
 
 from opentelemetry.instrumentation.asgi import OpenTelemetryMiddleware
 from quart import Quart
 
-from taskmates import env
-from taskmates.server.blueprints.health import health_bp
+from taskmates import env, logging
 from taskmates.server.blueprints.echo import echo_pb
+from taskmates.server.blueprints.health import health_bp
 from taskmates.server.blueprints.taskmates_completions import completions_bp as completions_v2_bp
 
 env.bootstrap()
@@ -15,7 +14,7 @@ app = Quart(__name__)
 app.asgi_app = OpenTelemetryMiddleware(app.asgi_app)
 # from quart_cors import cors
 # app = cors(app, allow_origin="*")  # Allow requests from any origin
-app.logger.setLevel(logging.INFO)
+app.logger.setLevel(logging.level)
 
 app.register_blueprint(completions_v2_bp)
 app.register_blueprint(echo_pb)

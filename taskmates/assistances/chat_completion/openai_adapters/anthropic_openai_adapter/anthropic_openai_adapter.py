@@ -20,11 +20,11 @@ from taskmates.assistances.chat_completion.openai_adapters.anthropic_openai_adap
 from taskmates.assistances.chat_completion.openai_adapters.anthropic_openai_adapter.split_system_message import \
     split_system_message
 from taskmates.function_registry import function_registry
-from taskmates.lib.logging_.file_logger import file_logger
 from taskmates.lib.openai_.model.chat_completion_chunk_model import ChatCompletionChunkModel
 from taskmates.lib.openai_.model.choice_model import ChoiceModel
 from taskmates.lib.openai_.model.delta_model import DeltaModel
 from taskmates.lib.tool_schemas_.tool_schema import tool_schema
+from taskmates.logging import file_logger
 
 
 class AsyncAnthropicOpenAIAdapter:

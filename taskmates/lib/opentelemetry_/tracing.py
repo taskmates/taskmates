@@ -40,6 +40,7 @@ if enable_tracing:
     tracer_provider.add_span_processor(tracer_processor)
     trace.set_tracer_provider(tracer_provider)
 
+    # TODO: review this
     # Configure logging
     logger_provider = LoggerProvider(resource=resource)
     set_logger_provider(logger_provider)

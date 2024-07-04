@@ -1,7 +1,7 @@
 import json
 from abc import ABC
 
-from loguru import logger
+from taskmates.logging import logger
 from pydantic import BaseModel
 from quart import websocket
 

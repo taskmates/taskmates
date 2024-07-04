@@ -10,7 +10,7 @@ from taskmates.assistances.chat_completion.openai_adapters.anthropic_openai_adap
 from taskmates.assistances.chat_completion.openai_adapters.anthropic_openai_adapter.chat_completion_with_username import \
     ChatCompletionWithUsername
 from taskmates.formats.markdown.metadata.get_model_client import get_model_client
-from taskmates.lib.logging_.file_logger import file_logger
+from taskmates.logging import file_logger
 from taskmates.lib.not_set.not_set import NOT_SET
 from taskmates.lib.opentelemetry_.tracing import tracer
 from taskmates.server.streamed_response import StreamedResponse

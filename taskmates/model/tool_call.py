@@ -4,7 +4,7 @@ from typing import Dict, Any
 
 from typeguard import typechecked
 
-
+# TODO: move to types.py
 @typechecked
 class ToolCall:
     def __init__(self, id: str | None = None,

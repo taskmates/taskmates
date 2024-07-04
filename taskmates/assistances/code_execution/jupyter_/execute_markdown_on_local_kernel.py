@@ -7,7 +7,7 @@ from queue import Empty
 
 import pytest
 from jupyter_client import AsyncKernelManager, AsyncKernelClient
-from loguru import logger
+from taskmates.logging import logger
 from nbformat import NotebookNode
 
 from taskmates.assistances.code_execution.jupyter_.parse_notebook import parse_notebook

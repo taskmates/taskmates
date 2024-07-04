@@ -1,14 +1,27 @@
 import copy
+import logging
 import os
 import sys
 from pathlib import Path
 
 from loguru import logger
+
 from taskmates.lib.resources_.resources import dump_resource
 
+level = os.environ.get("TASKMATES_LOG_LEVEL", "WARNING").upper()
+
+logging.basicConfig(handlers=[logging.StreamHandler(sys.stderr)],
+                    level=level)
+
+anthropic_logger: logging.Logger = logging.getLogger("anthropic")
+anthropic_logger.setLevel(level)
+httpx_logger: logging.Logger = logging.getLogger("httpx")
+httpx_logger.setLevel(level)
+
+# TODO this doesn't look right
 logger.remove()
 file_logger = copy.deepcopy(logger)
-logger.add(sys.stderr)
+logger.add(sys.stderr, level=level)
 
 base_dir = os.environ.get("TASKMATES_HOME", "/var/tmp/taskmates")
 file_logger = file_logger.patch(lambda record: record["extra"].setdefault("base_dir",
@@ -30,11 +43,11 @@ def file_sink(path_format):
 
 file_logger.add(file_sink(path_format=PATH_FORMAT),
                 serialize=True,
-                level="DEBUG", )
+                level=level, )
 
 file_logger.add(sys.stderr,
                 # format=f"[file_logger][{{name}}] Writing to \"{PATH_FORMAT}\"",
-                level="DEBUG", )
+                level=level, )
 
 # TODO
 # def test_file_logger(tmp_path):

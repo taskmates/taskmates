@@ -4,14 +4,14 @@ from pathlib import Path
 from typing import Tuple, List, Dict, Union
 
 import pyparsing
-from loguru import logger
+from taskmates.logging import logger
 from typeguard import typechecked
 
 from taskmates.formats.markdown.processing.process_image_transclusion import render_image_transclusion
 from taskmates.formats.openai.get_text_content import get_text_content
 from taskmates.formats.openai.set_text_content import set_text_content
 from taskmates.grammar.parsers.markdown_chat_parser import markdown_chat_parser
-from taskmates.lib.logging_.file_logger import file_logger
+from taskmates.logging import file_logger
 from taskmates.lib.markdown_.render_transclusions import render_transclusions
 from taskmates.lib.root_path.root_path import root_path
 

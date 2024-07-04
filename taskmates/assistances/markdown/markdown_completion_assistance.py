@@ -1,4 +1,4 @@
-from loguru import logger
+from taskmates.logging import logger
 from typeguard import typechecked
 
 from taskmates.actions.parse_markdown_chat import parse_markdown_chat

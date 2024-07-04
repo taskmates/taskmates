@@ -37,7 +37,7 @@ def bootstrap():
     # # # See https://no-color.org/
     # if not os.environ.get("NO_COLOR"):
     #     logging.root.addHandler(ColorHandler())
-    #
+
     if not logging.root.hasHandlers():
         handler = logging.StreamHandler()
         handler.setLevel(logging.INFO)
