@@ -5,18 +5,17 @@ import pyparsing as pp
 
 from taskmates.grammar.parsers.header.headers import headers_parser
 from taskmates.grammar.parsers.message.tool_calls_parser import tool_calls_parser
-from taskmates.grammar.parsers.section_start_anchor import section_start_anchor
 
 pp.enable_all_warnings()
 pp.ParserElement.set_default_whitespace_chars("")
 
 END_OF_CHAT_HEADER = r"(>\*\*[ \n])"
 END_OF_CHAT_HEADER_BEHIND = fr"((?<={END_OF_CHAT_HEADER}))"
-BEGINING_OF_SECTION_HEADER = r"(^(\*\*|###### ))"
+USERNAME = r"([a-zA-Z0-9_]+)"
+JSON = r"(\{[^\}]+\})"
+BEGINING_OF_SECTION_HEADER = fr"(^(\*\*{USERNAME}( {JSON})?>\*\*|###### (Steps|Execution|Cell Output)))"
 NOT_BEGINNING_OF_SECTION_HEADER_AHEAD = fr"(?!{BEGINING_OF_SECTION_HEADER})"
-END_OF_LINE_OR_STRING = r"(\n|\Z)"
-
-PROBABLE_MESSAGE_CONTENT = fr"({NOT_BEGINNING_OF_SECTION_HEADER_AHEAD}[^\n]+{END_OF_LINE_OR_STRING})+"
+END_OF_STRING = r"\Z"
 
 
 def message_parser():
@@ -33,14 +32,8 @@ def message_parser():
 
 def message_content_parser():
     return pp.Combine(
-        pp.Optional(pp.Regex(PROBABLE_MESSAGE_CONTENT, re.DOTALL | re.MULTILINE)) +
-        pp.SkipTo(
-            (
-                    (section_start_anchor()
-                     + (tool_calls_parser() | headers_parser()))
-                    | pp.StringEnd()
-            ),
-            include=False)
+        pp.Regex(fr"({NOT_BEGINNING_OF_SECTION_HEADER_AHEAD}.)+",
+                 re.DOTALL | re.MULTILINE)
     )("content")
 
 
@@ -72,6 +65,25 @@ def test_messages_parser_single_message():
 
     expected_messages = [{'content': 'Hello, assistant!\n\nThis is a multiline message.\n\n',
                           'name': 'user'}]
+
+    results = messages_parser().parseString(input)
+
+    assert [m.as_dict() for m in results.messages] == expected_messages
+
+
+def test_messages_parser_with_false_positive():
+    input = textwrap.dedent("""\
+        **user>** Here is a message.
+         
+        **This one is not** a message
+        
+        **assistant>** Here is another message.
+        """)
+
+    expected_messages = [{'content': 'Here is a message.\n\n**This one is not** a message\n\n',
+                          'name': 'user'},
+                         {'content': 'Here is another message.\n',
+                          'name': 'assistant'}]
 
     results = messages_parser().parseString(input)
 
@@ -241,7 +253,7 @@ def test_messages_parser_with_multiple_tool_executions():
         USER INSTRUCTION
 
         **shell>**
-
+        
         ###### Steps
 
         - Run Shell Command [1] `{"cmd": "cd /tmp && ls"}`

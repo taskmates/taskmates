@@ -79,7 +79,7 @@ def test_default_role_assignment_with_md(sample_data, tmp_path):
     participants_configs, participant_name, taskmates_dir = sample_data
     md_path = taskmates_dir / "taskmates" / f"{participant_name}.md"
     md_path.parent.mkdir(parents=True, exist_ok=True)
-    md_path.write_text("")
+    md_path.write_text("You're a helpful assistant")
 
     config = load_participant_config(participants_configs, participant_name, taskmates_dir)
     assert config["role"] == "assistant", "Should set role to assistant when markdown file exists"
