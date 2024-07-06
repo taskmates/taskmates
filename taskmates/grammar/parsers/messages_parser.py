@@ -447,6 +447,31 @@ def test_messages_parser_code_cell_only_message():
 
     assert parsed_messages == expected_messages
 
+
+def test_messages_parser_code_cell_with_no_language():
+    input = textwrap.dedent('''\
+        ```
+        hello
+        ```
+
+        ```
+        world
+        ```
+        ''')
+
+    expected_messages = [
+        {
+            'name': 'user',
+            'content': input
+        }
+    ]
+
+    results = messages_parser().parseString(input)
+    parsed_messages = [m.as_dict() for m in results.messages]
+
+    assert parsed_messages == expected_messages
+
+
 def test_messages_parser_nested_code_cells():
     input = textwrap.dedent('''\
         ```markdown
