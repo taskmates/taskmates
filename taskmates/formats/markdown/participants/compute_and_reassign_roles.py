@@ -2,6 +2,8 @@ def compute_and_reassign_roles(messages, recipient):
     for message in messages:
         if message.get("name") == recipient:
             message["role"] = "assistant"
+        else:
+            message["role"] = "user"
 
         if message.get("tool_calls") is not None:
             message["role"] = "assistant"
