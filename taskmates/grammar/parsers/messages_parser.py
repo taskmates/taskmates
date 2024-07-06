@@ -4,17 +4,20 @@ import textwrap
 import pyparsing as pp
 
 from taskmates.grammar.parsers.header.headers import headers_parser
+from taskmates.grammar.parsers.message.code_cell_parser import code_cell_parser
 from taskmates.grammar.parsers.message.tool_calls_parser import tool_calls_parser
 
 pp.enable_all_warnings()
 pp.ParserElement.set_default_whitespace_chars("")
 
-END_OF_CHAT_HEADER = r"(>\*\*[ \n])"
-END_OF_CHAT_HEADER_BEHIND = fr"((?<={END_OF_CHAT_HEADER}))"
 USERNAME = r"([a-zA-Z0-9_]+)"
 JSON = r"(\{[^\}]+\})"
-BEGINING_OF_SECTION_HEADER = fr"(^(\*\*{USERNAME}( {JSON})?>\*\*|###### (Steps|Execution|Cell Output)))"
-NOT_BEGINNING_OF_SECTION_HEADER_AHEAD = fr"(?!{BEGINING_OF_SECTION_HEADER})"
+START_OF_CHAT_HEADER = fr"(\*\*{USERNAME}( {JSON})?>\*\*)"
+END_OF_CHAT_HEADER = r"(>\*\*[ \n])"
+END_OF_CHAT_HEADER_BEHIND = fr"((?<={END_OF_CHAT_HEADER}))"
+
+BEGINING_OF_SECTION = fr"(^({START_OF_CHAT_HEADER}|```|###### (Steps|Execution|Cell Output)))"
+NOT_BEGINNING_OF_SECTION_AHEAD = fr"(?!{BEGINING_OF_SECTION})"
 END_OF_STRING = r"\Z"
 
 
@@ -31,9 +34,10 @@ def message_parser():
 
 
 def message_content_parser():
+    text_content = pp.Regex(fr"({NOT_BEGINNING_OF_SECTION_AHEAD}.)+", re.DOTALL | re.MULTILINE)
+    code_cell = code_cell_parser()
     return pp.Combine(
-        pp.Regex(fr"({NOT_BEGINNING_OF_SECTION_HEADER_AHEAD}.)+",
-                 re.DOTALL | re.MULTILINE)
+        (text_content | code_cell)[...]
     )("content")
 
 
@@ -389,3 +393,54 @@ def test_messages_parser_single_message_with_implicit_header():
     results = messages_parser().parseString(input)
 
     assert [m.as_dict() for m in results.messages] == expected_messages
+
+
+def test_messages_parser_with_false_header_in_code_cell():
+    input = textwrap.dedent('''\
+        **user>** Here's a code block with a false header:
+
+        ```python .eval
+        print("""
+        **assistant>** This is a false positive.
+        """)
+        ```
+
+        **assistant>** This is a real message.
+        ''')
+
+    expected_messages = [
+        {
+            'name': 'user',
+            'content': 'Here\'s a code block with a false header:\n\n```python .eval\nprint("""\n**assistant>** This is a false positive.\n""")\n```\n\n'
+        },
+        {
+            'name': 'assistant',
+            'content': 'This is a real message.\n'
+        }
+    ]
+
+    results = messages_parser().parseString(input)
+    parsed_messages = [m.as_dict() for m in results.messages]
+
+    assert parsed_messages == expected_messages
+
+
+def test_messages_parser_code_cell_only_message():
+    input = textwrap.dedent('''\
+        ```python .eval
+        print("hello")
+        ```
+        
+        ''')
+
+    expected_messages = [
+        {
+            'name': 'user',
+            'content': input
+        }
+    ]
+
+    results = messages_parser().parseString(input)
+    parsed_messages = [m.as_dict() for m in results.messages]
+
+    assert parsed_messages == expected_messages

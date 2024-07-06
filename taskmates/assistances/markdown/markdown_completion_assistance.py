@@ -37,10 +37,6 @@ class MarkdownCompletionAssistance:
             with signals.request.connected_to(append_markdown), \
                     signals.formatting.connected_to(append_markdown):
 
-                # TODO: Is this still needed?
-                if not markdown_chat.lstrip().startswith("**") and not markdown_chat.lstrip().startswith("--"):
-                    await signals.request.send_async(f"**user>** ")
-
                 await signals.request.send_async(markdown_chat)
 
                 line_breaks = await self.compute_linebreaks(markdown_chat)
