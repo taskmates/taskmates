@@ -427,6 +427,38 @@ def test_messages_parser_with_false_header_in_code_cell():
     assert parsed_messages == expected_messages
 
 
+def test_messages_parser_with_code_cell():
+    input = textwrap.dedent('''\
+        **user>** This is a message with code cells
+        
+        ```python .eval
+        print("hello")
+        ```
+        
+        ''')
+
+    expected = textwrap.dedent('''\
+        This is a message with code cells
+        
+        ```python .eval
+        print("hello")
+        ```
+        
+        ''')
+
+    expected_messages = [
+        {
+            'name': 'user',
+            'content': expected
+        }
+    ]
+
+    results = messages_parser().parseString(input)
+    parsed_messages = [m.as_dict() for m in results.messages]
+
+    assert parsed_messages == expected_messages
+
+
 def test_messages_parser_code_cell_only_message():
     input = textwrap.dedent('''\
         ```python .eval
