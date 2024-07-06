@@ -43,7 +43,7 @@ class ChatCompletionEditorCompletion:
     async def append_tool_calls(self, tool_call_json: Dict):
         function = tool_call_json.get("function", {})
         if tool_call_json.get("id") is not None:
-            last_tool_call_id = 1
+            last_tool_call_id = 0
 
             for m in self.chat['messages']:
                 if m.get('tool_calls'):

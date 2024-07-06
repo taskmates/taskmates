@@ -159,8 +159,6 @@ class AsyncAnthropicOpenAIAdapter:
                                 yield ChatCompletionChunkModel(id=id, choices=[choice], created=None,
                                                                model=model_name)
                             elif isinstance(event, ToolsBetaContentBlockStartEvent):
-                                event: ToolsBetaContentBlockStartEvent
-                                event.model_dump()
                                 if event.content_block.type == "tool_use":
                                     function_name = event.content_block.name
                                     tool_call = {"index": 0, "id": event.content_block.id,

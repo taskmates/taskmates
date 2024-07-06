@@ -16,11 +16,21 @@ class ChatCompletionWithUsername:
 
     async def __aiter__(self):
         async for chunk in self.chat_completion:
-            if chunk.choices[0].delta.content is None:
+            current_token = chunk.choices[0].delta.content
+            tool_calls = chunk.choices[0].delta.tool_calls
+
+            if self.buffering and tool_calls:
+                self.buffering = False
+                full_content = "".join(self.buffered_tokens)
+
+                yield self._flush_username(chunk, None)
+                yield self._create_chunk(chunk, full_content)
                 yield chunk
                 continue
 
-            current_token = chunk.choices[0].delta.content
+            if current_token is None:
+                yield chunk
+                continue
 
             if not self.buffering:
                 yield self._create_chunk(chunk, current_token)

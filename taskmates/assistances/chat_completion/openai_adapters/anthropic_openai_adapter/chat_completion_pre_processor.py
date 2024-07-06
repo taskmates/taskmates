@@ -16,7 +16,10 @@ class ChatCompletionPreProcessor:
 
     async def __aiter__(self):
         async for chunk in self.chat_completion:
-            if chunk.choices[0].delta.content is None:
+            current_token = chunk.choices[0].delta.content
+            tool_calls = chunk.choices[0].delta.tool_calls
+
+            if current_token is None:
                 yield chunk
                 continue
 
@@ -24,12 +27,10 @@ class ChatCompletionPreProcessor:
                 yield chunk
                 continue
 
-            current_token = chunk.choices[0].delta.content
-
             if current_token and re.match(r'^[#*\->`\[\]{}]', current_token):
                 current_token = "\n" + current_token
 
-            if current_token:
+            if current_token or tool_calls:
                 self.buffering = False
                 chunk.choices[0].delta.content = current_token
                 yield chunk
