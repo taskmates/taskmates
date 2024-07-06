@@ -179,6 +179,8 @@ class AsyncAnthropicOpenAIAdapter:
                     break  # Successfully processed all events, exit retry loop
 
                 except APIStatusError as e:
+                    if e.status_code == 400:
+                        raise e
                     if attempt == max_attempts:
                         raise e  # Reraise the last exception after all retries have failed
                     else:
