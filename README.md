@@ -4,13 +4,38 @@ Taskmates provides a powerful ecosystem of AI Agents that can interact with your
 
 The use of Taskmates requires an active subscription. Sign up for the Beta program [here](https://taskmates.me).
 
-##### ⚠️ Disclaimer: Experimental and Potentially Dangerous
+⚠️ **Warning:** Taskmates is experimental and can potentially execute arbitrary commands on your system (e.g. via shell or python interpreter). Use at your own risk. We take no responsibility for any actions performed by Taskmates or any resulting damages.
 
-**Warning:** Taskmates is experimental and can potentially execute arbitrary commands on your system (e.g. via shell or python interpreter). Use at your own risk. We take no responsibility for any actions performed by Taskmates or any resulting damages.
+## Who is this for?
 
-## Plain Markdown: our backbone
+Taskmates is currently targeted at experienced developers or companies.
 
-Communicate with Taskmates using Markdown files, from any editor or the CLI.
+## What can it do?
+
+##### Some of the things it can do well
+
+- Complex tasks where an automated feedback loop is feasible:
+  - Read your code, edit it, run unit tests, read the output, fix it, repeat.
+  - Run CLI tools, read the output, make adjusments, repeat.
+  - Write a small POC (e.g. of a library), execute it, read the output, make adjustments, repeat.
+- Use CLI tools. For example, create a taskmate specialized in `git`, `docker`, `aws`, etc. When using less popular tools, print the help message and add it to their instruction.
+- Use APIs. For example, create a taskmate specialized in the GitHub API, Jira API, etc. Simply instruct the taskmate to use the REST API via CURL. If the API is unknown, add its documentation to the instruction.
+- Interpret images. Give it a screenshot or a diagram and ask it to describe what it sees, or write/fix code based on it. 
+
+##### Some of the things it can't do so well (yet)
+
+- Write large a project or large amounts of code from scratch.
+  - Try to do it iteratively, incrementally. Organize your code in well-encapsulated components.  
+- Edit code that has a lot of dependencies or that is too large (e.g. thousands of lines).
+  - Performance of all current AI models seem to degrade as the content gets larger.
+- Code with complex execution flows (e.g. multiple threads, async code, recursion).
+  - It might help to ask them to print debug statements and run it, so they can follow the execution flow. 
+
+Please note that they can and are getting better (at a fast speed) via:
+
+ - Optimized Taskmates Prompts (soon to come)
+ - Optimized workflows (soon to come)
+ - New and better AI models (e.g. from OpenAI and Anthropic)
 
 ## Quick Start
 
@@ -119,6 +144,14 @@ Use transclusions for more advanced use cases:
 
 Taskmates can execute arbitrary commands on your system. Consider running it in a sandboxed environment (e.g. Docker) or on a dedicated machine.
 
+## License
+
+Taskmates will require a commercial license to use. It will be free for some cases (e.g. individual use, open-source projects, educational purposes), and parts of it likely open source. We're still figuring out the details.
+
 ## Support
 
 Join our [Discord](https://discord.gg/XjdEqUZXUn) community for support and feedback.
+
+## Join us
+
+We're looking for co-founders and individual contributors. Reach out to us via <a href="https://www.linkedin.com/company/taskmatesme">LinkedIn</a>
