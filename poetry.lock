@@ -2795,13 +2795,13 @@ tests = ["pytest (>=4.6)"]
 
 [[package]]
 name = "nbclient"
-version = "0.9.1"
+version = "0.10.0"
 description = "A client library for executing notebooks. Formerly nbconvert's ExecutePreprocessor."
 optional = false
 python-versions = ">=3.8.0"
 files = [
-    {file = "nbclient-0.9.1-py3-none-any.whl", hash = "sha256:2c50a866e8dd6c5f655de47d2e252c82d2ebe978574e760ac229f5950593a434"},
-    {file = "nbclient-0.9.1.tar.gz", hash = "sha256:4f7b78c6c2a380e228f8a3bb469b847cb24e5b8ad6fda410691b5621e05ce5a2"},
+    {file = "nbclient-0.10.0-py3-none-any.whl", hash = "sha256:f13e3529332a1f1f81d82a53210322476a168bb7090a0289c795fe9cc11c9d3f"},
+    {file = "nbclient-0.10.0.tar.gz", hash = "sha256:4b3f1b7dba531e498449c4db4f53da339c91d449dc11e9af3a43b4eb5c5abb09"},
 ]
 
 [package.dependencies]
@@ -5960,4 +5960,4 @@ chromadb = ["chromadb"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11.1"
-content-hash = "31b67b5757630db2e1b90a082c655049dfc21e870324b72cf5a6051838ab0059"
+content-hash = "8cc37668b9f4ccbc894cf9b1c627104c7c369a5d40abd29c0b2db040411fa560"
