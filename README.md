@@ -12,7 +12,7 @@ Taskmates is currently targeted at experienced developers or companies.
 
 ## What can it do?
 
-##### Some of the things it can do well
+### Some of the things it can do well
 
 - Complex tasks where an automated feedback loop is feasible:
   - Read your code, edit it, run unit tests, read the output, fix it, repeat.
@@ -22,7 +22,7 @@ Taskmates is currently targeted at experienced developers or companies.
 - Use APIs. For example, create a taskmate specialized in the GitHub API, Jira API, etc. Simply instruct the taskmate to use the REST API via CURL. If the API is unknown, add its documentation to the instruction.
 - Interpret images. Give it a screenshot or a diagram and ask it to describe what it sees, or write/fix code based on it. 
 
-##### Some of the things it can't do so well (yet)
+### Some of the things it can't do so well (yet)
 
 - Write large a project or large amounts of code from scratch.
   - Try to do it iteratively, incrementally. Organize your code in well-encapsulated components.  
