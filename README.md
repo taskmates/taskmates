@@ -4,7 +4,8 @@ Taskmates provides a powerful ecosystem of AI Agents that can interact with your
 
 The use of Taskmates requires an active subscription. Sign up for the Beta program [here](https://taskmates.me).
 
-⚠️ **Warning:** Taskmates is experimental and can potentially execute arbitrary commands on your system (e.g. via shell or python interpreter). Use at your own risk. We take no responsibility for any actions performed by Taskmates or any resulting damages.
+⚠️ **Warning:
+** Taskmates is experimental and can potentially execute arbitrary commands on your system (e.g. via shell or python interpreter). Use at your own risk. We take no responsibility for any actions performed by Taskmates or any resulting damages.
 
 ## Who is this for?
 
@@ -15,27 +16,36 @@ Taskmates is currently targeted at experienced developers or companies.
 ### Some of the things it can do well
 
 - Complex tasks where an automated feedback loop is feasible:
-  - Read your code, edit it, run unit tests, read the output, fix it, repeat.
-  - Run CLI tools, read the output, make adjusments, repeat.
-  - Write a small POC (e.g. of a library), execute it, read the output, make adjustments, repeat.
+    - Read your code, edit it, run unit tests, read the output, fix it, repeat.
+    - Run CLI tools, read the output, make adjusments, repeat.
+    - Write a small POC (e.g. of a library), execute it, read the output, make adjustments, repeat.
 - Use CLI tools. For example, create a taskmate specialized in `git`, `docker`, `aws`, etc. When using less popular tools, print the help message and add it to their instruction.
 - Use APIs. For example, create a taskmate specialized in the GitHub API, Jira API, etc. Simply instruct the taskmate to use the REST API via CURL. If the API is unknown, add its documentation to the instruction.
-- Interpret images. Give it a screenshot or a diagram and ask it to describe what it sees, or write/fix code based on it. 
+- Interpret images. Give it a screenshot or a diagram and ask it to describe what it sees, or write/fix code based on it.
 
 ### Some of the things it can't do so well (yet)
 
 - Write large a project or large amounts of code from scratch.
-  - Try to do it iteratively, incrementally. Organize your code in well-encapsulated components.  
+    - Try to do it iteratively, incrementally. Organize your code in well-encapsulated components.
 - Edit code that has a lot of dependencies or that is too large (e.g. thousands of lines).
-  - Performance of all current AI models seem to degrade as the content gets larger.
+    - Performance of all current AI models seem to degrade as the content gets larger.
 - Code with complex execution flows (e.g. multiple threads, async code, recursion).
-  - It might help to ask them to print debug statements and run it, so they can follow the execution flow. 
+    - It might help to ask them to print debug statements and run it, so they can follow the execution flow.
 
 Please note that they can and are getting better (at a fast speed) via:
 
- - Optimized Taskmates Prompts (soon to come)
- - Optimized workflows (soon to come)
- - New and better AI models (e.g. from OpenAI and Anthropic)
+- Optimized Taskmates Prompts (soon to come)
+- Optimized workflows (soon to come)
+- New and better AI models (e.g. from OpenAI and Anthropic)
+
+## Installation
+
+```bash
+pipx install --force --python 3.11 git+https://github.com/taskmates/taskmates.git
+
+# optionally, install pre-built Taskmates 
+git clone https://@github.com/taskmates/taskmates-directory.git "${TASKMATES_HOME:-"/var/tmp/taskmates"}/taskmates"
+```
 
 ## Quick Start
 
@@ -56,8 +66,6 @@ EOF
 2. Interact with it by mentioning its username.
 
 ```bash
-export ANTHROPIC_API_KEY="your_api_key"
-
 taskmates complete "Hey @git, find the commit that deleted the file requirements.txt"
 ```
 
@@ -65,15 +73,6 @@ taskmates complete "Hey @git, find the commit that deleted the file requirements
 
 ```bash
 taskmates server
-```
-
-## Installation
-
-```bash
-pipx install --force --python 3.11 git+https://github.com/taskmates/taskmates.git
-
-# optionally, install pre-built Taskmates 
-git clone https://@github.com/taskmates/taskmates-directory.git "${TASKMATES_HOME:-"/var/tmp/taskmates"}/taskmates"
 ```
 
 ## The Chat Markdown format
