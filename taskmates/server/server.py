@@ -23,7 +23,7 @@ app.register_blueprint(health_bp)
 if __name__ == "__main__":
     import hypercorn.asyncio
 
-    config = hypercorn.Config.from_mapping(bind="localhost:5000", use_reloader=True)
+    config = hypercorn.Config.from_mapping(bind="localhost:55000", use_reloader=True)
     asyncio.run(hypercorn.asyncio.serve(app, config), debug=True)
 
 # async def shutdown():
@@ -35,7 +35,7 @@ if __name__ == "__main__":
 # #         await ws.close()
 # #
 # # if __name__ == "__main__":
-# #     config = Config.from_mapping(bind="localhost:5000", reload=True)
+# #     config = Config.from_mapping(bind="localhost:55000", reload=True)
 #
 # def handle_shutdown_signal(*args):
 #     asyncio.run(shutdown())
@@ -47,7 +47,7 @@ if __name__ == "__main__":
 #     from hypercorn.config import Config
 #     from hypercorn.asyncio import serve
 #
-#     config = Config.from_mapping(bind="localhost:5000", reload=True, use_reloader=True, shutdown_timeout=1)
+#     config = Config.from_mapping(bind="localhost:55000", reload=True, use_reloader=True, shutdown_timeout=1)
 #     signal.signal(signal.SIGTERM, handle_shutdown_signal)
 #     signal.signal(signal.SIGINT, handle_shutdown_signal)
 #

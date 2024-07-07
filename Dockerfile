@@ -32,6 +32,6 @@ COPY . .
 
 RUN poetry install --no-interaction
 
-EXPOSE 5000
+EXPOSE 55000
 ENV QUART_APP=app
-CMD poetry run hypercorn --bind 0.0.0.0:5000 taskmates.server.server:app
+CMD poetry run hypercorn --bind 0.0.0.0:55000 taskmates.server.server:app

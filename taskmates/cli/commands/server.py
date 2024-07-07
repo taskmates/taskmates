@@ -7,7 +7,7 @@ class ServerCommand:
     @staticmethod
     def add_arguments(parser):
         parser.add_argument('--host', default='localhost', help='Host to bind the server to')
-        parser.add_argument('--port', type=int, default=5000, help='Port to bind the server to')
+        parser.add_argument('--port', type=int, default=55000, help='Port to bind the server to')
 
     @staticmethod
     async def execute(args):
@@ -33,7 +33,7 @@ def test_server_command():
     parser = MagicMock()
     command.add_arguments(parser)
     parser.add_argument.assert_any_call('--host', default='localhost', help='Host to bind the server to')
-    parser.add_argument.assert_any_call('--port', type=int, default=5000, help='Port to bind the server to')
+    parser.add_argument.assert_any_call('--port', type=int, default=55000, help='Port to bind the server to')
 
     # Test execute
     args = MagicMock(host='127.0.0.1', port=8000)
