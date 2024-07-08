@@ -5,9 +5,9 @@ import pytest
 from httpx import ReadError
 from typeguard import typechecked
 
-from taskmates.assistances.chat_completion.openai_adapters.anthropic_openai_adapter.chat_completion_pre_processor import \
+from taskmates.assistances.chat_completion.openai_adapters.anthropic_openai_adapter.response.chat_completion_pre_processor import \
     ChatCompletionPreProcessor
-from taskmates.assistances.chat_completion.openai_adapters.anthropic_openai_adapter.chat_completion_with_username import \
+from taskmates.assistances.chat_completion.openai_adapters.anthropic_openai_adapter.response.chat_completion_with_username import \
     ChatCompletionWithUsername
 from taskmates.formats.markdown.metadata.get_model_client import get_model_client
 from taskmates.logging import file_logger

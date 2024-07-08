@@ -1,9 +1,9 @@
 import json
 from typing import List, Dict, Any
 
-from taskmates.assistances.chat_completion.openai_adapters.anthropic_openai_adapter.get_image_contents import \
+from taskmates.assistances.chat_completion.openai_adapters.anthropic_openai_adapter.parsing.get_image_contents import \
     get_image_contents
-from taskmates.assistances.chat_completion.openai_adapters.anthropic_openai_adapter.get_tool_contents import \
+from taskmates.assistances.chat_completion.openai_adapters.anthropic_openai_adapter.parsing.get_tool_contents import \
     get_tool_contents
 from taskmates.lib.openai_.model.chat_completion_chunk_model import ChatCompletionChunkModel
 from typeguard import typechecked
