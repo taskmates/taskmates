@@ -8,7 +8,7 @@ def code_cell_parser():
         pp.line_start + pp.Regex(r"```[a-z]+( \.eval)?", re.MULTILINE) + pp.line_end).set_name(
         "code_cell_with_language_start")
     code_cell_with_language = pp.Forward().set_name("code_cell_with_language")
-    code_cell_end = pp.Regex(r"^```\n", re.MULTILINE).set_name("code_cell_end")
+    code_cell_end = pp.Regex(r"^```(\n|\Z)", re.MULTILINE).set_name("code_cell_end")
 
     code_cell_with_language <<= pp.Combine(
         code_cell_with_language_start -
@@ -22,7 +22,7 @@ def code_cell_parser():
     )
 
     code_cell_without_language = pp.Forward().set_name("code_cell_without_language")
-    code_cell_without_language_start = pp.Regex(r"^```\n", re.MULTILINE).set_name(
+    code_cell_without_language_start = pp.Regex(r"^```(\n|\Z)", re.MULTILINE).set_name(
         "code_cell_without_language_start")
 
     code_cell_without_language <<= pp.Combine(
