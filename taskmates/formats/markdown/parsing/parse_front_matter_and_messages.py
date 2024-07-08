@@ -39,6 +39,12 @@ def parse_front_matter_and_messages(source_file: Path,
     try:
         parsed_chat = parser.parse_string(content)
     except pyparsing.exceptions.ParseSyntaxException as e:
+        file_logger.error(f"[parse_front_matter_and_messages] {start_time}-chat.md", content=content)
+        logger.error(f"Failed to parse markdown: /var/tmp/taskmates/logs/{start_time}-chat.md")
+        logger.error(e)
+        raise
+    except pyparsing.exceptions.ParseException as e:
+        file_logger.error(f"[parse_front_matter_and_messages] {start_time}-chat.md", content=content)
         logger.error(f"Failed to parse markdown: /var/tmp/taskmates/logs/{start_time}-chat.md")
         logger.error(e)
         raise
