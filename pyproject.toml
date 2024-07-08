@@ -78,6 +78,7 @@ matplotlib-inline = "^0.1.7"
 pytest = "^8.2.0"
 pytest-asyncio = "^0.23.7"
 pytest-mock = "^3.14.0"
+pygithub = "^2.3.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest-socket = "^0.7.0"
