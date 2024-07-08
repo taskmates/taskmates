@@ -29,6 +29,10 @@ class CodeCellsEditorCompletion:
         msg_type = msg['msg_type']
         content = msg['content']
 
+        # TODO: Remove this when the issue is fixed
+        if "Exception in callback BaseAsyncIOLoop._handle_events" in json.dumps(content):
+            return
+
         output = {
             "msg_id": code_cell_chunk['msg_id'],
             "source": code_cell_chunk['cell_source'],
@@ -62,11 +66,6 @@ class CodeCellsEditorCompletion:
                 output["text"] = formatted_traceback
             else:
                 output["text"] = error_message + "\n" + formatted_traceback
-
-            # TODO: Remove this when the issue is fixed
-            if "Exception in callback BaseAsyncIOLoop._handle_events" in output["text"] and \
-                    "RuntimeError: cannot enter context" in output["text"]:
-                return
         elif msg_type == 'display_data':
             display_data = content['data']
             image_mime_type = None
