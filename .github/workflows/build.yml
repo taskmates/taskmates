@@ -13,31 +13,39 @@ jobs:
         python-version: [3.11.1]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 15
+    defaults:
+      run:
+        shell: bash
     steps:
       - uses: actions/checkout@v4
-      - name: Install Poetry
-        uses: snok/install-poetry@v1
       - name: Set up Python ${{ matrix.python-version }}
+        id: setup-python
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-          cache: 'poetry'
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+        with:
+          virtualenvs-create: true
+          virtualenvs-in-project: true
+      - name: Load cached pip wheels
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache
+          key: venv-${{ runner.os }}-${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('**/poetry.lock') }}
       - name: Install dependencies
-        run: |
-          poetry install --sync
+        run: poetry install --no-interaction --no-root
+      - name: Install project
+        run: poetry install --no-interaction
       - name: Run tests
         env:
           TASKMATES_TELEMETRY_ENABLED: false
         run: |
+          source $VENV
           poetry run pytest -q --show-capture=no --disable-warnings --tb=auto
-#          poetry run pytest -vv
-#      - uses: actions/upload-artifact@v4
-#        with:
-#          name: pytest-json-report
-#          path: report.json
-#        if: always()
       - name: Build package
         run: |
+          source $VENV
           poetry build
       - uses: actions/upload-artifact@v4
         with:
