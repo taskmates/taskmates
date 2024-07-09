@@ -38,7 +38,7 @@ class CodeCellsEditorCompletion:
             "source": code_cell_chunk['cell_source'],
             "output_type": msg_type,
             "name": "",
-            "mime_type": "",
+            "mime_type": None,
             "text": ""
         }
 
@@ -57,6 +57,7 @@ class CodeCellsEditorCompletion:
                 output["text"] = value
         elif msg_type == 'error':
             output["name"] = "error"
+            output["mime_type"] = "text/plain"
             ename = content['ename']
             evalue = content['evalue']
             traceback = list(map(strip_ansi, content["traceback"]))
@@ -94,6 +95,7 @@ class CodeCellsEditorCompletion:
                 output["text"] = f"![{output['name']}]({image_path})"
         else:
             output["name"] = msg_type
+            output["mime_type"] = "text/plain"
             output["text"] = json.dumps(content)
 
         await self.maybe_append_execution_output(code_cell_id, output["name"], output["mime_type"], output["text"])
