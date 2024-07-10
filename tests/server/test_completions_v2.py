@@ -1,8 +1,8 @@
+import asyncio
 import json
 import os
-import textwrap
 import platform
-import asyncio
+import textwrap
 
 import pytest
 from quart import Quart
@@ -596,6 +596,7 @@ async def test_cwd(tmp_path):
     # Check if the output contains the expected file content
     assert os.path.normpath(chunks[-1]['msg']['content']['text'].strip()) == os.path.normpath(str(tmp_path))
 
+
 @pytest.mark.asyncio
 async def test_kill(capsys):
     signals = SIGNALS.get()
@@ -631,12 +632,12 @@ async def test_kill(capsys):
     async def execute_with_kill():
         execute_task = asyncio.create_task(execute_markdown_on_local_kernel(input_md, path="test_kill"))
         await kill_event.wait()
-        signals.kill.send()
+        await signals.kill.send_async({})
         await execute_task
 
     kill_task = asyncio.create_task(send_kill())
     execute_task = asyncio.create_task(execute_with_kill())
-    
+
     await asyncio.gather(kill_task, execute_task)
 
     captured = capsys.readouterr()
