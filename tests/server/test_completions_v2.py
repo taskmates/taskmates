@@ -2,6 +2,7 @@ import json
 import os
 import textwrap
 import platform
+import asyncio
 
 import pytest
 from quart import Quart
@@ -250,17 +251,13 @@ async def test_interrupt_tool(app, tmp_path):
 
     os_name = platform.system()
 
-    if os_name == "Darwin":
+    if os_name == "Windows":
         expected_response = ('###### Execution: Run Shell Command [1]\n'
                              '\n'
                              "<pre class='output' style='display:none'>\n"
                              '2\n'
-                             '--- INTERRUPT ---\n'
-                             'Traceback (most recent call last):\n'
-                             '  File "<string>", line 1, in <module>\n'
-                             'KeyboardInterrupt\n'
-                             '\n'
-                             'Exit Code: -2\n'
+                             '^C\n'
+                             'Exit Code: 3221225786\n'
                              '</pre>\n'
                              '-[x] Done\n'
                              '\n')
@@ -270,7 +267,9 @@ async def test_interrupt_tool(app, tmp_path):
                              "<pre class='output' style='display:none'>\n"
                              '2\n'
                              '--- INTERRUPT ---\n'
-                             'fail\n'
+                             'Traceback (most recent call last):\n'
+                             '  File "<string>", line 1, in <module>\n'
+                             'KeyboardInterrupt\n'
                              '\n'
                              'Exit Code: -2\n'
                              '</pre>\n'
@@ -596,3 +595,101 @@ async def test_cwd(tmp_path):
 
     # Check if the output contains the expected file content
     assert os.path.normpath(chunks[-1]['msg']['content']['text'].strip()) == os.path.normpath(str(tmp_path))
+
+@pytest.mark.asyncio
+async def test_kill(capsys):
+    signals = SIGNALS.get()
+    chunks = []
+    kill_event = asyncio.Event()
+
+    async def capture_chunk(chunk):
+        chunks.append(chunk)
+
+    signals.code_cell_output.connect(capture_chunk)
+
+    input_md = textwrap.dedent("""\
+        ```python .eval
+        import time
+        for i in range(5):
+            print(i)
+            if i == 2:
+                time.sleep(5)
+        ```
+    """)
+
+    async def send_kill():
+        while True:
+            await asyncio.sleep(0.1)
+            content = "".join([chunk['msg']['content']["text"]
+                               for chunk in chunks
+                               if chunk['msg']['msg_type'] == 'stream'])
+            lines = content.split("\n")
+            if len(lines) >= 2:
+                kill_event.set()
+                break
+
+    async def execute_with_kill():
+        execute_task = asyncio.create_task(execute_markdown_on_local_kernel(input_md, path="test_kill"))
+        await kill_event.wait()
+        signals.kill.send()
+        await execute_task
+
+    kill_task = asyncio.create_task(send_kill())
+    execute_task = asyncio.create_task(execute_with_kill())
+    
+    await asyncio.gather(kill_task, execute_task)
+
+    captured = capsys.readouterr()
+    output = captured.out
+
+    os_name = platform.system()
+    if os_name == "Windows":
+        expected_output = textwrap.dedent("""\
+            ###### Cell Output: stdout [cell_0]
+
+            <pre>
+            0
+            1
+            2
+            </pre>
+
+            ###### Cell Output: error [cell_0]
+
+            <pre>
+            ---------------------------------------------------------------------------
+            KeyboardInterrupt                         Traceback (most recent call last)
+            Cell In[1], line 6
+                  4     print(i)
+                  5     if i == 2:
+            ----> 6         time.sleep(5)
+
+            KeyboardInterrupt: 
+            </pre>
+
+            """)
+    else:
+        expected_output = textwrap.dedent("""\
+            ###### Cell Output: stdout [cell_0]
+
+            <pre>
+            0
+            1
+            2
+            </pre>
+
+            ###### Cell Output: error [cell_0]
+
+            <pre>
+            ---------------------------------------------------------------------------
+            KeyboardInterrupt                         Traceback (most recent call last)
+            Cell In[1], line 6
+                  4     print(i)
+                  5     if i == 2:
+            ----> 6         time.sleep(5)
+
+            KeyboardInterrupt: 
+            </pre>
+
+            """)
+
+    assert output == expected_output
