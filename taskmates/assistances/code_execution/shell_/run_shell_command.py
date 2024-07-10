@@ -137,20 +137,21 @@ async def test_run_shell_command_kill(capsys):
     signals.response.connect(capture_chunk)
 
     async def send_kill():
-        while len(chunks) < 5:
+        while len(chunks) < 3:
             await asyncio.sleep(0.1)
         await signals.kill.send_async(None)
 
     kill_task = asyncio.create_task(send_kill())
 
     if platform.system() == "Windows":
-        cmd = "for /L %i in (1,1,10) do @(echo %i & timeout /t 1 > nul)"
+        cmd = "powershell -Command \"1..10 | ForEach-Object { Write-Output $_; Start-Sleep -Seconds 1 }\""
     else:
-        cmd = "seq 5; sleep 1; seq 6 10"
+        cmd = "for i in {1..10}; do echo $i; sleep 1; done"
 
     returncode = await run_shell_command(cmd)
 
     await kill_task
 
     assert returncode.startswith('\nExit Code:')
-    assert "".join(chunks).strip().startswith("1\n2\n3\n4\n5")
+    output = "".join(chunks).strip()
+    assert output.startswith("1\n2\n3"), f"Unexpected output: {output}"
