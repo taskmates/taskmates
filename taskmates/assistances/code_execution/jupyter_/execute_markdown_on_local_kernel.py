@@ -268,20 +268,23 @@ async def test_cwd(tmp_path):
 
     signals.code_cell_output.connect(capture_chunk)
 
-    # Markdown content that reads the file
+    # Markdown content that gets the current working directory
     input_md = textwrap.dedent(f"""\
         ```python .eval
-        !pwd
+        import os
+        print(os.getcwd())
         ```
     """)
 
     # Execute the markdown with cwd set to the temporary directory
     await execute_markdown_on_local_kernel(input_md, path="test_with_cwd", cwd=str(tmp_path))
 
-    # Check if the output contains the expected file content
-    # Use os.path.normpath() to ensure consistent path representation across different platforms
-    # This helps avoid issues with path separator differences between Windows ('\') and Unix-like ('/') systems
-    assert os.path.normpath(chunks[-1]['msg']['content']['text'].strip()) == os.path.normpath(str(tmp_path))
+    # Check if the output contains the expected directory path
+    output_path = chunks[-1]['msg']['content']['text'].strip()
+    expected_path = str(tmp_path)
+
+    # Normalize paths for comparison
+    assert os.path.normpath(output_path) == os.path.normpath(expected_path)
 
 
 @pytest.mark.asyncio
