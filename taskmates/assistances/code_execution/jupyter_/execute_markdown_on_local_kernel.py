@@ -1,5 +1,6 @@
 import argparse
 import asyncio
+import os
 import signal
 import sys
 import textwrap
@@ -278,7 +279,9 @@ async def test_cwd(tmp_path):
     await execute_markdown_on_local_kernel(input_md, path="test_with_cwd", cwd=str(tmp_path))
 
     # Check if the output contains the expected file content
-    assert chunks[-1]['msg']['content']['text'].strip() == str(tmp_path)
+    # Use os.path.normpath() to ensure consistent path representation across different platforms
+    # This helps avoid issues with path separator differences between Windows ('\') and Unix-like ('/') systems
+    assert os.path.normpath(chunks[-1]['msg']['content']['text'].strip()) == os.path.normpath(str(tmp_path))
 
 
 @pytest.mark.asyncio
