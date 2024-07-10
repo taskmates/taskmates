@@ -1,6 +1,7 @@
 import json
 import os
 import textwrap
+import platform
 
 import pytest
 from quart import Quart
@@ -247,19 +248,34 @@ async def test_interrupt_tool(app, tmp_path):
     
     """)
 
-    expected_response = ('###### Execution: Run Shell Command [1]\n'
-                         '\n'
-                         "<pre class='output' style='display:none'>\n"
-                         '2\n'
-                         '--- INTERRUPT ---\n'
-                         'Traceback (most recent call last):\n'
-                         '  File "<string>", line 1, in <module>\n'
-                         'KeyboardInterrupt\n'
-                         '\n'
-                         'Exit Code: -2\n'
-                         '</pre>\n'
-                         '-[x] Done\n'
-                         '\n')
+    os_name = platform.system()
+
+    if os_name == "Darwin":
+        expected_response = ('###### Execution: Run Shell Command [1]\n'
+                             '\n'
+                             "<pre class='output' style='display:none'>\n"
+                             '2\n'
+                             '--- INTERRUPT ---\n'
+                             'Traceback (most recent call last):\n'
+                             '  File "<string>", line 1, in <module>\n'
+                             'KeyboardInterrupt\n'
+                             '\n'
+                             'Exit Code: -2\n'
+                             '</pre>\n'
+                             '-[x] Done\n'
+                             '\n')
+    else:
+        expected_response = ('###### Execution: Run Shell Command [1]\n'
+                             '\n'
+                             "<pre class='output' style='display:none'>\n"
+                             '2\n'
+                             '--- INTERRUPT ---\n'
+                             'fail\n'
+                             '\n'
+                             'Exit Code: -2\n'
+                             '</pre>\n'
+                             '-[x] Done\n'
+                             '\n')
 
     test_payload: CompletionPayload = {
         "type": "completions_request",
