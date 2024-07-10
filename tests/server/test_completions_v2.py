@@ -7,8 +7,11 @@ from quart.testing.connections import WebsocketDisconnectError
 from typeguard import typechecked
 
 import taskmates
+from taskmates.assistances.code_execution.jupyter_.execute_markdown_on_local_kernel import \
+    execute_markdown_on_local_kernel
 from taskmates.config import SERVER_CONFIG
 from taskmates.server.blueprints.taskmates_completions import completions_bp as completions_v2_bp
+from taskmates.signals import SIGNALS
 from taskmates.types import CompletionPayload
 
 
@@ -114,7 +117,7 @@ async def test_tool_completion(app, tmp_path):
     
     ###### Steps
     
-    - Run Shell Command [1] `{"cmd":"echo $((1 + 1))"}`
+    - Run Shell Command [1] `{"cmd":"python -c \\"print(1 + 1)\\""}`
     
     """)
 
@@ -239,7 +242,7 @@ async def test_interrupt_tool(app, tmp_path):
     
     ###### Steps
     
-    - Run Shell Command [1] `{"cmd":"echo 2; sleep 60; echo fail"}`
+    - Run Shell Command [1] `{"cmd":"python -c \\"import time; print(2); time.sleep(60); print('fail')\\""}`
     
     """)
 
@@ -247,7 +250,11 @@ async def test_interrupt_tool(app, tmp_path):
                          '\n'
                          "<pre class='output' style='display:none'>\n"
                          '2\n'
-                         '--- INTERRUPT ---\n\n'
+                         '--- INTERRUPT ---\n'
+                         'Traceback (most recent call last):\n'
+                         '  File "<string>", line 1, in <module>\n'
+                         'KeyboardInterrupt\n'
+                         '\n'
                          'Exit Code: -2\n'
                          '</pre>\n'
                          '-[x] Done\n'
@@ -342,12 +349,35 @@ async def test_interrupt_code_cell(app, tmp_path):
     How much is 1 + 1?
     
     ```python .eval
-    !echo 2; sleep 60; echo fail
+    import time
+    print(2)
+    time.sleep(60)
+    print('fail')
     ```
     
     """)
 
-    expected_response = '###### Cell Output: stdout [cell_0]\n\n<pre>\n2\r\n^C\r\n</pre>\n\n'
+    expected_response = ('###### Cell Output: stdout [cell_0]\n'
+                         '\n'
+                         '<pre>\n'
+                         '2\n'
+                         '</pre>\n'
+                         '\n'
+                         '###### Cell Output: error [cell_0]\n'
+                         '\n'
+                         '<pre>\n'
+                         '---------------------------------------------------------------------------\n'
+                         'KeyboardInterrupt                         Traceback (most recent call last)\n'
+                         'Cell In[4], line 3\n'
+                         '      1 import time\n'
+                         '      2 print(2)\n'
+                         '----&gt; 3 time.sleep(60)\n'
+                         "      4 print('fail')\n"
+                         '\n'
+                         'KeyboardInterrupt: \n'
+                         '</pre>\n'
+                         '\n')
+
     test_payload: CompletionPayload = {
         "type": "completions_request",
         "version": taskmates.__version__,
@@ -408,6 +438,7 @@ async def collect_until_closed(ws):
     except WebsocketDisconnectError:
         pass
     return messages
+
 
 @pytest.mark.asyncio
 async def test_kill_tool(app, tmp_path):
@@ -470,6 +501,7 @@ async def test_kill_tool(app, tmp_path):
 
     assert markdown_response == expected_response
 
+
 @pytest.mark.asyncio
 async def test_kill_code_cell(app, tmp_path):
     test_client = app.test_client()
@@ -522,3 +554,31 @@ async def test_kill_code_cell(app, tmp_path):
     markdown_response = await get_markdown_response(messages)
 
     assert markdown_response == expected_response
+
+
+import os
+
+
+@pytest.mark.asyncio
+async def test_cwd(tmp_path):
+    signals = SIGNALS.get()
+    chunks = []
+
+    async def capture_chunk(chunk):
+        chunks.append(chunk)
+
+    signals.code_cell_output.connect(capture_chunk)
+
+    # Markdown content that reads the file
+    input_md = textwrap.dedent(f"""\
+        ```python .eval
+        import os
+        print(os.getcwd())
+        ```
+    """)
+
+    # Execute the markdown with cwd set to the temporary directory
+    await execute_markdown_on_local_kernel(input_md, path="test_with_cwd", cwd=str(tmp_path))
+
+    # Check if the output contains the expected file content
+    assert os.path.normpath(chunks[-1]['msg']['content']['text'].strip()) == os.path.normpath(str(tmp_path))
