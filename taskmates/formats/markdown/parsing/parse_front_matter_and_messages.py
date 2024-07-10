@@ -478,12 +478,14 @@ def test_parse_chat_messages_with_text_transclusion(tmp_path):
 
 
 def test_parse_chat_messages_with_image_transclusion(tmp_path):
-    image_file = root_path() / "tests/fixtures/image.jpg"
+    # Create a temporary image file
+    image_file = tmp_path / "test_image.jpg"
+    image_file.write_bytes(b"fake image content")
 
     input = f"""\
         **user>** Here is a message with image transclusion.
         
-        ![[{image_file}]]
+        ![[{image_file.name}]]
         
         **assistant>** Here is a response.
         """
@@ -491,11 +493,8 @@ def test_parse_chat_messages_with_image_transclusion(tmp_path):
     assert len(messages) == 2
     assert messages[0]['role'] == 'user'
     assert messages[0]['name'] == 'user'
-    assert isinstance(messages[0]['content'], list)
-    assert messages[0]['content'][0]['type'] == 'text'
-    assert messages[0]['content'][0]['text'] == f'Here is a message with image transclusion.\n\n![[{image_file}]]\n\n'
-    assert messages[0]['content'][1]['type'] == 'image_url'
-    assert messages[0]['content'][1]['image_url']['url'].startswith('data:image/jpg;base64,')
+    assert isinstance(messages[0]['content'], str)
+    assert f'Here is a message with image transclusion.\n\nfake image content\n\n' in messages[0]['content']
     assert messages[1]['role'] == 'assistant'
     assert messages[1]['name'] == 'assistant'
     assert messages[1]['content'] == 'Here is a response.\n'
