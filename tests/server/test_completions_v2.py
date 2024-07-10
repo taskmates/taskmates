@@ -1,4 +1,5 @@
 import json
+import os
 import textwrap
 
 import pytest
@@ -554,9 +555,6 @@ async def test_kill_code_cell(app, tmp_path):
     markdown_response = await get_markdown_response(messages)
 
     assert markdown_response == expected_response
-
-
-import os
 
 
 @pytest.mark.asyncio
