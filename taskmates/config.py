@@ -54,7 +54,7 @@ COMPLETION_CONTEXT: contextvars.ContextVar[CompletionContext] = contextvars.Cont
 COMPLETION_OPTS: contextvars.ContextVar[CompletionOpts] = contextvars.ContextVar(
     "CompletionOpts",
     default={
-        "model": 'claude-3-opus-20240229',
+        "model": 'claude-3-5-sonnet-20240620',
         "template_params": {},
         "max_interactions": float('inf'),
     })
