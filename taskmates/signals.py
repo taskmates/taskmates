@@ -15,7 +15,7 @@ class Signals:
     error: blinker.Signal
     interrupt: blinker.Signal
     kill: blinker.Signal
-    return_status: blinker.Signal
+    return_value: blinker.Signal
 
     def __init__(self):
         self.namespace = Namespace()
@@ -25,8 +25,8 @@ class Signals:
         self.interrupt = self.namespace.signal('interrupt')
         self.kill = self.namespace.signal('kill')
 
-        # return status
-        self.return_status = self.namespace.signal('return_status')
+        # return value
+        self.return_value = self.namespace.signal('return_value')
 
         # internal
         self.chat_completion = self.namespace.signal('chat_completion')

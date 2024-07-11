@@ -23,16 +23,16 @@ class MarkdownCompletionAssistance:
             interactive = client_config["interactive"]
 
             markdown_chunks = []
-            return_status = None
+            return_value = None
 
             async def append_markdown(markdown):
                 if markdown is not None:
                     markdown_chunks.append(markdown)
 
-            async def process_return_status(status):
-                nonlocal return_status
+            async def process_return_value(status):
+                nonlocal return_value
                 logger.debug(f"Return status: {status}")
-                return_status = status
+                return_value = status
 
             with signals.request.connected_to(append_markdown), \
                     signals.formatting.connected_to(append_markdown):
@@ -70,10 +70,10 @@ class MarkdownCompletionAssistance:
                         signals.interrupted.connected_to(handle_interrupted_or_killed), \
                         signals.killed.connected_to(handle_interrupted_or_killed), \
                         signals.completion.connected_to(append_markdown), \
-                        signals.return_status.connected_to(process_return_status):
+                        signals.return_value.connected_to(process_return_value):
 
-                    if return_status is not None:
-                        logger.debug(f"Return status is not None: {return_status}")
+                    if return_value is not None:
+                        logger.debug(f"Return status is not None: {return_value}")
                         break
 
                     if interrupted_or_killed:
