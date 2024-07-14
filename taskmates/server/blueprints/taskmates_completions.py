@@ -1,6 +1,5 @@
 import asyncio
 import json
-import os
 from datetime import datetime
 from pathlib import Path
 
@@ -10,7 +9,7 @@ from quart import websocket
 import taskmates
 from taskmates.assistances.markdown.markdown_completion_assistance import MarkdownCompletionAssistance
 from taskmates.config import CompletionContext, CompletionOpts, COMPLETION_CONTEXT, COMPLETION_OPTS, \
-    updated_config, ServerConfig, SERVER_CONFIG
+    updated_config, SERVER_CONFIG
 from taskmates.lib.json_.json_utils import snake_case
 from taskmates.lib.resources_.resources import dump_resource
 from taskmates.logging import logger
@@ -28,6 +27,7 @@ async def taskmates_completions():
 
     # response handlers
     WebsocketStreamingSink().connect(signals)
+    server_config = SERVER_CONFIG.get()
 
     try:
         logger.info("Waiting for websocket connection at /v2/taskmates/completions")
@@ -44,9 +44,7 @@ async def taskmates_completions():
         completion_opts: CompletionOpts = payload["completion_opts"]
         request_id = completion_context['request_id']
         markdown_chat = payload["markdown_chat"]
-        taskmates_dir = os.environ.get("TASKMATES_HOME", str(Path.home() / ".taskmates"))
-        server_config: ServerConfig = {"taskmates_dir": taskmates_dir}
-        SERVER_CONFIG.set({**SERVER_CONFIG.get(), **server_config})
+        taskmates_dir = server_config["taskmates_dir"]
 
         async def handle_artifact(sender):
             timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S-%f')
