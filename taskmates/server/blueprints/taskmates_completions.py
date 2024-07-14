@@ -23,9 +23,10 @@ completions_bp = Blueprint('completions_v2', __name__)
 
 @completions_bp.websocket('/v2/taskmates/completions')
 async def taskmates_completions():
-    # response handlers
     signals = Signals()
     token = SIGNALS.set(signals)
+
+    # response handlers
     WebsocketStreamingSink().connect(signals)
 
     try:
@@ -46,8 +47,6 @@ async def taskmates_completions():
         taskmates_dir = os.environ.get("TASKMATES_HOME", str(Path.home() / ".taskmates"))
         server_config: ServerConfig = {"taskmates_dir": taskmates_dir}
         SERVER_CONFIG.set({**SERVER_CONFIG.get(), **server_config})
-
-        signals = SIGNALS.get()
 
         async def handle_artifact(sender):
             timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S-%f')
