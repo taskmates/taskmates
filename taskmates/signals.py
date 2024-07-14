@@ -16,6 +16,7 @@ class Signals:
     interrupt: blinker.Signal
     kill: blinker.Signal
     return_value: blinker.Signal
+    artifacts: blinker.Signal
 
     def __init__(self):
         self.namespace = Namespace()
@@ -27,6 +28,9 @@ class Signals:
 
         # return value
         self.return_value = self.namespace.signal('return_value')
+
+        # artifacts
+        self.artifacts = self.namespace.signal('artifacts')
 
         # internal
         self.chat_completion = self.namespace.signal('chat_completion')

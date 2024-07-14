@@ -10,7 +10,6 @@ from taskmates.assistances.chat_completion.openai_adapters.anthropic_openai_adap
 from taskmates.assistances.chat_completion.openai_adapters.anthropic_openai_adapter.response.chat_completion_with_username import \
     ChatCompletionWithUsername
 from taskmates.formats.markdown.metadata.get_model_client import get_model_client
-from taskmates.logging import file_logger
 from taskmates.lib.not_set.not_set import NOT_SET
 from taskmates.lib.opentelemetry_.tracing import tracer
 from taskmates.server.streamed_response import StreamedResponse
@@ -32,8 +31,8 @@ async def api_request(messages: list, model_conf: dict, model_params: dict) -> d
     client = get_model_client(model_conf["model"])
 
     with tracer.start_as_current_span(name="chat-completion"):
-        file_logger.debug(f"[api_request] request_payload.yaml", content=llm_client_args)
-        file_logger.debug(f"[api_request] request_payload.json", content=llm_client_args)
+        await signals.artifacts.send_async({"name": "openai_request_payload.yaml", "content": llm_client_args})
+        await signals.artifacts.send_async({"name": "openai_request_payload.json", "content": llm_client_args})
 
         interrupted_or_killed = False
 
@@ -67,17 +66,17 @@ async def api_request(messages: list, model_conf: dict, model_params: dict) -> d
                         await signals.chat_completion.send_async(chat_completion_chunk)
 
                 except asyncio.CancelledError:
-                    file_logger.debug(f"[api_request] response_cancelled.yaml", content=True)
+                    # await signals.artifacts.send_async({"name": "response_cancelled.yaml", "content": str(True)})
                     await chat_completion.response.aclose()
                     raise
                 except ReadError as e:
-                    file_logger.debug(f"[api_request] response_read_error.yaml", content=str(e))
+                    await signals.artifacts.send_async({"name": "response_read_error.yaml", "content": str(e)})
 
                 response = streamed_response.payload
             else:
                 response = chat_completion.model_dump()
 
-    file_logger.debug(f"[api_request] response.yaml", content=response)
+    await signals.artifacts.send_async({"name": "response.yaml", "content": response})
 
     if not response['choices']:
         # NOTE: this seems to happen when the request is cancelled before any response is received

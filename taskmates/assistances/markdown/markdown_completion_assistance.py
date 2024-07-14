@@ -1,4 +1,3 @@
-from taskmates.logging import logger
 from typeguard import typechecked
 
 from taskmates.actions.parse_markdown_chat import parse_markdown_chat
@@ -7,6 +6,7 @@ from taskmates.assistances.code_execution.jupyter_.markdown_code_cells_assistanc
 from taskmates.assistances.code_execution.tool_.markdown_tools_assistance import MarkdownToolsAssistance
 from taskmates.config import CompletionContext, SERVER_CONFIG, CLIENT_CONFIG, COMPLETION_OPTS, CompletionOpts, \
     ClientConfig, ServerConfig
+from taskmates.logging import logger
 from taskmates.signals import Signals
 from taskmates.types import Chat
 

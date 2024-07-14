@@ -1,5 +1,8 @@
 import asyncio
 import json
+import os
+from datetime import datetime
+from pathlib import Path
 
 from quart import Blueprint, Response
 from quart import websocket
@@ -7,9 +10,9 @@ from quart import websocket
 import taskmates
 from taskmates.assistances.markdown.markdown_completion_assistance import MarkdownCompletionAssistance
 from taskmates.config import CompletionContext, CompletionOpts, COMPLETION_CONTEXT, COMPLETION_OPTS, \
-    updated_config
+    updated_config, ServerConfig, SERVER_CONFIG
 from taskmates.lib.json_.json_utils import snake_case
-from taskmates.logging import file_logger
+from taskmates.lib.resources_.resources import dump_resource
 from taskmates.logging import logger
 from taskmates.signals import SIGNALS, Signals
 from taskmates.sinks import WebsocketStreamingSink
@@ -40,13 +43,23 @@ async def taskmates_completions():
         completion_opts: CompletionOpts = payload["completion_opts"]
         request_id = completion_context['request_id']
         markdown_chat = payload["markdown_chat"]
+        taskmates_dir = os.environ.get("TASKMATES_HOME", str(Path.home() / ".taskmates"))
+        server_config: ServerConfig = {"taskmates_dir": taskmates_dir}
+        SERVER_CONFIG.set({**SERVER_CONFIG.get(), **server_config})
 
-        with file_logger.contextualize(request_id=(request_id)), \
+        signals = SIGNALS.get()
+
+        async def handle_artifact(sender):
+            timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S-%f')
+            full_path = Path(taskmates_dir) / "logs" / f"[{request_id}][{timestamp}] {sender.get('name')}"
+            dump_resource(full_path, sender.get('content'))
+
+        with signals.artifacts.connected_to(handle_artifact), \
                 updated_config(COMPLETION_CONTEXT, completion_context), \
                 updated_config(COMPLETION_OPTS, completion_opts):
             logger.info(f"[{request_id}] CONNECT /v2/taskmates/completions")
 
-            file_logger.debug("request_payload.yaml", content=payload)
+            await signals.artifacts.send_async({"name": "websockets_api_payload.yaml", "content": payload})
 
             async def handle_interrupt_or_kill():
                 while True:

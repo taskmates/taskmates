@@ -4,48 +4,56 @@ from pathlib import Path
 from typing import Tuple, List, Dict, Union
 
 import pyparsing
-from taskmates.logging import logger
 from typeguard import typechecked
 
 from taskmates.formats.markdown.processing.process_image_transclusion import render_image_transclusion
 from taskmates.formats.openai.get_text_content import get_text_content
 from taskmates.formats.openai.set_text_content import set_text_content
 from taskmates.grammar.parsers.markdown_chat_parser import markdown_chat_parser
-from taskmates.logging import file_logger
 from taskmates.lib.markdown_.render_transclusions import render_transclusions
 from taskmates.lib.root_path.root_path import root_path
+from taskmates.logging import logger
+from taskmates.signals import SIGNALS
 
 
 @typechecked
-def parse_front_matter_and_messages(source_file: Path,
-                                    content: str,
-                                    implicit_role: str) -> Tuple[
+async def parse_front_matter_and_messages(source_file: Path,
+                                          content: str,
+                                          implicit_role: str) -> Tuple[
     List[Dict[str, Union[str, list[dict]]]], Dict[str, any]]:
+    signals = SIGNALS.get()
     transclusions_base_dir = source_file.parent
 
     messages: list[dict] = []
 
+
+
     start_time = time.time()  # Record the start time
-    logger.debug(f"[parse_front_matter_and_messages] Parsing markdown: {start_time}-chat.md")
+    logger.debug(f"[parse_front_matter_and_messages] Parsing markdown: {start_time}-parsed-{source_file.name}")
 
     parser = markdown_chat_parser(implicit_role=implicit_role)
 
     end_time = time.time()  # Record the end time
     time_taken = end_time - start_time
-    logger.debug(f"[parse_front_matter_and_messages] Parsed markdown {start_time}-chat.md in {time_taken:.4f} seconds")
+    logger.debug(f"[parse_front_matter_and_messages] Parsed markdown {start_time}-parsed-{source_file.name} in {time_taken:.4f} seconds")
 
-    file_logger.debug(f"[parse_front_matter_and_messages] {start_time}-chat.md", content=content)
+    await signals.artifacts.send_async(
+        {"name": f"{start_time}-parsed-{source_file.name}", "content": content})
 
     try:
         parsed_chat = parser.parse_string(content)
     except pyparsing.exceptions.ParseSyntaxException as e:
-        file_logger.error(f"[parse_front_matter_and_messages] {start_time}-chat.md", content=content)
-        logger.error(f"Failed to parse markdown: ~/.taskmates/logs/{start_time}-chat.md")
+        signals = SIGNALS.get()
+        await signals.artifacts.send_async(
+            {"name": f"[parse_front_matter_and_messages_error] {start_time}-parsed-{source_file.name}", "content": content})
+        logger.error(f"Failed to parse markdown: ~/.taskmates/logs/{start_time}-parsed-{source_file.name}")
         logger.error(e)
         raise
     except pyparsing.exceptions.ParseException as e:
-        file_logger.error(f"[parse_front_matter_and_messages] {start_time}-chat.md", content=content)
-        logger.error(f"Failed to parse markdown: ~/.taskmates/logs/{start_time}-chat.md")
+        signals = SIGNALS.get()
+        await signals.artifacts.send_async(
+            {"name": f"[parse_front_matter_and_messages_error] {start_time}-parsed-{source_file.name}", "content": content})
+        logger.error(f"Failed to parse markdown: ~/.taskmates/logs/{start_time}-parsed-{source_file.name}")
         logger.error(e)
         raise
     front_matter = parsed_chat.front_matter or {}
@@ -122,7 +130,11 @@ def deduplicate_messages(messages: List[Dict[str, Union[str, list[dict]]]]) -> L
     return deduplicated_messages
 
 
-def test_parse_chat_messages_with_internal_header(tmp_path):
+import pytest
+
+
+@pytest.mark.asyncio
+async def test_parse_chat_messages_with_internal_header(tmp_path):
     input = """\
         **user>** Here is a message.
          
@@ -130,7 +142,7 @@ def test_parse_chat_messages_with_internal_header(tmp_path):
         
         **assistant>** Here is another message.
         """
-    messages, front_matter = parse_front_matter_and_messages(tmp_path / "main.md", textwrap.dedent(input), "user")
+    messages, front_matter = await parse_front_matter_and_messages(tmp_path / "main.md", textwrap.dedent(input), "user")
     expected_messages = [
         {'role': 'user', 'name': 'user', 'content': 'Here is a message.\n\n**This one is not** a message\n\n'},
         {'role': 'assistant', 'name': 'assistant', 'content': 'Here is another message.\n'}
@@ -138,7 +150,8 @@ def test_parse_chat_messages_with_internal_header(tmp_path):
     assert messages == expected_messages
 
 
-def test_parse_chat_messages_with_frontmatter(tmp_path):
+@pytest.mark.asyncio
+async def test_parse_chat_messages_with_frontmatter(tmp_path):
     input = """\
         ---
         key1: value1
@@ -150,7 +163,7 @@ def test_parse_chat_messages_with_frontmatter(tmp_path):
         
         **assistant>** Here is a response.
         """
-    messages, front_matter = parse_front_matter_and_messages(tmp_path / "main.md", textwrap.dedent(input), "user")
+    messages, front_matter = await parse_front_matter_and_messages(tmp_path / "main.md", textwrap.dedent(input), "user")
     expected_messages = [
         {'role': 'user', 'name': 'user', 'content': 'Here is a message.\n\n'},
         {'role': 'assistant', 'name': 'assistant', 'content': 'Here is a response.\n'}
@@ -159,13 +172,14 @@ def test_parse_chat_messages_with_frontmatter(tmp_path):
     assert messages == expected_messages and front_matter == expected_front_matter
 
 
-def test_parse_chat_messages_with_metadata(tmp_path):
+@pytest.mark.asyncio
+async def test_parse_chat_messages_with_metadata(tmp_path):
     input = """\
         **user {"name": "john", "age": 30}>** Here is a message from John.
         
         **assistant {"model": "gpt-3.5-turbo"}>** Here is a response from the assistant.
         """
-    messages, front_matter = parse_front_matter_and_messages(tmp_path / "main.md", textwrap.dedent(input), "user")
+    messages, front_matter = await parse_front_matter_and_messages(tmp_path / "main.md", textwrap.dedent(input), "user")
     assert len(messages) == 2
     assert messages[0]['role'] == 'user'
     assert messages[0]['content'] == 'Here is a message from John.\n\n'
@@ -176,7 +190,8 @@ def test_parse_chat_messages_with_metadata(tmp_path):
     assert messages[1]['model'] == 'gpt-3.5-turbo'
 
 
-def test_parse_chat_messages_with_system_in_frontmatter(tmp_path):
+@pytest.mark.asyncio
+async def test_parse_chat_messages_with_system_in_frontmatter(tmp_path):
     input = """\
         ---
         system: This is a system message from the front matter.
@@ -185,7 +200,7 @@ def test_parse_chat_messages_with_system_in_frontmatter(tmp_path):
         
         **assistant>** Here is a response.
         """
-    messages, front_matter = parse_front_matter_and_messages(tmp_path / "main.md", textwrap.dedent(input), "user")
+    messages, front_matter = await parse_front_matter_and_messages(tmp_path / "main.md", textwrap.dedent(input), "user")
     assert len(messages) == 3
     assert messages[0]['role'] == 'system'
     assert messages[0]['content'] == 'This is a system message from the front matter.'
@@ -195,7 +210,8 @@ def test_parse_chat_messages_with_system_in_frontmatter(tmp_path):
     assert messages[2]['content'] == 'Here is a response.\n'
 
 
-def test_parse_chat_messages_with_system_in_frontmatter_and_content(tmp_path):
+@pytest.mark.asyncio
+async def test_parse_chat_messages_with_system_in_frontmatter_and_content(tmp_path):
     input = """\
         ---
         system: This is a system message from the front matter.
@@ -206,7 +222,7 @@ def test_parse_chat_messages_with_system_in_frontmatter_and_content(tmp_path):
         
         **assistant>** Here is a response.
         """
-    messages, front_matter = parse_front_matter_and_messages(tmp_path / "main.md", textwrap.dedent(input), "user")
+    messages, front_matter = await parse_front_matter_and_messages(tmp_path / "main.md", textwrap.dedent(input), "user")
     assert len(messages) == 4
     assert messages[0]['role'] == 'system'
     assert messages[0]['content'] == 'This is a system message from the front matter.'
@@ -218,7 +234,8 @@ def test_parse_chat_messages_with_system_in_frontmatter_and_content(tmp_path):
     assert messages[3]['content'] == 'Here is a response.\n'
 
 
-def test_parse_chat_messages_with_tool_calls_and_execution(tmp_path):
+@pytest.mark.asyncio
+async def test_parse_chat_messages_with_tool_calls_and_execution(tmp_path):
     input = """\
         **assistant>** Here is a message.
         
@@ -265,12 +282,13 @@ def test_parse_chat_messages_with_tool_calls_and_execution(tmp_path):
         }
     ]
 
-    messages, front_matter = parse_front_matter_and_messages(tmp_path / "main.md", textwrap.dedent(input), "user")
+    messages, front_matter = await parse_front_matter_and_messages(tmp_path / "main.md", textwrap.dedent(input), "user")
 
     assert messages == expected_messages
 
 
-def test_parse_chat_messages_with_multiple_tool_calls_and_missing_execution(tmp_path):
+@pytest.mark.asyncio
+async def test_parse_chat_messages_with_multiple_tool_calls_and_missing_execution(tmp_path):
     input = textwrap.dedent("""\
         USER INSTRUCTION
 
@@ -293,7 +311,7 @@ def test_parse_chat_messages_with_multiple_tool_calls_and_missing_execution(tmp_
         OUTPUT 2
         </pre>
         """)
-    messages, front_matter = parse_front_matter_and_messages(tmp_path / "main.md", input, "user")
+    messages, front_matter = await parse_front_matter_and_messages(tmp_path / "main.md", input, "user")
 
     expected_messages = [
         {
@@ -341,7 +359,8 @@ def test_parse_chat_messages_with_multiple_tool_calls_and_missing_execution(tmp_
     assert messages == expected_messages
 
 
-def test_parse_chat_messages_with_multiple_tool_calls_in_separate_messages(tmp_path):
+@pytest.mark.asyncio
+async def test_parse_chat_messages_with_multiple_tool_calls_in_separate_messages(tmp_path):
     input = textwrap.dedent("""\
         USER INSTRUCTION
 
@@ -369,7 +388,7 @@ def test_parse_chat_messages_with_multiple_tool_calls_in_separate_messages(tmp_p
         OUTPUT 2
         </pre>
         """)
-    messages, front_matter = parse_front_matter_and_messages(tmp_path / "main.md", input, "user")
+    messages, front_matter = await parse_front_matter_and_messages(tmp_path / "main.md", input, "user")
 
     expected_messages = [
         {
@@ -424,7 +443,8 @@ def test_parse_chat_messages_with_multiple_tool_calls_in_separate_messages(tmp_p
     assert messages == expected_messages
 
 
-def test_parse_chat_messages_with_deduplication(tmp_path):
+@pytest.mark.asyncio
+async def test_parse_chat_messages_with_deduplication(tmp_path):
     input = textwrap.dedent("""\
         **user>** Text 1
 
@@ -434,7 +454,7 @@ def test_parse_chat_messages_with_deduplication(tmp_path):
 
         **assistant>** Complete response
         """)
-    messages, front_matter = parse_front_matter_and_messages(tmp_path / "main.md", input, "user")
+    messages, front_matter = await parse_front_matter_and_messages(tmp_path / "main.md", input, "user")
 
     expected_messages = [
         {
@@ -457,7 +477,8 @@ def test_parse_chat_messages_with_deduplication(tmp_path):
     assert messages == expected_messages
 
 
-def test_parse_chat_messages_with_text_transclusion(tmp_path):
+@pytest.mark.asyncio
+async def test_parse_chat_messages_with_text_transclusion(tmp_path):
     transcluded_file = tmp_path / "transcluded_content.md"
     transcluded_file.write_text("This is transcluded content.\nIt should appear in the parsed message.")
 
@@ -468,7 +489,7 @@ def test_parse_chat_messages_with_text_transclusion(tmp_path):
         
         **assistant>** Here is a response.
         """
-    messages, front_matter = parse_front_matter_and_messages(tmp_path / "main.md", textwrap.dedent(input), "user")
+    messages, front_matter = await parse_front_matter_and_messages(tmp_path / "main.md", textwrap.dedent(input), "user")
     expected_messages = [
         {'role': 'user', 'name': 'user',
          'content': f'Here is a message with transclusion.\n\nThe following are the contents of the file {transcluded_file}:\n\n""""\nThis is transcluded content.\nIt should appear in the parsed message.\n""""\n\n'},
@@ -477,7 +498,8 @@ def test_parse_chat_messages_with_text_transclusion(tmp_path):
     assert messages == expected_messages
 
 
-def test_parse_chat_messages_with_image_transclusion(tmp_path):
+@pytest.mark.asyncio
+async def test_parse_chat_messages_with_image_transclusion(tmp_path):
     image_file = root_path() / "tests/fixtures/image.jpg"
 
     input = f"""\
@@ -487,7 +509,7 @@ def test_parse_chat_messages_with_image_transclusion(tmp_path):
         
         **assistant>** Here is a response.
         """
-    messages, front_matter = parse_front_matter_and_messages(tmp_path / "main.md", textwrap.dedent(input), "user")
+    messages, front_matter = await parse_front_matter_and_messages(tmp_path / "main.md", textwrap.dedent(input), "user")
     assert len(messages) == 2
     assert messages[0]['role'] == 'user'
     assert messages[0]['name'] == 'user'

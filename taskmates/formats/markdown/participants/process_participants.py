@@ -7,20 +7,20 @@ from taskmates.environment.participants.load_participant_config import load_part
 
 
 @typechecked
-def process_participants(participants_configs: Dict[str, dict | None],
-                         taskmates_dir: Union[str, Path]) -> dict[str, dict]:
+async def process_participants(participants_configs: Dict[str, dict | None],
+                               taskmates_dir: Union[str, Path]) -> dict[str, dict]:
     processed_participants = {}
 
     for participant_name, participant_config in participants_configs.items():
         participant_config = (participant_config or {}).copy()
-        loaded_config = load_participant_config(participants_configs, participant_name, taskmates_dir)
+        loaded_config = await load_participant_config(participants_configs, participant_name, taskmates_dir)
         participant_config.update(loaded_config)
         processed_participants[participant_name] = participant_config
 
     return processed_participants
 
 
-def test_process_participants_configs(tmp_path):
+async def test_process_participants_configs(tmp_path):
     participants = {
         "my_assistant": {"role": "assistant", "system": "You are a helpful assistant."},
         "my_user": {"role": "user", "description": "You are a user asking for help."}
@@ -31,24 +31,24 @@ def test_process_participants_configs(tmp_path):
         "my_assistant": {"role": "assistant", "name": "my_assistant", "system": "You are a helpful assistant."},
         "my_user": {"role": "user", "name": "my_user", "description": "You are a user asking for help."}
     }
-    assert process_participants(participants, taskmates_dir) == expected_output
+    assert await process_participants(participants, taskmates_dir) == expected_output
 
 
-def test_process_participants_single_participant(tmp_path):
+async def test_process_participants_single_participant(tmp_path):
     participants = {"browser": {}}
     taskmates_dir = tmp_path
     (taskmates_dir / "taskmates").mkdir()
     (taskmates_dir / "taskmates" / "browser.md").write_text("BROWSER_PROMPT\n")
     (taskmates_dir / "taskmates" / "browser.description.md").write_text("BROWSER_ROLE\n")
 
-    result = process_participants(participants, taskmates_dir)
+    result = await process_participants(participants, taskmates_dir)
 
     assert result['browser']['role'] == 'assistant'
     assert result['browser']['system'] == "BROWSER_PROMPT\n"
     assert result['browser']['description'] == "BROWSER_ROLE\n"
 
 
-def test_process_participants_multiple_assistants(tmp_path):
+async def test_process_participants_multiple_assistants(tmp_path):
     participants = {
         "my_assistant_1": {},
         "my_assistant_2": {},
@@ -75,10 +75,10 @@ def test_process_participants_multiple_assistants(tmp_path):
                     "name": "my_user",
                     "description": "User role description\n"}
     }
-    assert process_participants(participants, taskmates_dir) == expected_output
+    assert await process_participants(participants, taskmates_dir) == expected_output
 
 
-def test_process_participants_from_files(tmp_path):
+async def test_process_participants_from_files(tmp_path):
     participants = {
         "my_assistant": {},
         "my_user": {}
@@ -93,10 +93,10 @@ def test_process_participants_from_files(tmp_path):
                          "description": "Assistant role description"},
         "my_user": {"role": "user", "name": "my_user", "description": "User role description"}
     }
-    assert process_participants(participants, taskmates_dir) == expected_output
+    assert await process_participants(participants, taskmates_dir) == expected_output
 
 
-def test_multiple_participants_and_mediator(tmp_path):
+async def test_multiple_participants_and_mediator(tmp_path):
     participants = {
         "browser": {},
         "coder": {}
@@ -110,7 +110,7 @@ def test_multiple_participants_and_mediator(tmp_path):
     (taskmates_dir / "taskmates" / "coder.md").write_text("CODER_PROMPT\n")
     (taskmates_dir / "taskmates" / "coder.description.md").write_text("CODER_ROLE\n")
 
-    result = process_participants(participants, taskmates_dir)
+    result = await process_participants(participants, taskmates_dir)
 
     assert result['browser']['role'] == 'assistant'
     assert result['browser']['system'] == "BROWSER_PROMPT\n"
