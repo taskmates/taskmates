@@ -21,7 +21,7 @@ from taskmates.types import Chat
 async def parse_markdown_chat(markdown_chat: str,
                               markdown_path: Union[str, Path] | None,
                               taskmates_dir: Union[str, Path] = os.environ.get("TASKMATES_HOME",
-                                                                               "/var/tmp/taskmates"),
+                                                                               "~/.taskmates"),
                               template_params: dict | None = None) -> Chat:
     taskmates_dir = Path(taskmates_dir)
 

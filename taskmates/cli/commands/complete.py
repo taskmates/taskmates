@@ -34,7 +34,7 @@ class CompleteCommand(Command):
         request_id = str(uuid4())
 
         # If --output is not provided, write to request_id file in /var/tmp
-        # output = args.output or f"/var/tmp/taskmates/completions/{request_id}.md"
+        # output = args.output or f"~/.taskmates/completions/{request_id}.md"
         # Path(output).parent.mkdir(parents=True, exist_ok=True)
 
         context: CompletionContext = {
@@ -52,7 +52,7 @@ class CompleteCommand(Command):
         CLIENT_CONFIG.set({**CLIENT_CONFIG.get(), **client_config})
 
         server_config: ServerConfig = {
-            "taskmates_dir": os.environ.get("TASKMATES_HOME", "/var/tmp/taskmates"),
+            "taskmates_dir": os.environ.get("TASKMATES_HOME", "~/.taskmates"),
         }
         SERVER_CONFIG.set({**SERVER_CONFIG.get(), **server_config})
 
