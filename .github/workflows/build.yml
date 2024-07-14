@@ -25,6 +25,7 @@ jobs:
         env:
           TASKMATES_TELEMETRY_ENABLED: false
         run: |
+          export TASKMATES_HOME=${{ runner.temp }}/.taskmates
           poetry run pytest -q --show-capture=no --disable-warnings --tb=auto
 #          poetry run pytest -vv
 #      - uses: actions/upload-artifact@v4
