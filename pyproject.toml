@@ -9,7 +9,7 @@ include = ["tools/"]
 
 
 [tool.poetry.dependencies]
-anthropic = "^0.26.1"
+anthropic = "^0.31.1"
 blinker = "^1.7.0"
 decohints = "^1.0.9"
 docstring-parser = "^0.16"
