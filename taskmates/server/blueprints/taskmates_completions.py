@@ -21,16 +21,11 @@ completions_bp = Blueprint('completions_v2', __name__)
 @completions_bp.websocket('/v2/taskmates/completions')
 async def taskmates_completions():
     signals = Signals()
-    token = SIGNALS.set(signals)
-
-    # response handlers
-    WebsocketStreamingSink().connect(signals)
-    server_config = SERVER_CONFIG.get()
+    SIGNALS.set(signals)
 
     try:
         logger.info("Waiting for websocket connection at /v2/taskmates/completions")
         raw_payload = await websocket.receive()
-        # print(f"raw_payload: {raw_payload}")
 
         payload: CompletionPayload = snake_case(json.loads(raw_payload))
 
@@ -38,14 +33,16 @@ async def taskmates_completions():
         if client_version != taskmates.__version__:
             raise ValueError(f"Incompatible client version: {client_version}. Expected: {taskmates.__version__}")
 
+        server_config = SERVER_CONFIG.get()
+        taskmates_dir = server_config["taskmates_dir"]
+
         completion_context: CompletionContext = payload["completion_context"]
         completion_opts: CompletionOpts = payload["completion_opts"]
         markdown_chat = payload["markdown_chat"]
-        taskmates_dir = server_config["taskmates_dir"]
         request_id = completion_context['request_id']
 
-        file_system_sink = FileSystemArtifactsSink(taskmates_dir, request_id)
-        file_system_sink.connect(signals)
+        WebsocketStreamingSink().connect(signals)
+        FileSystemArtifactsSink(taskmates_dir, request_id).connect(signals)
 
         with updated_config(COMPLETION_CONTEXT, completion_context), \
                 updated_config(COMPLETION_OPTS, completion_opts):
