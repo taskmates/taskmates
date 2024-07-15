@@ -4,6 +4,7 @@ from loguru import logger
 from pydantic import BaseModel
 from quart import websocket
 
+from taskmates.signals import Signals
 from taskmates.sinks.streaming_sink import StreamingSink
 
 
@@ -11,7 +12,7 @@ class WebsocketStreamingSink(BaseModel, StreamingSink):
     class Config:
         arbitrary_types_allowed = True
 
-    def connect(self, signals):
+    def connect(self, signals: Signals):
         signals.completion.connect(self.send_completion, weak=False)
         return self
 

@@ -51,7 +51,7 @@ async def taskmates_completions():
                 updated_config(COMPLETION_OPTS, completion_opts):
             logger.info(f"[{request_id}] CONNECT /v2/taskmates/completions")
 
-            await signals.artifacts.send_async({"name": "websockets_api_payload.json", "content": payload})
+            await signals.artifact.send_async({"name": "websockets_api_payload.json", "content": payload})
 
             async def handle_interrupt_or_kill():
                 while True:

@@ -70,6 +70,6 @@ class MarkdownChatCompletionAssistance(CompletionAssistance):
                 **({"tool_choice": tool_choice} if tool_choice is not None else {})
             )
 
-            await signals.artifacts.send_async({"name": "parsed_chat.json", "content": chat})
+            await signals.artifact.send_async({"name": "parsed_chat.json", "content": chat})
 
             return await api_request(messages, model_conf, model_params)

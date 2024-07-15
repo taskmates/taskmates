@@ -31,7 +31,7 @@ async def api_request(messages: list, model_conf: dict, model_params: dict) -> d
     client = get_model_client(model_conf["model"])
 
     with tracer.start_as_current_span(name="chat-completion"):
-        await signals.artifacts.send_async({"name": "openai_request_payload.json", "content": llm_client_args})
+        await signals.artifact.send_async({"name": "openai_request_payload.json", "content": llm_client_args})
 
         interrupted_or_killed = False
 
@@ -65,17 +65,17 @@ async def api_request(messages: list, model_conf: dict, model_params: dict) -> d
                         await signals.chat_completion.send_async(chat_completion_chunk)
 
                 except asyncio.CancelledError:
-                    await signals.artifacts.send_async({"name": "response_cancelled.json", "content": str(True)})
+                    await signals.artifact.send_async({"name": "response_cancelled.json", "content": str(True)})
                     await chat_completion.response.aclose()
                     raise
                 except ReadError as e:
-                    await signals.artifacts.send_async({"name": "response_read_error.json", "content": str(e)})
+                    await signals.artifact.send_async({"name": "response_read_error.json", "content": str(e)})
 
                 response = streamed_response.payload
             else:
                 response = chat_completion.model_dump()
 
-    await signals.artifacts.send_async({"name": "response.json", "content": response})
+    await signals.artifact.send_async({"name": "response.json", "content": response})
 
     if not response['choices']:
         # NOTE: this seems to happen when the request is cancelled before any response is received

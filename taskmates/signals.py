@@ -29,8 +29,8 @@ class Signals:
         # return value
         self.return_value = self.namespace.signal('return_value')
 
-        # artifacts
-        self.artifacts = self.namespace.signal('artifacts')
+        # artifact
+        self.artifact = self.namespace.signal('artifact')
 
         # internal
         self.chat_completion = self.namespace.signal('chat_completion')
