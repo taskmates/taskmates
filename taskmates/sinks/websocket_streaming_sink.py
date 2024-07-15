@@ -1,14 +1,10 @@
 import json
-from abc import ABC
 
-from taskmates.logging import logger
+from loguru import logger
 from pydantic import BaseModel
 from quart import websocket
 
-
-class StreamingSink(ABC):
-    async def process(self, token):
-        raise NotImplementedError
+from taskmates.sinks.streaming_sink import StreamingSink
 
 
 class WebsocketStreamingSink(BaseModel, StreamingSink):
@@ -32,15 +28,3 @@ class WebsocketStreamingSink(BaseModel, StreamingSink):
         }, ensure_ascii=False)
         dump = dump.replace("\r", "")
         await websocket.send(dump)
-
-
-class StdoutStreamingSink(StreamingSink):
-    def __init__(self):
-        super().__init__()
-        self.current_key = None
-
-    async def process(self, token):
-        if token is not None:
-            print(token, end="", flush=True)
-        else:
-            print("")
