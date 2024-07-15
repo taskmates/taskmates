@@ -43,14 +43,12 @@ async def parse_front_matter_and_messages(source_file: Path,
     try:
         parsed_chat = parser.parse_string(content)
     except pyparsing.exceptions.ParseSyntaxException as e:
-        signals = SIGNALS.get()
         await signals.artifact.send_async(
             {"name": f"[parse_front_matter_and_messages_error] {start_time}-parsed-{source_file.name}", "content": content})
         logger.error(f"Failed to parse markdown: ~/.taskmates/logs/{start_time}-parsed-{source_file.name}")
         logger.error(e)
         raise
     except pyparsing.exceptions.ParseException as e:
-        signals = SIGNALS.get()
         await signals.artifact.send_async(
             {"name": f"[parse_front_matter_and_messages_error] {start_time}-parsed-{source_file.name}", "content": content})
         logger.error(f"Failed to parse markdown: ~/.taskmates/logs/{start_time}-parsed-{source_file.name}")

@@ -128,7 +128,7 @@ class MarkdownCompletionAssistance:
 
         except Exception as e:
             logger.exception(e)
-            await signals.error.send_async(e)
+            await signals.error.send_async({"error": e})
             # raise e
 
     @staticmethod

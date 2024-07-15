@@ -20,8 +20,8 @@ async def async_complete(markdown,
     async def process_response_chunk(chunk):
         completion_chunks.append(chunk)
 
-    async def process_error(error):
-        raise error
+    async def process_error(payload):
+        raise payload["error"]
 
     async def process_return_value(status):
         nonlocal return_value

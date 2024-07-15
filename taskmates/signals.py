@@ -59,7 +59,8 @@ class Signals:
         self.response.connect(self.completion.send_async, weak=False)
         self.next_responder.connect(self.completion.send_async, weak=False)
 
-        async def send_error_completion(e):
+        async def send_error_completion(payload):
+            e = payload["error"]
             formatted = f"**error>** {str(e)}: {type(e).__name__}\n\n<pre>\n{traceback.format_exc()}\n</pre>\n"
             await self.completion.send_async(formatted)
 

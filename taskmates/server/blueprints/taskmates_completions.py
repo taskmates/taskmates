@@ -23,6 +23,9 @@ async def taskmates_completions():
     signals = Signals()
     SIGNALS.set(signals)
 
+    receive_interrupt_task = None
+    completion_task = None
+
     try:
         logger.info("Waiting for websocket connection at /v2/taskmates/completions")
         raw_payload = await websocket.receive()
@@ -86,7 +89,7 @@ async def taskmates_completions():
             completion_task.cancel("Request cancelled due to client disconnection")
     except Exception as e:
         logger.exception(e)
-        await signals.error.send_async(e)
+        await signals.error.send_async({"error": e})
 
     logger.info("DONE Closing websocket connection")
     # return Response("Done", status=200)

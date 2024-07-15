@@ -3,7 +3,7 @@ import os
 from contextlib import contextmanager
 from pathlib import Path
 from typing import TypeVar
-from typing import TypedDict, NotRequired, Literal
+from typing_extensions import TypedDict, NotRequired, Literal
 from uuid import uuid4
 
 T = TypeVar('T')
@@ -56,7 +56,7 @@ COMPLETION_OPTS: contextvars.ContextVar[CompletionOpts] = contextvars.ContextVar
     default={
         "model": 'claude-3-5-sonnet-20240620',
         "template_params": {},
-        "max_interactions": float('inf'),
+        "max_interactions": 100,  # Changed from float('inf') to a finite number
     })
 
 SERVER_CONFIG: contextvars.ContextVar[ServerConfig] = contextvars.ContextVar(

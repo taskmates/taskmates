@@ -5,8 +5,9 @@ import signal
 from typeguard import typechecked
 
 from taskmates.assistances.markdown.markdown_completion_assistance import MarkdownCompletionAssistance
-from taskmates.config import CompletionContext, ClientConfig
+from taskmates.config import CompletionContext, ClientConfig, CompletionOpts
 from taskmates.signals import Signals, SIGNALS
+from taskmates.sinks.websocket_signal_bridge import WebsocketSignalBridge
 
 # Global variable to store the received signal
 received_signal = None
@@ -39,8 +40,21 @@ async def handle_signals(signals):
 async def complete(markdown: str,
                    context: CompletionContext,
                    client_config: ClientConfig,
-                   signals: Signals | None = None):
-    if signals is None:
+                   completion_opts: CompletionOpts,
+                   signals: Signals | None = None,
+                   endpoint: str | None = None):
+    if endpoint:
+        # Use WebsocketSignalBridge when an endpoint is provided
+        signal_bridge = WebsocketSignalBridge(
+            endpoint=endpoint,
+            completion_context=context,
+            completion_opts=completion_opts,
+            markdown_chat=markdown
+        )
+        signals = Signals()
+        SIGNALS.set(signals)
+        await signal_bridge.connect(signals)
+    elif signals is None:
         signals = SIGNALS.get(None)
         if signals is None:
             signals = Signals()
@@ -85,10 +99,14 @@ async def complete(markdown: str,
     process_task = asyncio.create_task(MarkdownCompletionAssistance().perform_completion(context, markdown, signals))
     signal_task = asyncio.create_task(handle_signals(signals))
 
-    done, pending = await asyncio.wait(
-        [process_task, signal_task],
-        return_when=asyncio.FIRST_COMPLETED
-    )
+    try:
+        done, pending = await asyncio.wait(
+            [process_task, signal_task],
+            return_when=asyncio.FIRST_COMPLETED
+        )
 
-    for task in pending:
-        task.cancel()
+        for task in pending:
+            task.cancel()
+    finally:
+        if endpoint:
+            await signal_bridge.close()

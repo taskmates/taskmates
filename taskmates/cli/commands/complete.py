@@ -23,7 +23,7 @@ class CompleteCommand(Command):
         parser.add_argument('--endpoint', type=str, default=None,
                             help='The websocket endpoint')
         parser.add_argument('--model', type=str, default='claude-3-5-sonnet-20240620', help='The model to use')
-        parser.add_argument('-n', '--max-interactions', type=int, default=float('inf'),
+        parser.add_argument('-n', '--max-interactions', type=int, default=100,
                             help='The maximum number of interactions')
         parser.add_argument('--template-params', type=json.loads, action='append', default=[],
                             help='JSON string with system prompt template parameters (can be specified multiple times)')
@@ -32,10 +32,6 @@ class CompleteCommand(Command):
         markdown = self.get_markdown(args)
 
         request_id = str(uuid4())
-
-        # If --output is not provided, write to request_id file in /var/tmp
-        # output = args.output or f"~/.taskmates/completions/{request_id}.md"
-        # Path(output).parent.mkdir(parents=True, exist_ok=True)
 
         context: CompletionContext = {
             "request_id": request_id,
@@ -46,9 +42,7 @@ class CompleteCommand(Command):
 
         client_config = ClientConfig(interactive=False,
                                      format=args.format,
-                                     endpoint=args.endpoint,
-                                     # output=(output if args.output else None)
-                                     )
+                                     endpoint=args.endpoint)
         CLIENT_CONFIG.set({**CLIENT_CONFIG.get(), **client_config})
 
         server_config: ServerConfig = {
@@ -64,7 +58,7 @@ class CompleteCommand(Command):
 
         COMPLETION_OPTS.set({**COMPLETION_OPTS.get(), **completion_opts})
 
-        await complete(markdown, context, client_config)
+        await complete(markdown, context, client_config, completion_opts, endpoint=args.endpoint)
 
     @staticmethod
     def merge_template_params(template_params: list) -> dict:
