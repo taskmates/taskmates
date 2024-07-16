@@ -46,6 +46,8 @@ class OutputSignals(BaseSignals):
         self.response.connect(self.completion.send_async, weak=False)
         self.next_responder.connect(self.completion.send_async, weak=False)
 
-    async def send_error_completion(self, sender, error):
-        formatted = f"**error>** {str(error)}: {type(error).__name__}\n\n<pre>\n{traceback.format_exc()}\n</pre>\n"
-        await self.completion.send_async(formatted)
+        async def send_error_completion(error):
+            formatted = f"**error>** {str(error)}: {type(error).__name__}\n\n<pre>\n{traceback.format_exc()}\n</pre>\n"
+            await self.completion.send_async(formatted)
+
+        self.error.connect(send_error_completion, weak=False)
