@@ -60,7 +60,7 @@ async def taskmates_completions():
                         raw_payload = await websocket.receive()
                         payload = snake_case(json.loads(raw_payload))
                         if payload.get("type") == "interrupt":
-                            await signals.control.interrupt.send_async(None)
+                            await signals.control.interrupt_request.send_async(None)
                         elif payload.get("type") == "kill":
                             logger.info(f"KILL Received kill message for request {request_id}")
                             await signals.control.kill_request.send_async(None)

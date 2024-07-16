@@ -49,7 +49,7 @@ async def run_shell_command(cmd: str) -> str:
         os.killpg(os.getpgid(process.pid), signal.SIGKILL)
         await signals.output.killed.send_async(None)
 
-    with signals.control.interrupt_request.connected_to(interrupt_handler), \
+    with signals.control.interrupt.connected_to(interrupt_handler), \
             signals.control.kill_request.connected_to(kill_handler):
         stdout_task = asyncio.create_task(stream_output(sys.stdout, process.stdout, signals))
         stderr_task = asyncio.create_task(stream_output(sys.stderr, process.stderr, signals))

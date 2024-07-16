@@ -69,7 +69,7 @@ async def execute_markdown_on_local_kernel(content, path: str = None, cwd: str =
         await signals.output.killed.send_async(None)
         await kernel_manager.shutdown_kernel(now=True)
 
-    with signals.control.interrupt_request.connected_to(interrupt_handler), \
+    with signals.control.interrupt.connected_to(interrupt_handler), \
             signals.control.kill_request.connected_to(kill_handler):
 
         try:

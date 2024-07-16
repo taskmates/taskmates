@@ -25,7 +25,7 @@ async def handle_signals(signals):
             print(flush=True)
             print("Interrupting...", flush=True)
             print("Press Ctrl+C again to kill", flush=True)
-            await signals.control.interrupt.send_async({})
+            await signals.control.interrupt_request.send_async({})
             await asyncio.sleep(5)
             received_signal = None
         elif received_signal == signal.SIGTERM:
