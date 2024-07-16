@@ -31,7 +31,7 @@ def main():
     }
 
     for name, command in commands.items():
-        command_parser = subparsers.add_parser(name, help=command.help)
+        command_parser = subparsers.add_parser(name, help=f'{name.capitalize()} command')
         command.add_arguments(command_parser)
 
     args = parser.parse_args()

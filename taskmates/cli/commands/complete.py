@@ -32,15 +32,12 @@ class CompleteCommand:
         context: CompletionContext = {
             "request_id": request_id,
             "markdown_path": str(Path(os.getcwd()) / f"{request_id}.md"),
+            "cwd": os.getcwd(),
         }
 
         client_config = ClientConfig(interactive=False,
                                      format=args.format,
                                      endpoint=args.endpoint)
-
-        server_config: ServerConfig = {
-            "model": args.model,
-        }
 
         completion_opts = {
             "model": args.model,
