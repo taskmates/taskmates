@@ -7,9 +7,9 @@ from loguru import logger
 from pydantic import BaseModel, Field
 
 import taskmates
+from taskmates.config import CompletionContext, CompletionOpts
 from taskmates.signals import Signals
 from taskmates.sinks.streaming_sink import StreamingSink
-from taskmates.config import CompletionContext, CompletionOpts
 
 
 class WebsocketSignalBridge(BaseModel, StreamingSink):
@@ -19,6 +19,7 @@ class WebsocketSignalBridge(BaseModel, StreamingSink):
     completion_context: CompletionContext
     completion_opts: CompletionOpts
     markdown_chat: str
+    is_connected: bool = Field(default=False)
 
     class Config:
         arbitrary_types_allowed = True
@@ -28,6 +29,7 @@ class WebsocketSignalBridge(BaseModel, StreamingSink):
         try:
             self.websocket = await websockets.connect(self.endpoint)
             logger.info(f"Connected to WebSocket at {self.endpoint}")
+            self.is_connected = True
 
             # Send initial payload
             initial_payload = {
@@ -51,42 +53,49 @@ class WebsocketSignalBridge(BaseModel, StreamingSink):
         return self
 
     async def send_signal(self, signal_name: str, data: Dict[str, Any] = None):
-        if self.websocket is None:
-            logger.warning("WebSocket is not connected")
+        if not self.is_connected:
+            logger.warning(f"WebSocket is not connected. Unable to send signal: {signal_name}")
             return
 
-        if signal_name == "error":
-            message = json.dumps({
-                "type": "error",
-                "payload": {
-                    "error": str(data["error"]),
-                }
-            }, ensure_ascii=False)
-        elif signal_name in ["interrupt_request", "kill"]:
-            message = json.dumps({
-                "type": signal_name
-            }, ensure_ascii=False)
-        else:
-            message = json.dumps({
-                "type": "completion",
-                "payload": {
-                    "markdown_chunk": data
-                }
-            }, ensure_ascii=False)
+        message = self._prepare_message(signal_name, data)
 
         try:
             await self.websocket.send(message)
             logger.debug(f"Sent signal: {signal_name}")
+        except websockets.exceptions.ConnectionClosed:
+            logger.warning("WebSocket connection closed. Unable to send signal.")
+            self.is_connected = False
         except Exception as e:
             logger.error(f"Failed to send signal {signal_name}: {e}")
 
-    async def receive_messages(self):
-        if self.websocket is None:
-            logger.warning("WebSocket is not connected")
-            return
+    def _prepare_message(self, signal_name: str, data: Dict[str, Any] = None) -> str:
+        if signal_name == "error":
+            payload = {
+                "type": signal_name,
+                "payload": {
+                    "error": str(data["error"]),
+                }
+            }
+        elif signal_name in ["interrupt_request", "kill"]:
+            payload = {
+                "type": signal_name
+            }
+        elif signal_name == "completion":
+            payload = {
+                "type": "completion",
+                "payload": {
+                    "markdown_chunk": data
+                }
+            }
+        else:
+            raise ValueError(f"Unknown signal: {signal_name}")
 
-        try:
-            async for message in self.websocket:
+        return json.dumps(payload, ensure_ascii=False)
+
+    async def receive_messages(self):
+        while self.is_connected:
+            try:
+                message = await self.websocket.recv()
                 try:
                     data = json.loads(message)
                     if data["type"] in ["interrupt", "kill"]:
@@ -100,16 +109,17 @@ class WebsocketSignalBridge(BaseModel, StreamingSink):
                     logger.error("Received invalid JSON message")
                 except KeyError:
                     logger.error("Received message with invalid format")
-        except websockets.exceptions.ConnectionClosed:
-            logger.info("WebSocket connection closed")
-        except Exception as e:
-            logger.error(f"Error in receive_messages: {e}")
+            except websockets.exceptions.ConnectionClosed:
+                logger.info("WebSocket connection closed")
+                self.is_connected = False
+                break
+            except Exception as e:
+                logger.error(f"Error in receive_messages: {e}")
+                self.is_connected = False
+                break
 
     async def close(self):
-        if self.websocket:
+        if self.websocket and self.is_connected:
             await self.websocket.close()
+            self.is_connected = False
             logger.info("WebSocket connection closed")
-
-
-# For backwards compatibility
-WebsocketStreamingSink = WebsocketSignalBridge

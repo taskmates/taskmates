@@ -12,7 +12,7 @@ from taskmates.lib.json_.json_utils import snake_case
 from taskmates.logging import logger
 from taskmates.signals import SIGNALS, Signals
 from taskmates.sinks.file_system_artifacts_sink import FileSystemArtifactsSink
-from taskmates.sinks.websocket_streaming_sink import WebsocketStreamingSink
+from taskmates.sinks.websocket_streaming_sink import WebsocketSignalBridge
 from taskmates.types import CompletionPayload
 
 completions_bp = Blueprint('completions_v2', __name__)
@@ -44,7 +44,7 @@ async def taskmates_completions():
         markdown_chat = payload["markdown_chat"]
         request_id = completion_context['request_id']
 
-        WebsocketStreamingSink().connect(signals)
+        WebsocketSignalBridge().connect(signals)
         FileSystemArtifactsSink(taskmates_dir, request_id).connect(signals)
 
         with updated_config(COMPLETION_CONTEXT, completion_context), \
@@ -89,13 +89,14 @@ async def taskmates_completions():
             completion_task.cancel("Request cancelled due to client disconnection")
     except Exception as e:
         logger.exception(e)
-        await signals.error.send_async({"error": e})
-
-    logger.info("DONE Closing websocket connection")
-    # return Response("Done", status=200)
-
+        await signals.error.send_async({"error": str(e)})
+    finally:
+        if receive_interrupt_task:
+            receive_interrupt_task.cancel()
+        if completion_task:
+            completion_task.cancel()
+        logger.info("DONE Closing websocket connection")
 
 @completions_bp.after_websocket
 async def cleanup(response: Response):
-    # logger.info(f'Request Finished. {response.status}')
     logger.info(f'Request Finished.')

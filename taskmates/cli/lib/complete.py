@@ -5,7 +5,7 @@ import signal
 from typeguard import typechecked
 
 from taskmates.assistances.markdown.markdown_completion_assistance import MarkdownCompletionAssistance
-from taskmates.config import CompletionContext, ClientConfig, CompletionOpts
+from taskmates.config import CompletionContext, CompletionOpts
 from taskmates.signals import Signals, SIGNALS
 from taskmates.sinks.websocket_signal_bridge import WebsocketSignalBridge
 
@@ -39,10 +39,17 @@ async def handle_signals(signals):
 @typechecked
 async def complete(markdown: str,
                    context: CompletionContext,
-                   client_config: ClientConfig,
+                   client_config: dict,
                    completion_opts: CompletionOpts,
                    signals: Signals | None = None,
                    endpoint: str | None = None):
+    response = []
+
+    async def process_chunk(chunk):
+        if isinstance(chunk, str):
+            response.append(chunk)
+            print(chunk, end="", flush=True)
+
     if endpoint:
         # Use WebsocketSignalBridge when an endpoint is provided
         signal_bridge = WebsocketSignalBridge(
@@ -60,28 +67,27 @@ async def complete(markdown: str,
             signals = Signals()
             SIGNALS.set(signals)
 
-    async def process_chunk(chunk):
-        print(chunk, end="", flush=True)
+    format = client_config.get('format', 'text')
 
-    if client_config.get('format') == 'full':
+    if format == 'full':
         signals.request.connect(process_chunk, weak=False)
         signals.formatting.connect(process_chunk, weak=False)
         signals.responder.connect(process_chunk, weak=False)
         signals.response.connect(process_chunk, weak=False)
         signals.error.connect(process_chunk, weak=False)
 
-    elif client_config.get('format') == 'original':
+    elif format == 'original':
         signals.request.connect(process_chunk, weak=False)
 
-    elif client_config.get('format') == 'completion':
+    elif format == 'completion':
         signals.responder.connect(process_chunk, weak=False)
         signals.response.connect(process_chunk, weak=False)
         signals.error.connect(process_chunk, weak=False)
 
-    elif client_config.get('format') == 'text':
+    elif format == 'text':
         signals.response.connect(process_chunk, weak=False)
     else:
-        raise ValueError(f"Invalid format: {client_config.get('format')}")
+        raise ValueError(f"Invalid format: {format}")
 
     async def process_return_value(status):
         if status['result']:
@@ -110,3 +116,6 @@ async def complete(markdown: str,
     finally:
         if endpoint:
             await signal_bridge.close()
+
+    print()  # Add a newline after the response
+    return ''.join(response)

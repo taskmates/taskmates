@@ -8,7 +8,7 @@ from taskmates.signals import Signals
 from taskmates.sinks.streaming_sink import StreamingSink
 
 
-class WebsocketStreamingSink(BaseModel, StreamingSink):
+class WebsocketSignalBridge(BaseModel, StreamingSink):
     class Config:
         arbitrary_types_allowed = True
 
@@ -28,4 +28,7 @@ class WebsocketStreamingSink(BaseModel, StreamingSink):
             }
         }, ensure_ascii=False)
         dump = dump.replace("\r", "")
-        await websocket.send(dump)
+        try:
+            await websocket.send(dump)
+        except Exception as e:
+            logger.error(f"Failed to send completion: {str(e)}")
