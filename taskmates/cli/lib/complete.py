@@ -6,18 +6,17 @@ from typeguard import typechecked
 
 from taskmates.assistances.markdown.markdown_completion_assistance import MarkdownCompletionAssistance
 from taskmates.config import CompletionContext, CompletionOpts
-from taskmates.signals import Signals, SIGNALS
-from taskmates.sinks.websocket_signal_bridge import WebsocketSignalBridge
+from taskmates.signals.signals import Signals, SIGNALS
+from taskmates.bridges.websocket_bridges import SignalToWebsocketBridge, WebsocketToSignalBridge
+from taskmates.signal_config import SignalConfig, SignalMethod
 
 # Global variable to store the received signal
 received_signal = None
-
 
 # noinspection PyUnusedLocal
 def signal_handler(sig, frame):
     global received_signal
     received_signal = sig
-
 
 async def handle_signals(signals):
     global received_signal
@@ -26,23 +25,22 @@ async def handle_signals(signals):
             print(flush=True)
             print("Interrupting...", flush=True)
             print("Press Ctrl+C again to kill", flush=True)
-            await signals.interrupt_request.send_async({})
+            await signals.control.interrupt_request.send_async({})
             await asyncio.sleep(5)
             received_signal = None
         elif received_signal == signal.SIGTERM:
-            await signals.kill.send_async({})
+            await signals.control.kill_request.send_async({})
             await asyncio.sleep(5)
             break
         await asyncio.sleep(0.1)
-
 
 @typechecked
 async def complete(markdown: str,
                    context: CompletionContext,
                    client_config: dict,
                    completion_opts: CompletionOpts,
-                   signals: Signals | None = None,
-                   endpoint: str | None = None):
+                   signal_config: SignalConfig,
+                   signals: Signals | None = None):
     response = []
 
     async def process_chunk(chunk):
@@ -50,42 +48,37 @@ async def complete(markdown: str,
             response.append(chunk)
             print(chunk, end="", flush=True)
 
-    if endpoint:
-        # Use WebsocketSignalBridge when an endpoint is provided
-        signal_bridge = WebsocketSignalBridge(
-            endpoint=endpoint,
-            completion_context=context,
-            completion_opts=completion_opts,
-            markdown_chat=markdown
-        )
+    if signals is None:
         signals = Signals()
         SIGNALS.set(signals)
-        await signal_bridge.connect(signals)
-    elif signals is None:
-        signals = SIGNALS.get(None)
-        if signals is None:
-            signals = Signals()
-            SIGNALS.set(signals)
+
+    input_bridge = None
+    output_bridge = None
+
+    if signal_config.input_method == SignalMethod.WEBSOCKET:
+        input_bridge = WebsocketToSignalBridge(signals.control, signal_config.websocket_url)
+        await input_bridge.connect()
+
+    if signal_config.output_method == SignalMethod.WEBSOCKET:
+        output_bridge = SignalToWebsocketBridge(signals.output, signal_config.websocket_url)
+        await output_bridge.connect()
 
     format = client_config.get('format', 'text')
 
     if format == 'full':
-        signals.request.connect(process_chunk, weak=False)
-        signals.formatting.connect(process_chunk, weak=False)
-        signals.responder.connect(process_chunk, weak=False)
-        signals.response.connect(process_chunk, weak=False)
-        signals.error.connect(process_chunk, weak=False)
-
+        signals.output.request.connect(process_chunk, weak=False)
+        signals.output.formatting.connect(process_chunk, weak=False)
+        signals.output.responder.connect(process_chunk, weak=False)
+        signals.output.response.connect(process_chunk, weak=False)
+        signals.output.error.connect(process_chunk, weak=False)
     elif format == 'original':
-        signals.request.connect(process_chunk, weak=False)
-
+        signals.output.request.connect(process_chunk, weak=False)
     elif format == 'completion':
-        signals.responder.connect(process_chunk, weak=False)
-        signals.response.connect(process_chunk, weak=False)
-        signals.error.connect(process_chunk, weak=False)
-
+        signals.output.responder.connect(process_chunk, weak=False)
+        signals.output.response.connect(process_chunk, weak=False)
+        signals.output.error.connect(process_chunk, weak=False)
     elif format == 'text':
-        signals.response.connect(process_chunk, weak=False)
+        signals.output.response.connect(process_chunk, weak=False)
     else:
         raise ValueError(f"Invalid format: {format}")
 
@@ -97,7 +90,7 @@ async def complete(markdown: str,
             # noinspection PyUnresolvedReferences,PyProtectedMember
             os._exit(-1)
 
-    signals.return_value.connect(process_return_value, weak=False)
+    signals.output.return_value.connect(process_return_value, weak=False)
 
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
@@ -114,8 +107,10 @@ async def complete(markdown: str,
         for task in pending:
             task.cancel()
     finally:
-        if endpoint:
-            await signal_bridge.close()
+        if input_bridge:
+            await input_bridge.close()
+        if output_bridge:
+            await output_bridge.close()
 
     print()  # Add a newline after the response
     return ''.join(response)

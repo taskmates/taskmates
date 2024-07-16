@@ -6,7 +6,7 @@ from typeguard import typechecked
 
 from taskmates.assistances.code_execution.jupyter_.code_execution import CodeExecution
 from taskmates.assistances.code_execution.jupyter_.code_execution_output_appender import CodeExecutionOutputAppender
-from taskmates.signals import Signals
+from taskmates.signals.signals import Signals
 
 
 class CodeCellsEditorCompletion:
@@ -136,4 +136,4 @@ class CodeCellsEditorCompletion:
 
     async def append(self, text):
         self.appended_completions.append(text)
-        await self.signals.response.send_async(text)
+        await self.signals.output.response.send_async(text)

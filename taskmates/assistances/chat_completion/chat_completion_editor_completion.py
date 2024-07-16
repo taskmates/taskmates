@@ -2,7 +2,7 @@ import json
 import re
 from typing import Dict
 
-from taskmates.signals import Signals
+from taskmates.signals.signals import Signals
 
 
 def snake_case_to_title_case(text: str) -> str:
@@ -73,7 +73,7 @@ class ChatCompletionEditorCompletion:
         if not self.role and delta.get("role"):
             self.role = delta['role']
             recipient = self.chat["messages"][-1]["recipient"]
-            await self.signals.responder.send_async(f"**{recipient}>** ")
+            await self.signals.output.responder.send_async(f"**{recipient}>** ")
 
     async def append(self, text: str):
-        await self.signals.response.send_async(text)
+        await self.signals.output.response.send_async(text)

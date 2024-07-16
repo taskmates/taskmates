@@ -5,7 +5,7 @@ from typeguard import typechecked
 from taskmates.assistances.markdown.markdown_completion_assistance import MarkdownCompletionAssistance
 from taskmates.config import CompletionOpts, COMPLETION_CONTEXT, updated_config, COMPLETION_OPTS
 from taskmates.lib.not_set.not_set import NOT_SET
-from taskmates.signals import SIGNALS, Signals
+from taskmates.signals.signals import SIGNALS, Signals
 
 
 @typechecked
@@ -27,9 +27,9 @@ async def async_complete(markdown,
         nonlocal return_value
         return_value = status
 
-    signals.response.connect(process_response_chunk)
-    signals.return_value.connect(process_return_value)
-    signals.error.connect(process_error)
+    signals.output.response.connect(process_response_chunk)
+    signals.output.return_value.connect(process_return_value)
+    signals.output.error.connect(process_error)
 
     completion_context = COMPLETION_CONTEXT.get()
     try:

@@ -11,7 +11,7 @@ from taskmates.logging import logger
 from nbformat import NotebookNode
 
 from taskmates.assistances.code_execution.jupyter_.parse_notebook import parse_notebook
-from taskmates.signals import Signals, SIGNALS
+from taskmates.signals.signals import Signals, SIGNALS
 
 kernel_pool: dict[str, AsyncKernelManager] = {}
 
@@ -53,7 +53,7 @@ async def execute_markdown_on_local_kernel(content, path: str = None, cwd: str =
         nonlocal notebook_finished
         notebook_finished = True
         await kernel_manager.interrupt_kernel()
-        await signals.interrupted.send_async(None)
+        await signals.output.interrupted.send_async(None)
 
     async def kill_handler(sender):
         nonlocal notebook_finished
@@ -66,11 +66,11 @@ async def execute_markdown_on_local_kernel(content, path: str = None, cwd: str =
         await kernel_manager.signal_kernel(signal.SIGKILL)
         iopub_task.cancel()
         shell_task.cancel()
-        await signals.killed.send_async(None)
+        await signals.output.killed.send_async(None)
         await kernel_manager.shutdown_kernel(now=True)
 
-    with signals.interrupt.connected_to(interrupt_handler), \
-            signals.kill.connected_to(kill_handler):
+    with signals.control.interrupt_request.connected_to(interrupt_handler), \
+            signals.control.kill_request.connected_to(kill_handler):
 
         try:
             for cell in code_cells:
@@ -111,7 +111,7 @@ async def execute_markdown_on_local_kernel(content, path: str = None, cwd: str =
                         continue
 
                     logger.debug("sending msg:", msg["msg_type"])
-                    await signals.code_cell_output.send_async({
+                    await signals.output.code_cell_output.send_async({
                         "msg_id": msg_id,
                         "cell_source": cell.source,
                         "msg": msg
@@ -169,7 +169,7 @@ async def test_code_cells_no_code():
     async def capture_chunk(chunk):
         chunks.append(chunk)
 
-    signals.code_cell_output.connect(capture_chunk)
+    signals.output.code_cell_output.connect(capture_chunk)
 
     input_md = textwrap.dedent("""\
         # This is a markdown text
@@ -188,7 +188,7 @@ async def test_single_cell():
     async def capture_chunk(chunk):
         chunks.append(chunk)
 
-    signals.code_cell_output.connect(capture_chunk)
+    signals.output.code_cell_output.connect(capture_chunk)
 
     input_md = textwrap.dedent("""\
         ```python .eval
@@ -211,7 +211,7 @@ async def test_multiple_cells(tmp_path):
     async def capture_chunk(chunk):
         chunks.append(chunk)
 
-    signals.code_cell_output.connect(capture_chunk)
+    signals.output.code_cell_output.connect(capture_chunk)
 
     content = textwrap.dedent("""\
     One cell:
@@ -240,7 +240,7 @@ async def test_cell_error():
     async def capture_chunk(chunk):
         chunks.append(chunk)
 
-    signals.code_cell_output.connect(capture_chunk)
+    signals.output.code_cell_output.connect(capture_chunk)
 
     input_md = textwrap.dedent("""\
         ```python .eval
@@ -265,7 +265,7 @@ async def test_cwd(tmp_path):
     async def capture_chunk(chunk):
         chunks.append(chunk)
 
-    signals.code_cell_output.connect(capture_chunk)
+    signals.output.code_cell_output.connect(capture_chunk)
 
     # Markdown content that reads the file
     input_md = textwrap.dedent(f"""\
@@ -289,7 +289,7 @@ async def test_interrupt(capsys):
     async def capture_chunk(chunk):
         chunks.append(chunk)
 
-    signals.code_cell_output.connect(capture_chunk)
+    signals.output.code_cell_output.connect(capture_chunk)
 
     input_md = textwrap.dedent("""\
         ```python .eval
@@ -310,7 +310,7 @@ async def test_interrupt(capsys):
             lines = content.split("\n")
             if len(lines) >= 2:
                 break
-        await signals.interrupt.send_async(None)
+        await signals.control.interrupt_request.send_async(None)
 
     interrupt_task = asyncio.create_task(send_interrupt())
 
@@ -333,7 +333,7 @@ async def test_kill(capsys):
     async def capture_chunk(chunk):
         chunks.append(chunk)
 
-    signals.code_cell_output.connect(capture_chunk)
+    signals.output.code_cell_output.connect(capture_chunk)
 
     input_md = textwrap.dedent("""\
         ```python .eval
@@ -354,7 +354,7 @@ async def test_kill(capsys):
             lines = content.split("\n")
             if len(lines) >= 2:
                 break
-        await signals.kill.send_async(None)
+        await signals.control.kill_request.send_async(None)
 
     kill_task = asyncio.create_task(send_kill())
 

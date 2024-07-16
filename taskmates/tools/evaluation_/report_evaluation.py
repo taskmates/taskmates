@@ -1,6 +1,6 @@
 from typing import Optional
 
-from taskmates.signals import SIGNALS
+from taskmates.signals.signals import SIGNALS
 
 
 async def report_evaluation(summary: Optional[str], result: bool):
@@ -12,5 +12,5 @@ async def report_evaluation(summary: Optional[str], result: bool):
     :return: success
     """
     signals = SIGNALS.get()
-    await signals.return_value.send_async({"result": result, "summary": summary})
+    await signals.output.return_value.send_async({"result": result, "summary": summary})
     return result

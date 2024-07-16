@@ -9,7 +9,7 @@ from taskmates.assistances.markdown.tool_editor_completion import ToolEditorComp
 from taskmates.config import CompletionContext
 from taskmates.function_registry import function_registry
 from taskmates.model.tool_call import ToolCall
-from taskmates.signals import Signals
+from taskmates.signals.signals import Signals
 from taskmates.types import Chat
 
 
@@ -40,13 +40,13 @@ class MarkdownToolsAssistance(CompletionAssistance):
             tool_call_obj = ToolCall.from_dict(tool_call)
 
             async def handle_interrupted(sender):
-                await signals.response.send_async("--- INTERRUPT ---\n")
+                await signals.output.response.send_async("--- INTERRUPT ---\n")
 
             async def handle_killed(sender):
-                await signals.response.send_async("--- KILL ---\n")
+                await signals.output.response.send_async("--- KILL ---\n")
 
-            with signals.interrupted.connected_to(handle_interrupted), \
-                    signals.killed.connected_to(handle_killed):
+            with signals.output.interrupted.connected_to(handle_interrupted), \
+                    signals.output.killed.connected_to(handle_killed):
                 original_cwd = os.getcwd()
                 try:
                     try:
@@ -57,7 +57,7 @@ class MarkdownToolsAssistance(CompletionAssistance):
                 finally:
                     os.chdir(original_cwd)
 
-            await signals.response.send_async(str(return_value))
+            await signals.output.response.send_async(str(return_value))
             await editor_completion.append_tool_execution_footer(function_title)
 
     @staticmethod

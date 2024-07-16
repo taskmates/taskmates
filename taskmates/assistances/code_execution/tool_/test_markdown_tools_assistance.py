@@ -22,14 +22,14 @@ async def test_can_complete():
 #     }
 #     context = {"markdown_path": "test.md", "cwd": "/test"}
 #     signals = MagicMock()
-#     signals.response.send_async = AsyncMock()
+#     signals.output.response.send_async = AsyncMock()
 #
 #     mocked_execute_task = mocker.patch.object(MarkdownToolsAssistance, "execute_task", return_value="test_return")
 #
 #     assistance = MarkdownToolsAssistance()
 #     await assistance.perform_completion(context, chat, signals)
 #
-#     signals.response.send_async.assert_called_with("test_return")
+#     signals.output.response.send_async.assert_called_with("test_return")
 #     mocked_execute_task.assert_called_with(context,
 #                                            mocker.ANY,
 #                                            # ToolCall.from_dict(chat["messages"][-1]["tool_calls"][0]),

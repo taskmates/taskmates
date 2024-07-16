@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field
 
 import taskmates
 from taskmates.config import CompletionContext, CompletionOpts
-from taskmates.signals import Signals
+from taskmates.signals.signals import Signals
 from taskmates.sinks.streaming_sink import StreamingSink
 
 

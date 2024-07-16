@@ -10,8 +10,9 @@ from taskmates.config import CompletionContext, CompletionOpts, COMPLETION_CONTE
     updated_config, SERVER_CONFIG
 from taskmates.lib.json_.json_utils import snake_case
 from taskmates.logging import logger
-from taskmates.signals import SIGNALS, Signals
+from taskmates.signals.signals import SIGNALS, Signals
 from taskmates.sinks.file_system_artifacts_sink import FileSystemArtifactsSink
+from taskmates.bridges.websocket_bridges import SignalToWebsocketBridge, WebsocketToSignalBridge
 from taskmates.sinks.websocket_streaming_sink import WebsocketSignalBridge
 from taskmates.types import CompletionPayload
 
@@ -51,7 +52,7 @@ async def taskmates_completions():
                 updated_config(COMPLETION_OPTS, completion_opts):
             logger.info(f"[{request_id}] CONNECT /v2/taskmates/completions")
 
-            await signals.artifact.send_async({"name": "websockets_api_payload.json", "content": payload})
+            await signals.output.artifact.send_async({"name": "websockets_api_payload.json", "content": payload})
 
             async def handle_interrupt_or_kill():
                 while True:
@@ -59,10 +60,10 @@ async def taskmates_completions():
                         raw_payload = await websocket.receive()
                         payload = snake_case(json.loads(raw_payload))
                         if payload.get("type") == "interrupt":
-                            await signals.interrupt_request.send_async(None)
+                            await signals.control.interrupt_request.send_async(None)
                         elif payload.get("type") == "kill":
                             logger.info(f"KILL Received kill message for request {request_id}")
-                            await signals.kill.send_async(None)
+                            await signals.control.kill_request.send_async(None)
                     except asyncio.CancelledError:
                         break
 
@@ -82,14 +83,14 @@ async def taskmates_completions():
 
     except asyncio.CancelledError:
         logger.info(f"REQUEST CANCELLED Request cancelled due to client disconnection")
-        await signals.kill.send_async(None)
+        await signals.control.kill_request.send_async(None)
         if receive_interrupt_task:
             receive_interrupt_task.cancel("Request cancelled due to client disconnection")
         if completion_task:
             completion_task.cancel("Request cancelled due to client disconnection")
     except Exception as e:
         logger.exception(e)
-        await signals.error.send_async({"error": str(e)})
+        await signals.output.error.send_async({"error": str(e)})
     finally:
         if receive_interrupt_task:
             receive_interrupt_task.cancel()
