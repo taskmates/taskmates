@@ -17,7 +17,7 @@ class ControlSignals(BaseSignals):
         super().__init__()
         self.interrupt_request = self.namespace.signal('interrupt_request')
         self.interrupt = self.namespace.signal('interrupt')
-        self.kill_request = self.namespace.signal('kill_request')
+        self.kill = self.namespace.signal('kill')
 
 
 class OutputSignals(BaseSignals):

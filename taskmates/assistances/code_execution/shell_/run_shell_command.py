@@ -50,7 +50,7 @@ async def run_shell_command(cmd: str) -> str:
         await signals.output.killed.send_async(None)
 
     with signals.control.interrupt.connected_to(interrupt_handler), \
-            signals.control.kill_request.connected_to(kill_handler):
+            signals.control.kill.connected_to(kill_handler):
         stdout_task = asyncio.create_task(stream_output(sys.stdout, process.stdout, signals))
         stderr_task = asyncio.create_task(stream_output(sys.stderr, process.stderr, signals))
 
@@ -114,7 +114,7 @@ async def test_run_shell_command_kill(capsys):
     async def send_kill():
         while len(chunks) < 5:
             await asyncio.sleep(0.1)
-        await signals.control.kill_request.send_async(None)
+        await signals.control.kill.send_async(None)
 
     kill_task = asyncio.create_task(send_kill())
 

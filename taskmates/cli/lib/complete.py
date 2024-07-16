@@ -29,7 +29,7 @@ async def handle_signals(signals):
             await asyncio.sleep(5)
             received_signal = None
         elif received_signal == signal.SIGTERM:
-            await signals.control.kill_request.send_async({})
+            await signals.control.kill.send_async({})
             await asyncio.sleep(5)
             break
         await asyncio.sleep(0.1)

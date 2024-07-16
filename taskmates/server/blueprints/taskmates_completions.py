@@ -63,7 +63,7 @@ async def taskmates_completions():
                             await signals.control.interrupt_request.send_async(None)
                         elif payload.get("type") == "kill":
                             logger.info(f"KILL Received kill message for request {request_id}")
-                            await signals.control.kill_request.send_async(None)
+                            await signals.control.kill.send_async(None)
                     except asyncio.CancelledError:
                         break
 
@@ -83,7 +83,7 @@ async def taskmates_completions():
 
     except asyncio.CancelledError:
         logger.info(f"REQUEST CANCELLED Request cancelled due to client disconnection")
-        await signals.control.kill_request.send_async(None)
+        await signals.control.kill.send_async(None)
         if receive_interrupt_task:
             receive_interrupt_task.cancel("Request cancelled due to client disconnection")
         if completion_task:

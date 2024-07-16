@@ -70,7 +70,7 @@ async def execute_markdown_on_local_kernel(content, path: str = None, cwd: str =
         await kernel_manager.shutdown_kernel(now=True)
 
     with signals.control.interrupt.connected_to(interrupt_handler), \
-            signals.control.kill_request.connected_to(kill_handler):
+            signals.control.kill.connected_to(kill_handler):
 
         try:
             for cell in code_cells:
@@ -354,7 +354,7 @@ async def test_kill(capsys):
             lines = content.split("\n")
             if len(lines) >= 2:
                 break
-        await signals.control.kill_request.send_async(None)
+        await signals.control.kill.send_async(None)
 
     kill_task = asyncio.create_task(send_kill())
 

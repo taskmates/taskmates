@@ -55,7 +55,7 @@ class MarkdownCompletionAssistance:
                 nonlocal interrupt_requested
                 if interrupt_requested:
                     logger.info("Interrupt requested again. Killing the request.")
-                    await signals.control.kill_request.send_async({})
+                    await signals.control.kill.send_async({})
                 else:
                     logger.info("Interrupt requested")
                     await signals.output.interrupt.send_async({})
