@@ -12,8 +12,7 @@ from taskmates.lib.json_.json_utils import snake_case
 from taskmates.logging import logger
 from taskmates.signals.signals import SIGNALS, Signals
 from taskmates.sinks.file_system_artifacts_sink import FileSystemArtifactsSink
-from taskmates.bridges.websocket_bridges import SignalToWebsocketBridge, WebsocketToSignalBridge
-from taskmates.sinks.websocket_streaming_sink import WebsocketSignalBridge
+from taskmates.sinks.websocket_streaming_sink import WebsocketStreamingSink
 from taskmates.types import CompletionPayload
 
 completions_bp = Blueprint('completions_v2', __name__)
@@ -45,7 +44,7 @@ async def taskmates_completions():
         markdown_chat = payload["markdown_chat"]
         request_id = completion_context['request_id']
 
-        WebsocketSignalBridge().connect(signals)
+        WebsocketStreamingSink().connect(signals)
         FileSystemArtifactsSink(taskmates_dir, request_id).connect(signals)
 
         with updated_config(COMPLETION_CONTEXT, completion_context), \
@@ -75,11 +74,13 @@ async def taskmates_completions():
 
             completion_task.add_done_callback(lambda t: receive_interrupt_task.cancel("Completion Task Finished"))
 
-            await asyncio.wait(
-                [receive_interrupt_task, completion_task],
-                return_when=asyncio.ALL_COMPLETED
-            )
+            done, pending = await asyncio.wait([receive_interrupt_task, completion_task],
+                                                return_when=asyncio.ALL_COMPLETED)
             logger.info(f"AWAIT Await finished")
+
+            # Raise exception if any task failed
+            for task in done:
+                task.result()
 
     except asyncio.CancelledError:
         logger.info(f"REQUEST CANCELLED Request cancelled due to client disconnection")
@@ -89,14 +90,15 @@ async def taskmates_completions():
         if completion_task:
             completion_task.cancel("Request cancelled due to client disconnection")
     except Exception as e:
-        logger.exception(e)
-        await signals.output.error.send_async({"error": str(e)})
+        # logger.exception(e)
+        await signals.output.error.send_async(e)
     finally:
         if receive_interrupt_task:
             receive_interrupt_task.cancel()
         if completion_task:
             completion_task.cancel()
         logger.info("DONE Closing websocket connection")
+
 
 @completions_bp.after_websocket
 async def cleanup(response: Response):

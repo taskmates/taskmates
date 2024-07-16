@@ -5,7 +5,7 @@ import signal
 from typeguard import typechecked
 
 from taskmates.assistances.markdown.markdown_completion_assistance import MarkdownCompletionAssistance
-from taskmates.config import CompletionContext, CompletionOpts
+from taskmates.config import CompletionContext, CompletionOpts, ClientConfig
 from taskmates.signals.signals import Signals, SIGNALS
 from taskmates.bridges.websocket_bridges import SignalToWebsocketBridge, WebsocketToSignalBridge
 from taskmates.signal_config import SignalConfig, SignalMethod
@@ -37,7 +37,7 @@ async def handle_signals(signals):
 @typechecked
 async def complete(markdown: str,
                    context: CompletionContext,
-                   client_config: dict,
+                   client_config: ClientConfig,
                    completion_opts: CompletionOpts,
                    signal_config: SignalConfig,
                    signals: Signals | None = None):
@@ -111,6 +111,3 @@ async def complete(markdown: str,
             await input_bridge.close()
         if output_bridge:
             await output_bridge.close()
-
-    print()  # Add a newline after the response
-    return ''.join(response)

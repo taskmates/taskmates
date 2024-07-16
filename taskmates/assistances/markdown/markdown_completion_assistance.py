@@ -14,121 +14,116 @@ from taskmates.types import Chat
 class MarkdownCompletionAssistance:
     @typechecked
     async def perform_completion(self, context: CompletionContext, markdown_chat: str, signals: Signals):
-        try:
-            server_config: ServerConfig = SERVER_CONFIG.get()
-            client_config: ClientConfig = CLIENT_CONFIG.get()
-            completion_opts: CompletionOpts = COMPLETION_OPTS.get()
+        server_config: ServerConfig = SERVER_CONFIG.get()
+        client_config: ClientConfig = CLIENT_CONFIG.get()
+        completion_opts: CompletionOpts = COMPLETION_OPTS.get()
 
-            taskmates_dir = server_config.get("taskmates_dir")
-            interactive = client_config["interactive"]
+        taskmates_dir = server_config.get("taskmates_dir")
+        interactive = client_config["interactive"]
 
-            markdown_chunks = []
-            return_value = None
+        markdown_chunks = []
+        return_value = None
 
-            async def append_markdown(markdown):
-                if markdown is not None:
-                    markdown_chunks.append(markdown)
+        async def append_markdown(markdown):
+            if markdown is not None:
+                markdown_chunks.append(markdown)
 
-            async def process_return_value(status):
-                nonlocal return_value
-                logger.debug(f"Return status: {status}")
-                return_value = status
+        async def process_return_value(status):
+            nonlocal return_value
+            logger.debug(f"Return status: {status}")
+            return_value = status
 
-            with signals.output.request.connected_to(append_markdown), \
-                    signals.output.formatting.connected_to(append_markdown):
+        with signals.output.request.connected_to(append_markdown), \
+                signals.output.formatting.connected_to(append_markdown):
 
-                await signals.output.request.send_async(markdown_chat)
+            await signals.output.request.send_async(markdown_chat)
 
-                line_breaks = await self.compute_linebreaks(markdown_chat)
-                if line_breaks:
-                    await signals.output.formatting.send_async(line_breaks)
+            line_breaks = await self.compute_linebreaks(markdown_chat)
+            if line_breaks:
+                await signals.output.formatting.send_async(line_breaks)
 
-            interrupted_or_killed = False
+        interrupted_or_killed = False
 
-            async def handle_interrupted_or_killed(_sender):
-                nonlocal interrupted_or_killed
-                interrupted_or_killed = True
+        async def handle_interrupted_or_killed(_sender):
+            nonlocal interrupted_or_killed
+            interrupted_or_killed = True
 
-            interrupt_requested = False
+        interrupt_requested = False
 
-            async def handle_interrupt_request(_sender):
-                nonlocal interrupt_requested
-                if interrupt_requested:
-                    logger.info("Interrupt requested again. Killing the request.")
-                    await signals.control.kill.send_async({})
+        async def handle_interrupt_request(_sender):
+            nonlocal interrupt_requested
+            if interrupt_requested:
+                logger.info("Interrupt requested again. Killing the request.")
+                await signals.control.kill.send_async({})
+            else:
+                logger.info("Interrupt requested")
+                await signals.output.interrupt.send_async({})
+                interrupt_requested = True
+
+        await signals.output.start.send_async({})
+
+        current_interaction = 0
+        max_interactions = completion_opts["max_interactions"]
+        while True:
+            with signals.control.interrupt_request.connected_to(handle_interrupt_request), \
+                    signals.output.interrupted.connected_to(handle_interrupted_or_killed), \
+                    signals.output.killed.connected_to(handle_interrupted_or_killed), \
+                    signals.output.completion.connected_to(append_markdown), \
+                    signals.output.return_value.connected_to(process_return_value):
+
+                if return_value is not None:
+                    logger.debug(f"Return status is not None: {return_value}")
+                    break
+
+                if interrupted_or_killed:
+                    logger.debug("Interrupted")
+                    break
+
+                current_markdown = "".join(markdown_chunks)
+
+                logger.debug(f"Parsing markdown chat")
+                chat: Chat = await parse_markdown_chat(markdown_chat=current_markdown,
+                                                       markdown_path=context["markdown_path"],
+                                                       taskmates_dir=taskmates_dir,
+                                                       template_params=completion_opts["template_params"])
+
+                if "model" in chat["metadata"]:
+                    completion_opts["model"] = chat["metadata"]["model"]
+
+                if completion_opts["model"] in ("quote", "echo"):
+                    max_interactions = 1
+
+                logger.debug(f"Computing next completion assistance")
+                completion_assistance = self.get_next_completion(chat)
+                logger.debug(f"Next completion assistance: {completion_assistance}")
+
+                if completion_assistance:
+                    current_interaction += 1
+
+                    if current_interaction > max_interactions:
+                        break
+
+                    if current_interaction > 1:
+                        line_breaks = await self.compute_linebreaks(current_markdown)
+                        if line_breaks:
+                            await signals.output.response.send_async(line_breaks)
+
+                    await completion_assistance.perform_completion(context, chat, signals)
                 else:
-                    logger.info("Interrupt requested")
-                    await signals.output.interrupt.send_async({})
-                    interrupt_requested = True
+                    break
 
-            await signals.output.start.send_async({})
+        logger.debug(f"Finished completion assistance")
 
-            current_interaction = 0
-            max_interactions = completion_opts["max_interactions"]
-            while True:
-                with signals.control.interrupt_request.connected_to(handle_interrupt_request), \
-                        signals.output.interrupted.connected_to(handle_interrupted_or_killed), \
-                        signals.output.killed.connected_to(handle_interrupted_or_killed), \
-                        signals.output.completion.connected_to(append_markdown), \
-                        signals.output.return_value.connected_to(process_return_value):
+        if interactive and not interrupted_or_killed:
+            line_breaks = await self.compute_linebreaks(current_markdown)
+            if line_breaks:
+                await signals.output.next_responder.send_async(line_breaks)
 
-                    if return_value is not None:
-                        logger.debug(f"Return status is not None: {return_value}")
-                        break
+            recipient = chat["messages"][-1]["recipient"]
+            if recipient:
+                await signals.output.next_responder.send_async(f"**{recipient}>** ")
 
-                    if interrupted_or_killed:
-                        logger.debug("Interrupted")
-                        break
-
-                    current_markdown = "".join(markdown_chunks)
-
-                    logger.debug(f"Parsing markdown chat")
-                    chat: Chat = await parse_markdown_chat(markdown_chat=current_markdown,
-                                                           markdown_path=context["markdown_path"],
-                                                           taskmates_dir=taskmates_dir,
-                                                           template_params=completion_opts["template_params"])
-
-                    if "model" in chat["metadata"]:
-                        completion_opts["model"] = chat["metadata"]["model"]
-
-                    if completion_opts["model"] in ("quote", "echo"):
-                        max_interactions = 1
-
-                    logger.debug(f"Computing next completion assistance")
-                    completion_assistance = self.get_next_completion(chat)
-                    logger.debug(f"Next completion assistance: {completion_assistance}")
-
-                    if completion_assistance:
-                        current_interaction += 1
-
-                        if current_interaction > max_interactions:
-                            break
-
-                        if current_interaction > 1:
-                            line_breaks = await self.compute_linebreaks(current_markdown)
-                            if line_breaks:
-                                await signals.output.response.send_async(line_breaks)
-
-                        await completion_assistance.perform_completion(context, chat, signals)
-                    else:
-                        break
-
-            logger.debug(f"Finished completion assistance")
-
-            if interactive and not interrupted_or_killed:
-                line_breaks = await self.compute_linebreaks(current_markdown)
-                if line_breaks:
-                    await signals.output.next_responder.send_async(line_breaks)
-
-                recipient = chat["messages"][-1]["recipient"]
-                if recipient:
-                    await signals.output.next_responder.send_async(f"**{recipient}>** ")
-
-            await signals.output.success.send_async({})
-
-        except Exception as e:
-            logger.exception(e)
-            await signals.output.error.send_async({"error": str(e)})
+        await signals.output.success.send_async({})
 
     @staticmethod
     async def compute_linebreaks(current_markdown):

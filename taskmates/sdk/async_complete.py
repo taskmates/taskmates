@@ -20,6 +20,7 @@ async def async_complete(markdown,
     async def process_response_chunk(chunk):
         completion_chunks.append(chunk)
 
+    # TODO
     async def process_error(payload):
         raise payload["error"]
 
