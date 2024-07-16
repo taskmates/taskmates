@@ -47,7 +47,7 @@ async def api_request(messages: list, model_conf: dict, model_params: dict) -> d
             await chat_completion.response.aclose()
             await signals.output.killed.send_async(None)
 
-        with signals.control.interrupt_request.connected_to(interrupt_handler), \
+        with signals.control.interrupt.connected_to(interrupt_handler), \
                 signals.control.kill_request.connected_to(kill_handler):
             chat_completion = await client.chat.completions.create(**llm_client_args)
 
