@@ -57,7 +57,7 @@ class MarkdownCompletionAssistance:
                 await signals.control.kill.send_async({})
             else:
                 logger.info("Interrupt requested")
-                await signals.output.interrupt.send_async({})
+                await signals.control.interrupt.send_async({})
                 interrupt_requested = True
 
         await signals.output.start.send_async({})

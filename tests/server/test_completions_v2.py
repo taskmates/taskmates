@@ -409,6 +409,7 @@ async def collect_until_closed(ws):
         pass
     return messages
 
+
 @pytest.mark.asyncio
 async def test_kill_tool(app, tmp_path):
     test_client = app.test_client()
@@ -469,6 +470,7 @@ async def test_kill_tool(app, tmp_path):
     markdown_response = await get_markdown_response(messages)
 
     assert markdown_response == expected_response
+
 
 @pytest.mark.asyncio
 async def test_kill_code_cell(app, tmp_path):
