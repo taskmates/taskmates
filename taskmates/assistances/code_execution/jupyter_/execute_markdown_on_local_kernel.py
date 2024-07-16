@@ -310,7 +310,7 @@ async def test_interrupt(capsys):
             lines = content.split("\n")
             if len(lines) >= 2:
                 break
-        await signals.control.interrupt_request.send_async(None)
+        await signals.control.interrupt.send_async(None)
 
     interrupt_task = asyncio.create_task(send_interrupt())
 

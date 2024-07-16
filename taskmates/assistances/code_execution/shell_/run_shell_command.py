@@ -89,7 +89,7 @@ async def test_run_shell_command_interrupt(capsys):
     async def send_interrupt():
         while len(chunks) < 5:
             await asyncio.sleep(0.1)
-        await signals.control.interrupt_request.send_async(None)
+        await signals.control.interrupt.send_async(None)
 
     interrupt_task = asyncio.create_task(send_interrupt())
 
