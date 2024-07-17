@@ -66,16 +66,16 @@ async def test_chat_completion_with_mention(app, tmp_path):
     test_client = app.test_client()
 
     (tmp_path / "taskmates" / "taskmates").mkdir(parents=True)
-    (tmp_path / "taskmates" / "taskmates" / "alice.md").write_text("You're a helpful assistant\n")
+    (tmp_path / "taskmates" / "taskmates" / "jeff.md").write_text("You're a helpful assistant\n")
 
     markdown_chat = textwrap.dedent("""\
-    Hey @alice short answer. 1+1=
+    Hey @jeff short answer. 1+1=
     
     """)
 
     expected_response = textwrap.dedent("""\
-    **alice>** 
-    > Hey @alice short answer. 1+1=
+    **jeff>** 
+    > Hey @jeff short answer. 1+1=
     > 
     > 
     

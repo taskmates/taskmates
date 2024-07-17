@@ -39,8 +39,6 @@ async def taskmates_completions():
         server_config = SERVER_CONFIG.get()
         taskmates_dir = server_config["taskmates_dir"]
 
-        client_config: ClientConfig = CLIENT_CONFIG.get()
-
         completion_context: CompletionContext = payload["completion_context"]
         completion_opts: CompletionOpts = payload["completion_opts"]
         markdown_chat = payload["markdown_chat"]
