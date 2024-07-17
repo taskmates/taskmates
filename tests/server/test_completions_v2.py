@@ -21,8 +21,12 @@ def app():
 
 @pytest.fixture(autouse=True)
 def server_config(tmp_path):
-    SERVER_CONFIG.set({"taskmates_dir": str(tmp_path / "taskmates")})
-
+    token = SERVER_CONFIG.set({"taskmates_dir": str(tmp_path / "taskmates")})
+    try:
+        SERVER_CONFIG.set(SERVER_CONFIG.get())
+        yield
+    finally:
+        SERVER_CONFIG.reset(token)
 
 @pytest.mark.asyncio
 async def test_chat_completion(app, tmp_path):
