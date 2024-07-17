@@ -4,7 +4,7 @@ from pathlib import Path
 from uuid import uuid4
 
 from taskmates.cli.lib.complete import complete
-from taskmates.config import CompletionContext, ClientConfig, ServerConfig, COMPLETION_OPTS
+from taskmates.config import CompletionContext, ClientConfig, COMPLETION_OPTS, ServerConfig, SERVER_CONFIG
 from taskmates.signal_config import SignalConfig
 from taskmates.signals.signals import Signals, SIGNALS
 
@@ -35,6 +35,8 @@ class CompleteCommand:
             "cwd": os.getcwd(),
         }
 
+        server_config: ServerConfig = SERVER_CONFIG.get()
+
         client_config = ClientConfig(interactive=False,
                                      format=args.format,
                                      endpoint=args.endpoint)
@@ -50,10 +52,11 @@ class CompleteCommand:
         signals = Signals()
         SIGNALS.set(signals)
 
-        try:
-            await complete(markdown, context, client_config, completion_opts, signal_config, signals)
-        finally:
-            pass  # The bridges are now handled within the complete function
+        await complete(markdown, context,
+                       server_config,
+                       client_config,
+                       completion_opts,
+                       signal_config, signals)
 
     @staticmethod
     def merge_template_params(template_params: list) -> dict:

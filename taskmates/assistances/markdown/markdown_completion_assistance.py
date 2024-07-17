@@ -4,7 +4,7 @@ from taskmates.actions.parse_markdown_chat import parse_markdown_chat
 from taskmates.assistances.chat_completion.markdown_chat_completion_assistance import MarkdownChatCompletionAssistance
 from taskmates.assistances.code_execution.jupyter_.markdown_code_cells_assistance import MarkdownCodeCellsAssistance
 from taskmates.assistances.code_execution.tool_.markdown_tools_assistance import MarkdownToolsAssistance
-from taskmates.config import CompletionContext, SERVER_CONFIG, CLIENT_CONFIG, COMPLETION_OPTS, CompletionOpts, \
+from taskmates.config import CompletionContext, CompletionOpts, \
     ClientConfig, ServerConfig
 from taskmates.logging import logger
 from taskmates.signals.signals import Signals
@@ -13,10 +13,13 @@ from taskmates.types import Chat
 
 class MarkdownCompletionAssistance:
     @typechecked
-    async def perform_completion(self, context: CompletionContext, markdown_chat: str, signals: Signals):
-        server_config: ServerConfig = SERVER_CONFIG.get()
-        client_config: ClientConfig = CLIENT_CONFIG.get()
-        completion_opts: CompletionOpts = COMPLETION_OPTS.get()
+    async def perform_completion(self, context: CompletionContext,
+                                 markdown_chat: str,
+                                 server_config: ServerConfig,
+                                 client_config: ClientConfig,
+                                 completion_opts: CompletionOpts,
+                                 signals: Signals
+                                 ):
 
         taskmates_dir = server_config.get("taskmates_dir")
         interactive = client_config["interactive"]

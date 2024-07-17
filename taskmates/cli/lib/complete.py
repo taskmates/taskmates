@@ -5,18 +5,20 @@ import signal
 from typeguard import typechecked
 
 from taskmates.assistances.markdown.markdown_completion_assistance import MarkdownCompletionAssistance
-from taskmates.config import CompletionContext, CompletionOpts, ClientConfig
-from taskmates.signals.signals import Signals, SIGNALS
 from taskmates.bridges.websocket_bridges import SignalToWebsocketBridge, WebsocketToSignalBridge
+from taskmates.config import CompletionContext, ClientConfig, ServerConfig, CompletionOpts
 from taskmates.signal_config import SignalConfig, SignalMethod
+from taskmates.signals.signals import Signals, SIGNALS
 
 # Global variable to store the received signal
 received_signal = None
+
 
 # noinspection PyUnusedLocal
 def signal_handler(sig, frame):
     global received_signal
     received_signal = sig
+
 
 async def handle_signals(signals):
     global received_signal
@@ -34,9 +36,11 @@ async def handle_signals(signals):
             break
         await asyncio.sleep(0.1)
 
+
 @typechecked
 async def complete(markdown: str,
                    context: CompletionContext,
+                   server_config: ServerConfig,
                    client_config: ClientConfig,
                    completion_opts: CompletionOpts,
                    signal_config: SignalConfig,
@@ -95,7 +99,13 @@ async def complete(markdown: str,
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
 
-    process_task = asyncio.create_task(MarkdownCompletionAssistance().perform_completion(context, markdown, signals))
+    process_task = asyncio.create_task(MarkdownCompletionAssistance().perform_completion(
+        context,
+        markdown,
+        server_config,
+        client_config,
+        completion_opts,
+        signals))
     signal_task = asyncio.create_task(handle_signals(signals))
 
     try:

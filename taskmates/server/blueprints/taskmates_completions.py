@@ -7,7 +7,7 @@ from quart import websocket
 import taskmates
 from taskmates.assistances.markdown.markdown_completion_assistance import MarkdownCompletionAssistance
 from taskmates.config import CompletionContext, CompletionOpts, COMPLETION_CONTEXT, COMPLETION_OPTS, \
-    updated_config, SERVER_CONFIG
+    updated_config, SERVER_CONFIG, ClientConfig, CLIENT_CONFIG
 from taskmates.lib.json_.json_utils import snake_case
 from taskmates.logging import logger
 from taskmates.signals.signals import SIGNALS, Signals
@@ -39,6 +39,8 @@ async def taskmates_completions():
         server_config = SERVER_CONFIG.get()
         taskmates_dir = server_config["taskmates_dir"]
 
+        client_config: ClientConfig = CLIENT_CONFIG.get()
+
         completion_context: CompletionContext = payload["completion_context"]
         completion_opts: CompletionOpts = payload["completion_opts"]
         markdown_chat = payload["markdown_chat"]
@@ -69,13 +71,18 @@ async def taskmates_completions():
             receive_interrupt_task = asyncio.create_task(handle_interrupt_or_kill())
 
             completion_task = asyncio.create_task(
-                MarkdownCompletionAssistance().perform_completion(completion_context, markdown_chat, signals)
+                MarkdownCompletionAssistance().perform_completion(completion_context,
+                                                                  markdown_chat,
+                                                                  SERVER_CONFIG.get(),
+                                                                  CLIENT_CONFIG.get(),
+                                                                  COMPLETION_OPTS.get(),
+                                                                  signals)
             )
 
             completion_task.add_done_callback(lambda t: receive_interrupt_task.cancel("Completion Task Finished"))
 
             done, pending = await asyncio.wait([receive_interrupt_task, completion_task],
-                                                return_when=asyncio.ALL_COMPLETED)
+                                               return_when=asyncio.ALL_COMPLETED)
             logger.info(f"AWAIT Await finished")
 
             # Raise exception if any task failed
