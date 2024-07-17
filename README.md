@@ -44,7 +44,7 @@ Please note that they can and are getting better (at a fast speed) via:
 pipx install --force --python 3.11 git+https://github.com/taskmates/taskmates.git
 
 # optionally, install pre-built Taskmates 
-git clone https://@github.com/taskmates/taskmates-directory.git "${TASKMATES_HOME:-"/var/tmp/taskmates"}/taskmates"
+git clone https://@github.com/taskmates/taskmates-directory.git "${TASKMATES_HOME:-"$HOME/.taskmates"}/taskmates"
 ```
 
 ## Quick Start
@@ -52,8 +52,8 @@ git clone https://@github.com/taskmates/taskmates-directory.git "${TASKMATES_HOM
 1. Create a Taskmate:
 
 ```bash
-mkdir -p ${TASKMATES_HOME:-"/var/tmp/taskmates"}/my_taskmates
-cat << EOF > ${TASKMATES_HOME:-"/var/tmp/taskmates"}/my_taskmates/git.md
+mkdir -p ${TASKMATES_HOME:-"$HOME/.taskmates"}/my_taskmates
+cat << EOF > ${TASKMATES_HOME:-"$HOME/.taskmates"}/my_taskmates/git.md
 ---
 tools:
   run_shell_command:

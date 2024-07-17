@@ -23,7 +23,7 @@ logger.remove()
 file_logger = copy.deepcopy(logger)
 logger.add(sys.stderr, level=level)
 
-base_dir = os.environ.get("TASKMATES_HOME", "/var/tmp/taskmates")
+base_dir = os.environ.get("TASKMATES_HOME", str(Path.home() / ".taskmates"))
 file_logger = file_logger.patch(lambda record: record["extra"].setdefault("base_dir",
                                                                           base_dir))
 file_logger = file_logger.patch(lambda record: record["extra"].setdefault("content", None))

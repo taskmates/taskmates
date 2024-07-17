@@ -12,5 +12,5 @@ async def report_evaluation(summary: Optional[str], result: bool):
     :return: success
     """
     signals = SIGNALS.get()
-    await signals.return_status.send_async({"result": result, "summary": summary})
+    await signals.return_value.send_async({"result": result, "summary": summary})
     return result

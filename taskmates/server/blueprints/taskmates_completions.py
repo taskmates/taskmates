@@ -7,12 +7,12 @@ from quart import websocket
 import taskmates
 from taskmates.assistances.markdown.markdown_completion_assistance import MarkdownCompletionAssistance
 from taskmates.config import CompletionContext, CompletionOpts, COMPLETION_CONTEXT, COMPLETION_OPTS, \
-    updated_config
+    updated_config, SERVER_CONFIG
 from taskmates.lib.json_.json_utils import snake_case
-from taskmates.logging import file_logger
 from taskmates.logging import logger
 from taskmates.signals import SIGNALS, Signals
-from taskmates.sinks import WebsocketStreamingSink
+from taskmates.sinks.file_system_artifacts_sink import FileSystemArtifactsSink
+from taskmates.sinks.websocket_streaming_sink import WebsocketStreamingSink
 from taskmates.types import CompletionPayload
 
 completions_bp = Blueprint('completions_v2', __name__)
@@ -20,15 +20,12 @@ completions_bp = Blueprint('completions_v2', __name__)
 
 @completions_bp.websocket('/v2/taskmates/completions')
 async def taskmates_completions():
-    # response handlers
     signals = Signals()
-    token = SIGNALS.set(signals)
-    WebsocketStreamingSink().connect(signals)
+    SIGNALS.set(signals)
 
     try:
         logger.info("Waiting for websocket connection at /v2/taskmates/completions")
         raw_payload = await websocket.receive()
-        # print(f"raw_payload: {raw_payload}")
 
         payload: CompletionPayload = snake_case(json.loads(raw_payload))
 
@@ -36,17 +33,22 @@ async def taskmates_completions():
         if client_version != taskmates.__version__:
             raise ValueError(f"Incompatible client version: {client_version}. Expected: {taskmates.__version__}")
 
+        server_config = SERVER_CONFIG.get()
+        taskmates_dir = server_config["taskmates_dir"]
+
         completion_context: CompletionContext = payload["completion_context"]
         completion_opts: CompletionOpts = payload["completion_opts"]
-        request_id = completion_context['request_id']
         markdown_chat = payload["markdown_chat"]
+        request_id = completion_context['request_id']
 
-        with file_logger.contextualize(request_id=(request_id)), \
-                updated_config(COMPLETION_CONTEXT, completion_context), \
+        WebsocketStreamingSink().connect(signals)
+        FileSystemArtifactsSink(taskmates_dir, request_id).connect(signals)
+
+        with updated_config(COMPLETION_CONTEXT, completion_context), \
                 updated_config(COMPLETION_OPTS, completion_opts):
             logger.info(f"[{request_id}] CONNECT /v2/taskmates/completions")
 
-            file_logger.debug("request_payload.yaml", content=payload)
+            await signals.artifact.send_async({"name": "websockets_api_payload.json", "content": payload})
 
             async def handle_interrupt_or_kill():
                 while True:

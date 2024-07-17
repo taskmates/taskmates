@@ -69,7 +69,7 @@ async def complete(markdown: str,
     else:
         raise ValueError(f"Invalid format: {client_config.get('format')}")
 
-    async def process_return_status(status):
+    async def process_return_value(status):
         if status['result']:
             pass
         else:
@@ -77,7 +77,7 @@ async def complete(markdown: str,
             # noinspection PyUnresolvedReferences,PyProtectedMember
             os._exit(-1)
 
-    signals.return_status.connect(process_return_status, weak=False)
+    signals.return_value.connect(process_return_value, weak=False)
 
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)

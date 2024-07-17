@@ -21,7 +21,7 @@ from taskmates.types import Chat
 async def parse_markdown_chat(markdown_chat: str,
                               markdown_path: Union[str, Path] | None,
                               taskmates_dir: Union[str, Path] = os.environ.get("TASKMATES_HOME",
-                                                                               "/var/tmp/taskmates"),
+                                                                               str(Path.home() / ".taskmates")),
                               template_params: dict | None = None) -> Chat:
     taskmates_dir = Path(taskmates_dir)
 
@@ -30,9 +30,9 @@ async def parse_markdown_chat(markdown_chat: str,
     markdown_path = Path(markdown_path)
 
     # parse
-    split_messages, front_matter = parse_front_matter_and_messages(markdown_path,
-                                                                   markdown_chat,
-                                                                   "user")
+    split_messages, front_matter = await parse_front_matter_and_messages(markdown_path,
+                                                                         markdown_chat,
+                                                                         "user")
 
     # compute
     recipient, participants_configs = await compute_participants(taskmates_dir, front_matter, split_messages)

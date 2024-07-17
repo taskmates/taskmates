@@ -42,6 +42,7 @@ jobs:
           TASKMATES_TELEMETRY_ENABLED: false
         run: |
           source $VENV
+          export TASKMATES_HOME=${{ runner.temp }}/.taskmates
           poetry run pytest -q --show-capture=no --disable-warnings --tb=auto
       - name: Build package
         run: |

@@ -54,7 +54,7 @@ COMPLETION_CONTEXT: contextvars.ContextVar[CompletionContext] = contextvars.Cont
 COMPLETION_OPTS: contextvars.ContextVar[CompletionOpts] = contextvars.ContextVar(
     "CompletionOpts",
     default={
-        "model": 'claude-3-opus-20240229',
+        "model": 'claude-3-5-sonnet-20240620',
         "template_params": {},
         "max_interactions": float('inf'),
     })
@@ -62,7 +62,7 @@ COMPLETION_OPTS: contextvars.ContextVar[CompletionOpts] = contextvars.ContextVar
 SERVER_CONFIG: contextvars.ContextVar[ServerConfig] = contextvars.ContextVar(
     "ServerConfig",
     default={
-        "taskmates_dir": os.environ.get("TASKMATES_HOME", "/var/tmp/taskmates"),
+        "taskmates_dir": os.environ.get("TASKMATES_HOME", str(Path.home() / ".taskmates")),
     })
 
 
