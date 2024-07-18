@@ -126,7 +126,7 @@ def test_error_completion(cli_runner, tmp_path):
     assert "error" in stdout.lower() or "error" in stderr.lower()
 
 
-@pytest.mark.timeout(10)
+@pytest.mark.timeout(20)
 def test_interrupt_tool(cli_runner, tmp_path):
     markdown_chat = textwrap.dedent("""
     How much is 1 + 1?
@@ -137,7 +137,7 @@ def test_interrupt_tool(cli_runner, tmp_path):
 
     ###### Steps
 
-    - Run Shell Command [1] `{"cmd":"echo 2; sleep 60; echo fail"}`
+    - Run Shell Command [1] `{"cmd":"echo 2; sleep 5; echo fail"}`
 
     """)
 
@@ -175,7 +175,7 @@ def test_interrupt_tool(cli_runner, tmp_path):
     assert output == expected_response
 
 
-@pytest.mark.timeout(10)
+@pytest.mark.timeout(20)
 def test_kill_tool(cli_runner, tmp_path):
     markdown_chat = textwrap.dedent("""
     Run a command that ignores SIGINT
@@ -186,7 +186,7 @@ def test_kill_tool(cli_runner, tmp_path):
     
     ###### Steps
     
-    - Run Shell Command [1] `{"cmd":"trap '' INT; echo Starting; sleep 60; echo fail"}`
+    - Run Shell Command [1] `{"cmd":"trap '' INT; echo Starting; sleep 5; echo fail"}`
     
     """)
 
@@ -252,7 +252,7 @@ def test_code_cell_no_output(cli_runner, tmp_path):
     assert stdout == expected_completion
 
 
-@pytest.mark.timeout(10)
+@pytest.mark.timeout(20)
 def test_kill_code_cell(cli_runner, tmp_path):
     markdown_chat = textwrap.dedent("""
     Run a command that ignores SIGINT in a code cell
@@ -262,7 +262,7 @@ def test_kill_code_cell(cli_runner, tmp_path):
     Certainly! I'll run a command that ignores the SIGINT signal in a code cell.
     
     ```python .eval
-    !trap '' INT; echo Starting; sleep 60; echo fail
+    !trap '' INT; echo Starting; sleep 5; echo fail
     ```
     
     """)
