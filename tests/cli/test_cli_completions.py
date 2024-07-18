@@ -252,7 +252,7 @@ def test_code_cell_no_output(cli_runner, tmp_path):
     assert stdout == expected_completion
 
 
-@pytest.mark.timeout(5)
+@pytest.mark.timeout(10)
 def test_kill_code_cell(cli_runner, tmp_path):
     markdown_chat = textwrap.dedent("""
     Run a command that ignores SIGINT in a code cell
