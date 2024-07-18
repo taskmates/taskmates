@@ -29,6 +29,7 @@ def server_config(tmp_path):
     finally:
         SERVER_CONFIG.reset(token)
 
+
 async def test_chat_completion(app, tmp_path):
     test_client = app.test_client()
 
@@ -427,9 +428,6 @@ async def test_interrupt_code_cell(app, tmp_path):
     markdown_response = await get_markdown_response(messages)
 
     assert markdown_response == expected_response
-
-
-
 
 
 @pytest.mark.timeout(5)

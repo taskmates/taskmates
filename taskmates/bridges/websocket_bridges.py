@@ -1,7 +1,9 @@
-import json
 import asyncio
-from websockets import connect, WebSocketClientProtocol
+import json
+
 from loguru import logger
+from websockets import connect
+
 
 class SignalToWebsocketBridge:
     def __init__(self, output_signals, websocket_url):
@@ -41,6 +43,7 @@ class SignalToWebsocketBridge:
         if self.websocket:
             await self.websocket.close()
             logger.info("WebSocket connection closed")
+
 
 class WebsocketToSignalBridge:
     def __init__(self, control_signals, websocket_url):

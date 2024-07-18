@@ -3,6 +3,8 @@ import os
 from pathlib import Path
 from uuid import uuid4
 
+from typeguard import typechecked
+
 from taskmates.cli.lib.complete import complete
 from taskmates.config import CompletionContext, ClientConfig, COMPLETION_OPTS, ServerConfig, SERVER_CONFIG
 from taskmates.signal_config import SignalConfig
@@ -14,6 +16,8 @@ class CompleteCommand:
 
     def add_arguments(self, parser):
         parser.add_argument('markdown', type=str, help='The markdown to complete')
+        # TODO: commented out because it's not currently implemented
+        # parser.add_argument('--output', type=str, help='The output file path')
         parser.add_argument('--endpoint', type=str, default=None,
                             help='The websocket endpoint')
         parser.add_argument('--model', type=str, default='claude-3-5-sonnet-20240620', help='The model to use')
@@ -25,9 +29,13 @@ class CompleteCommand:
                             help='Output format')
 
     async def execute(self, args, signal_config: SignalConfig):
-        markdown = args.markdown
+        markdown = self.get_markdown(args)
 
         request_id = str(uuid4())
+
+        # If --output is not provided, write to request_id file in /var/tmp
+        # output = args.output or f"~/.taskmates/completions/{request_id}.md"
+        # Path(output).parent.mkdir(parents=True, exist_ok=True)
 
         context: CompletionContext = {
             "request_id": request_id,
@@ -39,7 +47,9 @@ class CompleteCommand:
 
         client_config = ClientConfig(interactive=False,
                                      format=args.format,
-                                     endpoint=args.endpoint)
+                                     endpoint=args.endpoint,
+                                     # output=(output if args.output else None)
+                                     )
 
         completion_opts = {
             "model": args.model,
@@ -64,3 +74,24 @@ class CompleteCommand:
         for params in template_params:
             merged.update(params)
         return merged
+
+    @typechecked
+    def get_markdown(self, args) -> str:
+        # Read markdown from stdin if available
+        stdin_markdown = ""
+        pycharm_env = os.environ.get("PYCHARM_HOSTED", 0) == '1'
+        if not pycharm_env and not sys.stdin.isatty():
+            stdin_markdown = "".join(sys.stdin.readlines())
+        args_markdown = args.markdown
+
+        if stdin_markdown and args_markdown:
+            # Concatenate stdin markdown with --markdown argument if both are provided
+            # TODO: Not sure about this
+            markdown = stdin_markdown + "\n\n**user>** " + args_markdown
+        elif stdin_markdown:
+            markdown = stdin_markdown
+        elif args_markdown:
+            markdown = args_markdown
+        else:
+            raise ValueError("No markdown provided")
+        return markdown
