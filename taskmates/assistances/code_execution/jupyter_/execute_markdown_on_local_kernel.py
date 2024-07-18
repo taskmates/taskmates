@@ -8,10 +8,10 @@ from queue import Empty
 
 import pytest
 from jupyter_client import AsyncKernelManager, AsyncKernelClient
-from taskmates.logging import logger
 from nbformat import NotebookNode
 
 from taskmates.assistances.code_execution.jupyter_.parse_notebook import parse_notebook
+from taskmates.logging import logger
 from taskmates.signals import Signals, SIGNALS
 
 kernel_pool: dict[str, AsyncKernelManager] = {}
@@ -140,8 +140,8 @@ async def get_or_start_kernel(cwd, path):
     if is_new_kernel:
         ignored.append(kernel_client.execute("%load_ext taskmates.magics.file_editing_magics"))
         ignored.append(kernel_client.execute("%matplotlib inline"))
-    if cwd is not None:
-        ignored.append(kernel_client.execute(f"%cd {cwd}"))
+        if cwd is not None:
+            ignored.append(kernel_client.execute(f"%cd {cwd}"))
     return kernel_manager, kernel_client, ignored
 
 
@@ -282,6 +282,48 @@ async def test_cwd(tmp_path):
     # Check if the output contains the expected directory path
     output_path = chunks[-1]['msg']['content']['text'].strip()
     expected_path = str(tmp_path)
+
+    # Normalize paths for comparison
+    assert os.path.normpath(output_path) == os.path.normpath(expected_path)
+
+
+@pytest.mark.asyncio
+async def test_change_cwd(tmp_path):
+    signals = SIGNALS.get()
+    chunks = []
+
+    new_path = (tmp_path / "test_change_cwd")
+    new_path.mkdir()
+
+    async def capture_chunk(chunk):
+        chunks.append(chunk)
+
+    signals.code_cell_output.connect(capture_chunk)
+
+    # Markdown content that gets the current working directory
+    input_md = textwrap.dedent(f"""\
+        ```python .eval
+        %cd {new_path}
+        ```
+    """)
+
+    # Execute the markdown with cwd set to the temporary directory
+    await execute_markdown_on_local_kernel(input_md, path="test_change_cwd", cwd=str(tmp_path))
+
+    # Markdown content that gets the current working directory
+    input_md = textwrap.dedent(f"""\
+        ```python .eval
+        import os
+        print(os.getcwd())
+        ```
+    """)
+
+    # Execute the markdown with cwd set to the temporary directory
+    await execute_markdown_on_local_kernel(input_md, path="test_change_cwd", cwd=str(tmp_path))
+
+    # Check if the output contains the expected directory path
+    output_path = chunks[-1]['msg']['content']['text'].strip()
+    expected_path = str(new_path)
 
     # Normalize paths for comparison
     assert os.path.normpath(output_path) == os.path.normpath(expected_path)
