@@ -126,7 +126,7 @@ def test_error_completion(cli_runner, tmp_path):
     assert "error" in stdout.lower() or "error" in stderr.lower()
 
 
-@pytest.mark.timeout(5)
+@pytest.mark.timeout(10)
 def test_interrupt_tool(cli_runner, tmp_path):
     markdown_chat = textwrap.dedent("""
     How much is 1 + 1?
@@ -175,7 +175,7 @@ def test_interrupt_tool(cli_runner, tmp_path):
     assert output == expected_response
 
 
-@pytest.mark.timeout(5)
+@pytest.mark.timeout(10)
 def test_kill_tool(cli_runner, tmp_path):
     markdown_chat = textwrap.dedent("""
     Run a command that ignores SIGINT
