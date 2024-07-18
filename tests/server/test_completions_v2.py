@@ -229,7 +229,7 @@ async def test_interrupt_tool(app, tmp_path):
     if platform.system() == "Windows":
         cmd = "for /L %i in (1,1,10) do @(echo %i & timeout /t 1 > nul)"
     else:
-        cmd = "for i in {1..10}; do echo $i; sleep 1; done"
+        cmd = "seq 5; sleep 1; seq 6 10"
 
     markdown_chat = textwrap.dedent(f"""\
     Run a command that prints numbers from 1 to 10 with a 1-second delay between each number.
@@ -264,6 +264,8 @@ async def test_interrupt_tool(app, tmp_path):
                              '1\n'
                              '2\n'
                              '3\n'
+                             '4\n'
+                             '5\n'
                              '--- INTERRUPT ---\n'
                              '\n'
                              'Exit Code: -2\n'
@@ -293,7 +295,7 @@ async def test_interrupt_tool(app, tmp_path):
             message = json.loads(await ws.receive())
             messages.append(message)
             if message["type"] == "completion":
-                if "3" in message["payload"]["markdown_chunk"]:
+                if "5" in message["payload"]["markdown_chunk"]:
                     break
 
         await ws.send(json.dumps({"type": "interrupt", "completion_context": {"request_id": "test_interrupt_tool"}}))
