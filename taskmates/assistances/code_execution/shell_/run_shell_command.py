@@ -1,5 +1,6 @@
 import asyncio
 import os
+import platform
 import signal
 import subprocess
 import sys
@@ -18,8 +19,6 @@ async def stream_output(fd, stream, signals):
             break
         with restore_stdout_and_stderr():
             await signals.output.response.send_async(line)
-        # fd.write(line)
-        # fd.flush()
 
 
 async def run_shell_command(cmd: str) -> str:
@@ -32,21 +31,37 @@ async def run_shell_command(cmd: str) -> str:
 
     signals: Signals = SIGNALS.get()
 
-    process = subprocess.Popen(
-        cmd,
-        shell=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        text=True,
-        preexec_fn=os.setpgrp
-    )
+    if platform.system() == "Windows":
+        process = subprocess.Popen(
+            cmd,
+            shell=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            creationflags=subprocess.CREATE_NEW_PROCESS_GROUP
+        )
+    else:
+        process = subprocess.Popen(
+            cmd,
+            shell=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            preexec_fn=os.setpgrp
+        )
 
     async def interrupt_handler(sender):
-        os.killpg(os.getpgid(process.pid), signal.SIGINT)
+        if platform.system() == "Windows":
+            process.send_signal(signal.CTRL_BREAK_EVENT)
+        else:
+            os.killpg(os.getpgid(process.pid), signal.SIGINT)
         await signals.output.interrupted.send_async(None)
 
     async def kill_handler(sender):
-        os.killpg(os.getpgid(process.pid), signal.SIGKILL)
+        if platform.system() == "Windows":
+            process.kill()
+        else:
+            os.killpg(os.getpgid(process.pid), signal.SIGKILL)
         await signals.output.killed.send_async(None)
 
     with signals.control.interrupt.connected_to(interrupt_handler), \
@@ -70,7 +85,12 @@ async def test_run_shell_command(capsys):
 
     signals.output.response.connect(capture_chunk)
 
-    returncode = await run_shell_command("echo 'Hello, World!'")
+    if platform.system() == "Windows":
+        cmd = "echo Hello, World!"
+    else:
+        cmd = "echo 'Hello, World!'"
+
+    returncode = await run_shell_command(cmd)
 
     assert returncode == '\nExit Code: 0'
     assert "".join(chunks).strip() == "Hello, World!"
@@ -93,11 +113,19 @@ async def test_run_shell_command_interrupt(capsys):
 
     interrupt_task = asyncio.create_task(send_interrupt())
 
-    returncode = await run_shell_command("seq 5; sleep 1; seq 6 10")
+    if platform.system() == "Windows":
+        cmd = "for /L %i in (1,1,10) do @(echo %i & timeout /t 1 > nul)"
+    else:
+        cmd = "seq 5; sleep 1; seq 6 10"
+
+    returncode = await run_shell_command(cmd)
 
     await interrupt_task
 
-    assert returncode == f'\nExit Code: {-signal.SIGINT.value}'
+    if platform.system() == "Windows":
+        assert returncode == '\nExit Code: 1'
+    else:
+        assert returncode == f'\nExit Code: {-signal.SIGINT.value}'
     assert "".join(chunks).strip() == "1\n2\n3\n4\n5"
 
 
@@ -112,15 +140,24 @@ async def test_run_shell_command_kill(capsys):
     signals.output.response.connect(capture_chunk)
 
     async def send_kill():
-        while len(chunks) < 5:
+        while len(chunks) < 3:
             await asyncio.sleep(0.1)
         await signals.control.kill.send_async(None)
 
     kill_task = asyncio.create_task(send_kill())
 
-    returncode = await run_shell_command("seq 5; sleep 1; seq 6 10")
+    if platform.system() == "Windows":
+        cmd = "for /L %i in (1,1,5) do @(echo %i & timeout /t 1 > nul) & timeout /t 1 > nul & for /L %i in (6,1,10) do @echo %i"
+    else:
+        cmd = "seq 5; sleep 1; seq 6 10"
+
+    returncode = await run_shell_command(cmd)
 
     await kill_task
 
-    assert returncode == f'\nExit Code: {-signal.SIGKILL.value}'
+    if platform.system() == "Windows":
+        assert returncode == '\nExit Code: 1'
+    else:
+        assert returncode == f'\nExit Code: {-signal.SIGKILL.value}'
+
     assert "".join(chunks).strip() == "1\n2\n3\n4\n5"
