@@ -87,15 +87,15 @@ def test_tool_completion(cli_runner, tmp_path):
 def test_code_cell_completion(cli_runner, tmp_path):
     markdown_chat = textwrap.dedent("""
     print(1 + 1)
-
+    
     **assistant>**
-
+    
     print(1 + 1)
-
+    
     ```python .eval
     print(1 + 1)
     ```
-
+    
     """)
 
     args = ["complete", "--model=quote", markdown_chat]

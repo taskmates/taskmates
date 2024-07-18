@@ -1,9 +1,9 @@
 import asyncio
 import os
+import platform
 import signal
 import subprocess
 import sys
-import platform
 
 import pytest
 
@@ -122,8 +122,11 @@ async def test_run_shell_command_interrupt(capsys):
 
     await interrupt_task
 
-    assert returncode.startswith('\nExit Code:')
-    assert "".join(chunks).strip().startswith("1\n2\n3\n4\n5")
+    if platform.system() == "Windows":
+        assert returncode == '\nExit Code: 1'
+    else:
+        assert returncode == f'\nExit Code: {-signal.SIGINT.value}'
+    assert "".join(chunks).strip() == "1\n2\n3\n4\n5"
 
 
 @pytest.mark.asyncio
@@ -144,14 +147,17 @@ async def test_run_shell_command_kill(capsys):
     kill_task = asyncio.create_task(send_kill())
 
     if platform.system() == "Windows":
-        cmd = "powershell -Command \"1..10 | ForEach-Object { Write-Output $_; Start-Sleep -Seconds 1 }\""
+        cmd = "for /L %i in (1,1,5) do @(echo %i & timeout /t 1 > nul) & timeout /t 1 > nul & for /L %i in (6,1,10) do @echo %i"
     else:
-        cmd = "for i in {1..10}; do echo $i; sleep 1; done"
+        cmd = "seq 5; sleep 1; seq 6 10"
 
     returncode = await run_shell_command(cmd)
 
     await kill_task
 
-    assert returncode.startswith('\nExit Code:')
-    output = "".join(chunks).strip()
-    assert output.startswith("1\n2\n3"), f"Unexpected output: {output}"
+    if platform.system() == "Windows":
+        assert returncode == '\nExit Code: 1'
+    else:
+        assert returncode == f'\nExit Code: {-signal.SIGKILL.value}'
+
+    assert "".join(chunks).strip() == "1\n2\n3\n4\n5"

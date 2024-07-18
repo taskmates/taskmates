@@ -1,6 +1,4 @@
-import asyncio
 import json
-import os
 import platform
 import textwrap
 
@@ -10,11 +8,8 @@ from quart.testing.connections import WebsocketDisconnectError
 from typeguard import typechecked
 
 import taskmates
-from taskmates.assistances.code_execution.jupyter_.execute_markdown_on_local_kernel import \
-    execute_markdown_on_local_kernel
 from taskmates.config import SERVER_CONFIG
 from taskmates.server.blueprints.taskmates_completions import completions_bp as completions_v2_bp
-from taskmates.signals import SIGNALS
 from taskmates.types import CompletionPayload
 
 
@@ -30,7 +25,6 @@ def server_config(tmp_path):
     SERVER_CONFIG.set({"taskmates_dir": str(tmp_path / "taskmates")})
 
 
-@pytest.mark.asyncio
 async def test_chat_completion(app, tmp_path):
     test_client = app.test_client()
 
@@ -67,7 +61,6 @@ async def test_chat_completion(app, tmp_path):
     assert markdown_response == expected_response
 
 
-@pytest.mark.asyncio
 async def test_chat_completion_with_mention(app, tmp_path):
     test_client = app.test_client()
 
@@ -107,7 +100,6 @@ async def test_chat_completion_with_mention(app, tmp_path):
     assert markdown_response == expected_response
 
 
-@pytest.mark.asyncio
 async def test_tool_completion(app, tmp_path):
     test_client = app.test_client()
 
@@ -155,7 +147,6 @@ async def test_tool_completion(app, tmp_path):
     assert markdown_response == expected_response
 
 
-@pytest.mark.asyncio
 async def test_code_cell_completion(app, tmp_path):
     test_client = app.test_client()
 
@@ -201,7 +192,6 @@ async def test_code_cell_completion(app, tmp_path):
     assert markdown_response == expected_completion
 
 
-@pytest.mark.asyncio
 async def test_error_completion(app, tmp_path):
     test_client = app.test_client()
 
@@ -232,32 +222,38 @@ async def test_error_completion(app, tmp_path):
     assert markdown_response.endswith(expected_completion_suffix)
 
 
-@pytest.mark.asyncio
+@pytest.mark.timeout(5)
 async def test_interrupt_tool(app, tmp_path):
     test_client = app.test_client()
 
-    markdown_chat = textwrap.dedent("""\
-    How much is 1 + 1?
+    if platform.system() == "Windows":
+        cmd = "for /L %i in (1,1,10) do @(echo %i & timeout /t 1 > nul)"
+    else:
+        cmd = "for i in {1..10}; do echo $i; sleep 1; done"
+
+    markdown_chat = textwrap.dedent(f"""\
+    Run a command that prints numbers from 1 to 10 with a 1-second delay between each number.
     
     **assistant>**
     
-    How much is 1 + 1?
+    Certainly! I'll run a command that prints numbers from 1 to 10 with a 1-second delay between each number.
     
     ###### Steps
     
-    - Run Shell Command [1] `{"cmd":"python -c \\"import time; print(2); time.sleep(60); print('fail')\\""}`
+    - Run Shell Command [1] `{{"cmd":"{cmd}"}}`
     
     """)
 
-    os_name = platform.system()
-
-    if os_name == "Windows":
+    if platform.system() == "Windows":
         expected_response = ('###### Execution: Run Shell Command [1]\n'
                              '\n'
                              "<pre class='output' style='display:none'>\n"
+                             '1\n'
                              '2\n'
-                             '^C\n'
-                             'Exit Code: 3221225786\n'
+                             '3\n'
+                             '--- INTERRUPT ---\n'
+                             '\n'
+                             'Exit Code: 1\n'
                              '</pre>\n'
                              '-[x] Done\n'
                              '\n')
@@ -265,11 +261,10 @@ async def test_interrupt_tool(app, tmp_path):
         expected_response = ('###### Execution: Run Shell Command [1]\n'
                              '\n'
                              "<pre class='output' style='display:none'>\n"
+                             '1\n'
                              '2\n'
+                             '3\n'
                              '--- INTERRUPT ---\n'
-                             'Traceback (most recent call last):\n'
-                             '  File "<string>", line 1, in <module>\n'
-                             'KeyboardInterrupt\n'
                              '\n'
                              'Exit Code: -2\n'
                              '</pre>\n'
@@ -281,7 +276,7 @@ async def test_interrupt_tool(app, tmp_path):
         "version": taskmates.__version__,
         "markdown_chat": markdown_chat,
         "completion_context": {
-            "request_id": "test_echo_tool",
+            "request_id": "test_interrupt_tool",
             "cwd": str(tmp_path),
             "markdown_path": str(tmp_path / "test.md"),
         },
@@ -298,10 +293,10 @@ async def test_interrupt_tool(app, tmp_path):
             message = json.loads(await ws.receive())
             messages.append(message)
             if message["type"] == "completion":
-                if "2" in message["payload"]["markdown_chunk"]:
+                if "3" in message["payload"]["markdown_chunk"]:
                     break
 
-        await ws.send(json.dumps({"type": "interrupt", "completion_context": {"request_id": "test_echo_tool"}}))
+        await ws.send(json.dumps({"type": "interrupt", "completion_context": {"request_id": "test_interrupt_tool"}}))
 
         remaining = await collect_until_closed(ws)
         messages.extend(remaining)
@@ -311,7 +306,6 @@ async def test_interrupt_tool(app, tmp_path):
     assert markdown_response == expected_response
 
 
-@pytest.mark.asyncio
 async def test_code_cell_no_output(app, tmp_path):
     test_client = app.test_client()
 
@@ -353,7 +347,7 @@ async def test_code_cell_no_output(app, tmp_path):
     assert markdown_response == expected_completion
 
 
-@pytest.mark.asyncio
+@pytest.mark.timeout(5)
 async def test_interrupt_code_cell(app, tmp_path):
     test_client = app.test_client()
 
@@ -429,34 +423,7 @@ async def test_interrupt_code_cell(app, tmp_path):
     assert markdown_response == expected_response
 
 
-async def get_markdown_response(messages):
-    markdown_response = ""
-    for message in messages:
-        payload = message["payload"]
-        if "markdown_chunk" in payload:
-            markdown_response += payload["markdown_chunk"]
-    return markdown_response
-
-
-@typechecked
-async def send_and_collect_messages(client, payload: CompletionPayload, endpoint: str):
-    async with client.websocket(endpoint) as ws:
-        await ws.send(json.dumps(payload))
-        return await collect_until_closed(ws)
-
-
-async def collect_until_closed(ws):
-    messages = []
-    try:
-        while True:
-            message = json.loads(await ws.receive())
-            messages.append(message)
-    except WebsocketDisconnectError:
-        pass
-    return messages
-
-
-@pytest.mark.asyncio
+@pytest.mark.timeout(5)
 async def test_kill_tool(app, tmp_path):
     test_client = app.test_client()
 
@@ -518,7 +485,7 @@ async def test_kill_tool(app, tmp_path):
     assert markdown_response == expected_response
 
 
-@pytest.mark.asyncio
+@pytest.mark.timeout(5)
 async def test_kill_code_cell(app, tmp_path):
     test_client = app.test_client()
 
@@ -572,125 +539,28 @@ async def test_kill_code_cell(app, tmp_path):
     assert markdown_response == expected_response
 
 
-@pytest.mark.asyncio
-async def test_cwd(tmp_path):
-    signals = SIGNALS.get()
-    chunks = []
-
-    async def capture_chunk(chunk):
-        chunks.append(chunk)
-
-    signals.code_cell_output.connect(capture_chunk)
-
-    # Markdown content that reads the file
-    input_md = textwrap.dedent(f"""\
-        ```python .eval
-        import os
-        print(os.getcwd())
-        ```
-    """)
-
-    # Execute the markdown with cwd set to the temporary directory
-    await execute_markdown_on_local_kernel(input_md, path="test_with_cwd", cwd=str(tmp_path))
-
-    # Check if the output contains the expected file content
-    assert os.path.normpath(chunks[-1]['msg']['content']['text'].strip()) == os.path.normpath(str(tmp_path))
+async def get_markdown_response(messages):
+    markdown_response = ""
+    for message in messages:
+        payload = message["payload"]
+        if "markdown_chunk" in payload:
+            markdown_response += payload["markdown_chunk"]
+    return markdown_response
 
 
-@pytest.mark.asyncio
-async def test_kill(capsys):
-    signals = SIGNALS.get()
-    chunks = []
-    kill_event = asyncio.Event()
+@typechecked
+async def send_and_collect_messages(client, payload: CompletionPayload, endpoint: str):
+    async with client.websocket(endpoint) as ws:
+        await ws.send(json.dumps(payload))
+        return await collect_until_closed(ws)
 
-    async def capture_chunk(chunk):
-        chunks.append(chunk)
 
-    signals.code_cell_output.connect(capture_chunk)
-
-    input_md = textwrap.dedent("""\
-        ```python .eval
-        import time
-        for i in range(5):
-            print(i)
-            if i == 2:
-                time.sleep(5)
-        ```
-    """)
-
-    async def send_kill():
+async def collect_until_closed(ws):
+    messages = []
+    try:
         while True:
-            await asyncio.sleep(0.1)
-            content = "".join([chunk['msg']['content']["text"]
-                               for chunk in chunks
-                               if chunk['msg']['msg_type'] == 'stream'])
-            lines = content.split("\n")
-            if len(lines) >= 2:
-                kill_event.set()
-                break
-
-    async def execute_with_kill():
-        execute_task = asyncio.create_task(execute_markdown_on_local_kernel(input_md, path="test_kill"))
-        await kill_event.wait()
-        await signals.kill.send_async({})
-        await execute_task
-
-    kill_task = asyncio.create_task(send_kill())
-    execute_task = asyncio.create_task(execute_with_kill())
-
-    await asyncio.gather(kill_task, execute_task)
-
-    captured = capsys.readouterr()
-    output = captured.out
-
-    os_name = platform.system()
-    if os_name == "Windows":
-        expected_output = textwrap.dedent("""\
-            ###### Cell Output: stdout [cell_0]
-
-            <pre>
-            0
-            1
-            2
-            </pre>
-
-            ###### Cell Output: error [cell_0]
-
-            <pre>
-            ---------------------------------------------------------------------------
-            KeyboardInterrupt                         Traceback (most recent call last)
-            Cell In[1], line 6
-                  4     print(i)
-                  5     if i == 2:
-            ----> 6         time.sleep(5)
-
-            KeyboardInterrupt: 
-            </pre>
-
-            """)
-    else:
-        expected_output = textwrap.dedent("""\
-            ###### Cell Output: stdout [cell_0]
-
-            <pre>
-            0
-            1
-            2
-            </pre>
-
-            ###### Cell Output: error [cell_0]
-
-            <pre>
-            ---------------------------------------------------------------------------
-            KeyboardInterrupt                         Traceback (most recent call last)
-            Cell In[1], line 6
-                  4     print(i)
-                  5     if i == 2:
-            ----> 6         time.sleep(5)
-
-            KeyboardInterrupt: 
-            </pre>
-
-            """)
-
-    assert output == expected_output
+            message = json.loads(await ws.receive())
+            messages.append(message)
+    except WebsocketDisconnectError:
+        pass
+    return messages

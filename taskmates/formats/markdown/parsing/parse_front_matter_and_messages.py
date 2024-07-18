@@ -11,6 +11,7 @@ from taskmates.formats.openai.get_text_content import get_text_content
 from taskmates.formats.openai.set_text_content import set_text_content
 from taskmates.grammar.parsers.markdown_chat_parser import markdown_chat_parser
 from taskmates.lib.markdown_.render_transclusions import render_transclusions
+from taskmates.lib.root_path.root_path import root_path
 from taskmates.logging import logger
 from taskmates.signals import SIGNALS
 
@@ -500,14 +501,12 @@ async def test_parse_chat_messages_with_text_transclusion(tmp_path):
 
 @pytest.mark.asyncio
 async def test_parse_chat_messages_with_image_transclusion(tmp_path):
-    # Create a temporary image file
-    image_file = tmp_path / "test_image.jpg"
-    image_file.write_bytes(b"fake image content")
+    image_file = root_path() / "tests/fixtures/image.jpg"
 
     input = f"""\
         **user>** Here is a message with image transclusion.
         
-        ![[{image_file.name}]]
+        ![[{image_file}]]
         
         **assistant>** Here is a response.
         """
@@ -515,8 +514,11 @@ async def test_parse_chat_messages_with_image_transclusion(tmp_path):
     assert len(messages) == 2
     assert messages[0]['role'] == 'user'
     assert messages[0]['name'] == 'user'
-    assert isinstance(messages[0]['content'], str)
-    assert f'Here is a message with image transclusion.\n\nfake image content\n\n' in messages[0]['content']
+    assert isinstance(messages[0]['content'], list)
+    assert messages[0]['content'][0]['type'] == 'text'
+    assert messages[0]['content'][0]['text'] == f'Here is a message with image transclusion.\n\n![[{image_file}]]\n\n'
+    assert messages[0]['content'][1]['type'] == 'image_url'
+    assert messages[0]['content'][1]['image_url']['url'].startswith('data:image/jpg;base64,')
     assert messages[1]['role'] == 'assistant'
     assert messages[1]['name'] == 'assistant'
     assert messages[1]['content'] == 'Here is a response.\n'
