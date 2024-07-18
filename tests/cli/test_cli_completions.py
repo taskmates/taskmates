@@ -1,3 +1,4 @@
+import os
 import signal
 import subprocess
 import textwrap
@@ -9,12 +10,16 @@ import pytest
 def cli_runner(tmp_path):
     def run_cli_command(args):
         cmd = ["taskmates"] + args
+        taskmates_home = tmp_path / "taskmates"
+        env = os.environ.copy()
+        env["TASKMATES_HOME"] = str(taskmates_home)
         process = subprocess.Popen(
             cmd,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,
-            cwd=str(tmp_path)
+            cwd=str(tmp_path),
+            env=env
         )
         stdout, stderr = process.communicate()
         return stdout, stderr, process.returncode
@@ -37,13 +42,13 @@ def test_chat_completion(cli_runner, tmp_path):
 
 def test_chat_completion_with_mention(cli_runner, tmp_path):
     (tmp_path / "taskmates" / "taskmates").mkdir(parents=True)
-    (tmp_path / "taskmates" / "taskmates" / "alice.md").write_text("You're a helpful assistant\n")
+    (tmp_path / "taskmates" / "taskmates" / "jeff.md").write_text("You're a helpful assistant\n")
 
-    args = ["complete", "--model=quote", "Hey @alice short answer. 1+1="]
+    args = ["complete", "--model=quote", "Hey @jeff short answer. 1+1="]
     stdout, stderr, returncode = cli_runner(args)
 
     expected_response = textwrap.dedent("""
-    > Hey @alice short answer. 1+1=
+    > Hey @jeff short answer. 1+1=
     > 
     > """)
 
