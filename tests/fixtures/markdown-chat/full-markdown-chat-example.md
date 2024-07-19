@@ -1,5 +1,5 @@
 ---
-system: You're a helpful AI Assistant.
+model: quote.
 ---
 
 **system>** You're a helpful AI Assistant.

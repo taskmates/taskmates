@@ -5,8 +5,11 @@ import signal
 from typeguard import typechecked
 
 from taskmates.assistances.markdown.markdown_completion_assistance import MarkdownCompletionAssistance
-from taskmates.config import CompletionContext, ClientConfig
-from taskmates.signals import Signals, SIGNALS
+from taskmates.bridges.websocket_bridges import OutputSignalsToWebsocketBridge, WebsocketToControlSignalsBridge
+from taskmates.config import CompletionContext, ClientConfig, ServerConfig, CompletionOpts
+from taskmates.signal_config import SignalConfig, SignalMethod
+from taskmates.signals.signals import Signals
+from taskmates.sinks.stdout_sink import StdoutSink
 
 # Global variable to store the received signal
 received_signal = None
@@ -25,11 +28,11 @@ async def handle_signals(signals):
             print(flush=True)
             print("Interrupting...", flush=True)
             print("Press Ctrl+C again to kill", flush=True)
-            await signals.interrupt_request.send_async({})
+            await signals.control.interrupt_request.send_async({})
             await asyncio.sleep(5)
             received_signal = None
         elif received_signal == signal.SIGTERM:
-            await signals.kill.send_async({})
+            await signals.control.kill.send_async({})
             await asyncio.sleep(5)
             break
         await asyncio.sleep(0.1)
@@ -38,36 +41,24 @@ async def handle_signals(signals):
 @typechecked
 async def complete(markdown: str,
                    context: CompletionContext,
+                   server_config: ServerConfig,
                    client_config: ClientConfig,
-                   signals: Signals | None = None):
-    if signals is None:
-        signals = SIGNALS.get(None)
-        if signals is None:
-            signals = Signals()
-            SIGNALS.set(signals)
+                   completion_opts: CompletionOpts,
+                   signal_config: SignalConfig,
+                   signals: Signals):
+    input_bridge = None
+    output_bridge = None
 
-    async def process_chunk(chunk):
-        print(chunk, end="", flush=True)
+    if signal_config.input_method == SignalMethod.WEBSOCKET:
+        input_bridge = WebsocketToControlSignalsBridge(signals.control, signal_config.websocket_url)
+        await input_bridge.connect()
 
-    if client_config.get('format') == 'full':
-        signals.request.connect(process_chunk, weak=False)
-        signals.formatting.connect(process_chunk, weak=False)
-        signals.responder.connect(process_chunk, weak=False)
-        signals.response.connect(process_chunk, weak=False)
-        signals.error.connect(process_chunk, weak=False)
+    if signal_config.output_method == SignalMethod.WEBSOCKET:
+        output_bridge = OutputSignalsToWebsocketBridge(signals.output, signal_config.websocket_url)
+        await output_bridge.connect()
 
-    elif client_config.get('format') == 'original':
-        signals.request.connect(process_chunk, weak=False)
-
-    elif client_config.get('format') == 'completion':
-        signals.responder.connect(process_chunk, weak=False)
-        signals.response.connect(process_chunk, weak=False)
-        signals.error.connect(process_chunk, weak=False)
-
-    elif client_config.get('format') == 'text':
-        signals.response.connect(process_chunk, weak=False)
-    else:
-        raise ValueError(f"Invalid format: {client_config.get('format')}")
+    format = client_config.get('format', 'text')
+    StdoutSink(format).connect(signals)
 
     async def process_return_value(status):
         if status['result']:
@@ -77,18 +68,32 @@ async def complete(markdown: str,
             # noinspection PyUnresolvedReferences,PyProtectedMember
             os._exit(-1)
 
-    signals.return_value.connect(process_return_value, weak=False)
+    signals.output.return_value.connect(process_return_value, weak=False)
 
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
 
-    process_task = asyncio.create_task(MarkdownCompletionAssistance().perform_completion(context, markdown, signals))
+    process_task = asyncio.create_task(MarkdownCompletionAssistance().perform_completion(
+        context,
+        markdown,
+        server_config,
+        client_config,
+        completion_opts,
+        signals))
     signal_task = asyncio.create_task(handle_signals(signals))
 
-    done, pending = await asyncio.wait(
-        [process_task, signal_task],
-        return_when=asyncio.FIRST_COMPLETED
-    )
+    try:
+        done, pending = await asyncio.wait(
+            [process_task, signal_task],
+            return_when=asyncio.FIRST_COMPLETED
+        )
 
-    for task in pending:
-        task.cancel()
+        for task in pending:
+            task.cancel()
+    finally:
+        if input_bridge:
+            await input_bridge.close()
+        if output_bridge:
+            await output_bridge.close()
+
+

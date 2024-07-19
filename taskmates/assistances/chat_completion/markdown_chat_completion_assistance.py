@@ -11,7 +11,7 @@ from taskmates.logging import file_logger
 from taskmates.lib.not_set.not_set import NOT_SET
 from taskmates.lib.openai_.inference.api_request import api_request
 from taskmates.lib.tool_schemas_.tool_schema import tool_schema
-from taskmates.signals import Signals
+from taskmates.signals.signals import Signals
 from taskmates.types import Chat
 
 
@@ -35,7 +35,7 @@ class MarkdownChatCompletionAssistance(CompletionAssistance):
             choice = chat_completion_chunk.model_dump()['choices'][0]
             await chat_completion_editor_completion.process_chat_completion_chunk(choice)
 
-        with signals.chat_completion.connected_to(restream_completion_chunk):
+        with signals.output.chat_completion.connected_to(restream_completion_chunk):
             model_conf = get_model_conf(model_name=model, messages=chat["messages"])
             tools = list(map(function_registry.__getitem__, chat["available_tools"]))
             tools_schemas = [tool_schema(f) for f in tools]
@@ -70,6 +70,6 @@ class MarkdownChatCompletionAssistance(CompletionAssistance):
                 **({"tool_choice": tool_choice} if tool_choice is not None else {})
             )
 
-            await signals.artifact.send_async({"name": "parsed_chat.json", "content": chat})
+            await signals.output.artifact.send_async({"name": "parsed_chat.json", "content": chat})
 
             return await api_request(messages, model_conf, model_params)

@@ -3,9 +3,10 @@ from typing import Unpack
 from typeguard import typechecked
 
 from taskmates.assistances.markdown.markdown_completion_assistance import MarkdownCompletionAssistance
-from taskmates.config import CompletionOpts, COMPLETION_CONTEXT, updated_config, COMPLETION_OPTS
+from taskmates.config import CompletionOpts, COMPLETION_CONTEXT, updated_config, COMPLETION_OPTS, ServerConfig, \
+    SERVER_CONFIG, ClientConfig, CLIENT_CONFIG
 from taskmates.lib.not_set.not_set import NOT_SET
-from taskmates.signals import SIGNALS, Signals
+from taskmates.signals.signals import SIGNALS, Signals
 
 
 @typechecked
@@ -20,23 +21,31 @@ async def async_complete(markdown,
     async def process_response_chunk(chunk):
         completion_chunks.append(chunk)
 
-    async def process_error(error):
-        raise error
+    # TODO
+    async def process_error(payload):
+        raise payload["error"]
 
     async def process_return_value(status):
         nonlocal return_value
         return_value = status
 
-    signals.response.connect(process_response_chunk)
-    signals.return_value.connect(process_return_value)
-    signals.error.connect(process_error)
+    signals.output.response.connect(process_response_chunk)
+    signals.output.return_value.connect(process_return_value)
+    signals.output.error.connect(process_error)
 
     completion_context = COMPLETION_CONTEXT.get()
+
+    server_config: ServerConfig = SERVER_CONFIG.get()
+    client_config: ClientConfig = CLIENT_CONFIG.get()
+
     try:
         with updated_config(COMPLETION_OPTS, completion_opts):
             await MarkdownCompletionAssistance().perform_completion(
                 completion_context,
                 markdown,
+                server_config,
+                client_config,
+                completion_opts,
                 signals)
     finally:
         SIGNALS.reset(signals_token)

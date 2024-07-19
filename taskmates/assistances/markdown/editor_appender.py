@@ -1,4 +1,4 @@
-from taskmates.signals import Signals
+from taskmates.signals.signals import Signals
 
 
 # TODO: Remove this class
@@ -13,5 +13,5 @@ class EditorAppender:
         if not sanitized:
             return
 
-        await self.signals.response.send_async(sanitized)
+        await self.signals.output.response.send_async(sanitized)
 
