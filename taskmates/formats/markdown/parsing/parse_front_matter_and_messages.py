@@ -13,7 +13,7 @@ from taskmates.grammar.parsers.markdown_chat_parser import markdown_chat_parser
 from taskmates.lib.markdown_.render_transclusions import render_transclusions
 from taskmates.lib.root_path.root_path import root_path
 from taskmates.logging import logger
-from taskmates.signals.signals import SIGNALS
+from taskmates.signals.signals import SIGNALS, Signals
 
 
 @typechecked
@@ -21,7 +21,7 @@ async def parse_front_matter_and_messages(source_file: Path,
                                           content: str,
                                           implicit_role: str) -> Tuple[
     List[Dict[str, Union[str, list[dict]]]], Dict[str, any]]:
-    signals = SIGNALS.get()
+    signals = SIGNALS.get(Signals())
     transclusions_base_dir = source_file.parent
 
     messages: list[dict] = []
