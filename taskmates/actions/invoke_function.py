@@ -3,7 +3,7 @@ from contextlib import redirect_stdout, redirect_stderr
 from io import StringIO
 
 from taskmates.lib.restore_stdout_and_stderr import restore_stdout_and_stderr
-from taskmates.signals import Signals
+from taskmates.signals.signals import Signals
 
 
 # TODO: review this and the duplication with run_shell_command
@@ -13,7 +13,7 @@ async def stream_output(stream_name, stream, signals: Signals):
         if not line:
             break
         with restore_stdout_and_stderr():
-            await signals.response.send_async(line)
+            await signals.output.response.send_async(line)
 
 
 async def invoke_function(function, kwargs, signals: Signals):

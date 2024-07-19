@@ -1,4 +1,3 @@
-import argparse
 import json
 import os
 import sys
@@ -7,28 +6,30 @@ from uuid import uuid4
 
 from typeguard import typechecked
 
-from taskmates.cli.commands.base import Command
 from taskmates.cli.lib.complete import complete
-from taskmates.config import CompletionContext, ServerConfig, CompletionOpts, ClientConfig, CLIENT_CONFIG, \
-    SERVER_CONFIG, COMPLETION_CONTEXT, COMPLETION_OPTS
+from taskmates.config import CompletionContext, ClientConfig, COMPLETION_OPTS, ServerConfig, SERVER_CONFIG
+from taskmates.signal_config import SignalConfig
+from taskmates.signals.signals import Signals, SIGNALS
 
 
-class CompleteCommand(Command):
-    def add_arguments(self, parser: argparse.ArgumentParser):
-        parser.add_argument('markdown', type=str, help='The markdown content', nargs='?')
-        parser.add_argument('--format', type=str, choices=['full', 'original', 'text', 'completion'], default='text',
-                            help='The output format')
+class CompleteCommand:
+    help = 'Complete a task'
+
+    def add_arguments(self, parser):
+        parser.add_argument('markdown', type=str, help='The markdown to complete')
         # TODO: commented out because it's not currently implemented
         # parser.add_argument('--output', type=str, help='The output file path')
         parser.add_argument('--endpoint', type=str, default=None,
                             help='The websocket endpoint')
         parser.add_argument('--model', type=str, default='claude-3-5-sonnet-20240620', help='The model to use')
-        parser.add_argument('-n', '--max-interactions', type=int, default=float('inf'),
+        parser.add_argument('-n', '--max-interactions', type=int, default=100,
                             help='The maximum number of interactions')
         parser.add_argument('--template-params', type=json.loads, action='append', default=[],
                             help='JSON string with system prompt template parameters (can be specified multiple times)')
+        parser.add_argument('--format', type=str, default='text', choices=['full', 'original', 'completion', 'text'],
+                            help='Output format')
 
-    async def execute(self, args: argparse.Namespace):
+    async def execute(self, args, signal_config: SignalConfig):
         markdown = self.get_markdown(args)
 
         request_id = str(uuid4())
@@ -42,36 +43,38 @@ class CompleteCommand(Command):
             "markdown_path": str(Path(os.getcwd()) / f"{request_id}.md"),
             "cwd": os.getcwd(),
         }
-        COMPLETION_CONTEXT.set({**COMPLETION_CONTEXT.get(), **context})
+
+        server_config: ServerConfig = SERVER_CONFIG.get()
 
         client_config = ClientConfig(interactive=False,
                                      format=args.format,
                                      endpoint=args.endpoint,
                                      # output=(output if args.output else None)
                                      )
-        CLIENT_CONFIG.set({**CLIENT_CONFIG.get(), **client_config})
 
-        server_config: ServerConfig = {
-            "taskmates_dir": os.environ.get("TASKMATES_HOME", str(Path.home() / ".taskmates")),
-        }
-        SERVER_CONFIG.set({**SERVER_CONFIG.get(), **server_config})
-
-        completion_opts: CompletionOpts = {
+        completion_opts = {
             "model": args.model,
             "template_params": self.merge_template_params(args.template_params),
-            'max_interactions': args.max_interactions,
+            "max_interactions": args.max_interactions,
         }
 
         COMPLETION_OPTS.set({**COMPLETION_OPTS.get(), **completion_opts})
 
-        await complete(markdown, context, client_config)
+        signals = Signals()
+        SIGNALS.set(signals)
+
+        await complete(markdown, context,
+                       server_config,
+                       client_config,
+                       completion_opts,
+                       signal_config, signals)
 
     @staticmethod
     def merge_template_params(template_params: list) -> dict:
-        merged_params = {}
-        for param_dict in template_params:
-            merged_params.update(param_dict)
-        return merged_params
+        merged = {}
+        for params in template_params:
+            merged.update(params)
+        return merged
 
     @typechecked
     def get_markdown(self, args) -> str:

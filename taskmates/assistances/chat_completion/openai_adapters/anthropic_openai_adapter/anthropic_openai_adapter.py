@@ -25,7 +25,7 @@ from taskmates.lib.openai_.model.choice_model import ChoiceModel
 from taskmates.lib.openai_.model.delta_model import DeltaModel
 from taskmates.lib.tool_schemas_.tool_schema import tool_schema
 from taskmates.logging import file_logger
-from taskmates.signals import SIGNALS
+from taskmates.signals.signals import SIGNALS
 
 
 class AsyncAnthropicOpenAIAdapter:
@@ -103,7 +103,7 @@ class AsyncAnthropicOpenAIAdapter:
                 try:
                     # TODO: Add tracing
                     signals = SIGNALS.get()
-                    await signals.artifact.send_async({"name": "anthropic_request_payload.json", "content": payload})
+                    await signals.output.artifact.send_async({"name": "anthropic_request_payload.json", "content": payload})
                     chat_completion = await resource.create(**payload)
                     id, created, model_name = None, None, model
                     is_tool_call = False

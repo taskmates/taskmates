@@ -8,7 +8,7 @@ import sys
 import pytest
 
 from taskmates.lib.restore_stdout_and_stderr import restore_stdout_and_stderr
-from taskmates.signals import Signals, SIGNALS
+from taskmates.signals.signals import Signals, SIGNALS
 
 
 # TODO: review this and the duplication with invoke_function
@@ -18,7 +18,7 @@ async def stream_output(fd, stream, signals):
         if not line:
             break
         with restore_stdout_and_stderr():
-            await signals.response.send_async(line)
+            await signals.output.response.send_async(line)
 
 
 async def run_shell_command(cmd: str) -> str:
@@ -55,17 +55,17 @@ async def run_shell_command(cmd: str) -> str:
             process.send_signal(signal.CTRL_BREAK_EVENT)
         else:
             os.killpg(os.getpgid(process.pid), signal.SIGINT)
-        await signals.interrupted.send_async(None)
+        await signals.output.interrupted.send_async(None)
 
     async def kill_handler(sender):
         if platform.system() == "Windows":
             process.kill()
         else:
             os.killpg(os.getpgid(process.pid), signal.SIGKILL)
-        await signals.killed.send_async(None)
+        await signals.output.killed.send_async(None)
 
-    with signals.interrupt.connected_to(interrupt_handler), \
-            signals.kill.connected_to(kill_handler):
+    with signals.control.interrupt.connected_to(interrupt_handler), \
+            signals.control.kill.connected_to(kill_handler):
         stdout_task = asyncio.create_task(stream_output(sys.stdout, process.stdout, signals))
         stderr_task = asyncio.create_task(stream_output(sys.stderr, process.stderr, signals))
 
@@ -83,7 +83,7 @@ async def test_run_shell_command(capsys):
     async def capture_chunk(chunk):
         chunks.append(chunk)
 
-    signals.response.connect(capture_chunk)
+    signals.output.response.connect(capture_chunk)
 
     if platform.system() == "Windows":
         cmd = "echo Hello, World!"
@@ -104,12 +104,12 @@ async def test_run_shell_command_interrupt(capsys):
     async def capture_chunk(chunk):
         chunks.append(chunk)
 
-    signals.response.connect(capture_chunk)
+    signals.output.response.connect(capture_chunk)
 
     async def send_interrupt():
         while len(chunks) < 5:
             await asyncio.sleep(0.1)
-        await signals.interrupt.send_async(None)
+        await signals.control.interrupt.send_async(None)
 
     interrupt_task = asyncio.create_task(send_interrupt())
 
@@ -137,12 +137,12 @@ async def test_run_shell_command_kill(capsys):
     async def capture_chunk(chunk):
         chunks.append(chunk)
 
-    signals.response.connect(capture_chunk)
+    signals.output.response.connect(capture_chunk)
 
     async def send_kill():
         while len(chunks) < 3:
             await asyncio.sleep(0.1)
-        await signals.kill.send_async(None)
+        await signals.control.kill.send_async(None)
 
     kill_task = asyncio.create_task(send_kill())
 

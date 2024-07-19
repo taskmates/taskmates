@@ -13,7 +13,7 @@ from taskmates.formats.markdown.metadata.get_model_client import get_model_clien
 from taskmates.lib.not_set.not_set import NOT_SET
 from taskmates.lib.opentelemetry_.tracing import tracer
 from taskmates.server.streamed_response import StreamedResponse
-from taskmates.signals import SIGNALS
+from taskmates.signals.signals import SIGNALS
 
 
 @typechecked
@@ -21,9 +21,9 @@ async def api_request(messages: list, model_conf: dict, model_params: dict) -> d
     signals = SIGNALS.get()
 
     streamed_response = StreamedResponse()
-    signals.chat_completion.connect(streamed_response.accept, weak=False)
+    signals.output.chat_completion.connect(streamed_response.accept, weak=False)
 
-    if signals.chat_completion.receivers:
+    if signals.output.chat_completion.receivers:
         model_conf.update({"stream": True})
 
     llm_client_args = get_llm_client_args(messages, model_conf, model_params)
@@ -31,7 +31,7 @@ async def api_request(messages: list, model_conf: dict, model_params: dict) -> d
     client = get_model_client(model_conf["model"])
 
     with tracer.start_as_current_span(name="chat-completion"):
-        await signals.artifact.send_async({"name": "openai_request_payload.json", "content": llm_client_args})
+        await signals.output.artifact.send_async({"name": "openai_request_payload.json", "content": llm_client_args})
 
         interrupted_or_killed = False
 
@@ -39,16 +39,16 @@ async def api_request(messages: list, model_conf: dict, model_params: dict) -> d
             nonlocal interrupted_or_killed
             interrupted_or_killed = True
             await chat_completion.response.aclose()
-            await signals.interrupted.send_async(None)
+            await signals.output.interrupted.send_async(None)
 
         async def kill_handler(sender):
             nonlocal interrupted_or_killed
             interrupted_or_killed = True
             await chat_completion.response.aclose()
-            await signals.killed.send_async(None)
+            await signals.output.killed.send_async(None)
 
-        with signals.interrupt.connected_to(interrupt_handler), \
-                signals.kill.connected_to(kill_handler):
+        with signals.control.interrupt.connected_to(interrupt_handler), \
+                signals.control.kill.connected_to(kill_handler):
             chat_completion = await client.chat.completions.create(**llm_client_args)
 
             if model_conf["stream"]:
@@ -62,20 +62,20 @@ async def api_request(messages: list, model_conf: dict, model_params: dict) -> d
                                 content: str = choice.delta.content
                                 # TODO move this to ChatCompletionPreProcessor
                                 choice.delta.content = content.replace("\r", "")
-                        await signals.chat_completion.send_async(chat_completion_chunk)
+                        await signals.output.chat_completion.send_async(chat_completion_chunk)
 
                 except asyncio.CancelledError:
-                    await signals.artifact.send_async({"name": "response_cancelled.json", "content": str(True)})
+                    await signals.output.artifact.send_async({"name": "response_cancelled.json", "content": str(True)})
                     await chat_completion.response.aclose()
                     raise
                 except ReadError as e:
-                    await signals.artifact.send_async({"name": "response_read_error.json", "content": str(e)})
+                    await signals.output.artifact.send_async({"name": "response_read_error.json", "content": str(e)})
 
                 response = streamed_response.payload
             else:
                 response = chat_completion.model_dump()
 
-    await signals.artifact.send_async({"name": "response.json", "content": response})
+    await signals.output.artifact.send_async({"name": "response.json", "content": response})
 
     if not response['choices']:
         # NOTE: this seems to happen when the request is cancelled before any response is received

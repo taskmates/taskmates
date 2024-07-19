@@ -2,7 +2,7 @@ from datetime import datetime
 from pathlib import Path
 
 from taskmates.lib.resources_.resources import dump_resource
-from taskmates.signals import Signals
+from taskmates.signals.signals import Signals
 
 
 class FileSystemArtifactsSink:
@@ -16,4 +16,4 @@ class FileSystemArtifactsSink:
         dump_resource(full_path, sender.get('content'))
 
     def connect(self, signals: Signals):
-        signals.artifact.connect(self.handle_artifact)
+        signals.output.artifact.connect(self.handle_artifact)
