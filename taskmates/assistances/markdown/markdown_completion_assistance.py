@@ -13,7 +13,8 @@ from taskmates.types import Chat
 
 class MarkdownCompletionAssistance:
     @typechecked
-    async def perform_completion(self, context: CompletionContext,
+    async def perform_completion(self,
+                                 context: CompletionContext,
                                  markdown_chat: str,
                                  server_config: ServerConfig,
                                  client_config: ClientConfig,

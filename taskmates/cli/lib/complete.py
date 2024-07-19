@@ -8,7 +8,8 @@ from taskmates.assistances.markdown.markdown_completion_assistance import Markdo
 from taskmates.bridges.websocket_bridges import OutputSignalsToWebsocketBridge, WebsocketToControlSignalsBridge
 from taskmates.config import CompletionContext, ClientConfig, ServerConfig, CompletionOpts
 from taskmates.signal_config import SignalConfig, SignalMethod
-from taskmates.signals.signals import Signals, SIGNALS
+from taskmates.signals.signals import Signals
+from taskmates.sinks.stdout_sink import StdoutSink
 
 # Global variable to store the received signal
 received_signal = None
@@ -44,18 +45,7 @@ async def complete(markdown: str,
                    client_config: ClientConfig,
                    completion_opts: CompletionOpts,
                    signal_config: SignalConfig,
-                   signals: Signals | None = None):
-    response = []
-
-    async def process_chunk(chunk):
-        if isinstance(chunk, str):
-            response.append(chunk)
-            print(chunk, end="", flush=True)
-
-    if signals is None:
-        signals = Signals()
-        SIGNALS.set(signals)
-
+                   signals: Signals):
     input_bridge = None
     output_bridge = None
 
@@ -68,23 +58,7 @@ async def complete(markdown: str,
         await output_bridge.connect()
 
     format = client_config.get('format', 'text')
-
-    if format == 'full':
-        signals.output.request.connect(process_chunk, weak=False)
-        signals.output.formatting.connect(process_chunk, weak=False)
-        signals.output.responder.connect(process_chunk, weak=False)
-        signals.output.response.connect(process_chunk, weak=False)
-        signals.output.error.connect(process_chunk, weak=False)
-    elif format == 'original':
-        signals.output.request.connect(process_chunk, weak=False)
-    elif format == 'completion':
-        signals.output.responder.connect(process_chunk, weak=False)
-        signals.output.response.connect(process_chunk, weak=False)
-        signals.output.error.connect(process_chunk, weak=False)
-    elif format == 'text':
-        signals.output.response.connect(process_chunk, weak=False)
-    else:
-        raise ValueError(f"Invalid format: {format}")
+    StdoutSink(format).connect(signals)
 
     async def process_return_value(status):
         if status['result']:
@@ -121,3 +95,5 @@ async def complete(markdown: str,
             await input_bridge.close()
         if output_bridge:
             await output_bridge.close()
+
+
