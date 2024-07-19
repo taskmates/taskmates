@@ -4179,13 +4179,13 @@ diagrams = ["jinja2", "railroad-diagrams"]
 
 [[package]]
 name = "pypdf"
-version = "3.17.4"
+version = "4.3.0"
 description = "A pure-python PDF library capable of splitting, merging, cropping, and transforming PDF files"
 optional = false
 python-versions = ">=3.6"
 files = [
-    {file = "pypdf-3.17.4-py3-none-any.whl", hash = "sha256:6aa0f61b33779b64486de3f42835d3668badd48dac4a536aeb87da187a5eacd2"},
-    {file = "pypdf-3.17.4.tar.gz", hash = "sha256:ec96e2e4fc9648ac609d19c00d41e9d606e0ae2ce5a0bbe7691426f5f157166a"},
+    {file = "pypdf-4.3.0-py3-none-any.whl", hash = "sha256:eeea4d019b57c099d02a0e1692eaaab23341ae3f255c1dafa3c8566b4636496d"},
+    {file = "pypdf-4.3.0.tar.gz", hash = "sha256:0d7a4c67fd03782f5a09d3f48c11c7a31e0bb9af78861a25229bb49259ed0504"},
 ]
 
 [package.extras]
@@ -6084,4 +6084,4 @@ chromadb = ["chromadb"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11.1"
-content-hash = "ffccf0803097ce7b9b2d10b7ea5868b382ec424c16abab9187af1c81c60f79c4"
+content-hash = "04d0f47a9ca07067a890c35c082c14e1849db0f489fed527fbeecbd955befdab"
