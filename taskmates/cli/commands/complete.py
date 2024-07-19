@@ -84,7 +84,7 @@ class CompleteCommand(Command):
 
         if stdin_markdown and args_markdown:
             # Concatenate stdin markdown with --markdown argument if both are provided
-            # TODO: Not sure about this
+            # TODO: Not sure about this being hardcoded to user
             markdown = stdin_markdown + "\n\n**user>** " + args_markdown
         elif stdin_markdown:
             markdown = stdin_markdown
