@@ -44,6 +44,7 @@ async def taskmates_completions():
         markdown_chat = payload["markdown_chat"]
         request_id = completion_context['request_id']
 
+        # TODO
         WebsocketStreamingSink().connect(signals)
         FileSystemArtifactsSink(taskmates_dir, request_id).connect(signals)
 
@@ -69,6 +70,7 @@ async def taskmates_completions():
             receive_interrupt_task = asyncio.create_task(handle_interrupt_or_kill())
 
             completion_task = asyncio.create_task(
+                # TODO
                 MarkdownCompletionAssistance().perform_completion(completion_context,
                                                                   markdown_chat,
                                                                   SERVER_CONFIG.get(),

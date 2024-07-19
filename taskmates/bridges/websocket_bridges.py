@@ -5,7 +5,7 @@ from loguru import logger
 from websockets import connect
 
 
-class SignalToWebsocketBridge:
+class OutputSignalsToWebsocketBridge:
     def __init__(self, output_signals, websocket_url):
         self.output_signals = output_signals
         self.websocket_url = websocket_url
@@ -45,7 +45,7 @@ class SignalToWebsocketBridge:
             logger.info("WebSocket connection closed")
 
 
-class WebsocketToSignalBridge:
+class WebsocketToControlSignalsBridge:
     def __init__(self, control_signals, websocket_url):
         self.control_signals = control_signals
         self.websocket_url = websocket_url
