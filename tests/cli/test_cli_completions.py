@@ -262,7 +262,7 @@ def test_kill_code_cell(cli_runner, tmp_path):
     Certainly! I'll run a command that ignores the SIGINT signal in a code cell.
     
     ```python .eval
-    !trap '' INT; echo e; sleep 5; echo fail
+    !trap '' INT; echo Starting; sleep 5; echo fail
     ```
     
     """)
