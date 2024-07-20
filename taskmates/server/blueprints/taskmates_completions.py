@@ -11,8 +11,8 @@ from taskmates.config import CompletionContext, CompletionOpts, COMPLETION_CONTE
 from taskmates.lib.json_.json_utils import snake_case
 from taskmates.logging import logger
 from taskmates.signals.signals import SIGNALS, Signals
-from taskmates.sinks.file_system_artifacts_sink import FileSystemArtifactsSink
-from taskmates.sinks.websocket_streaming_sink import WebsocketStreamingSink
+from taskmates.io.file_system_artifacts_sink import FileSystemArtifactsSink
+from taskmates.io.websocket_streaming_sink import WebsocketStreamingSink
 from taskmates.types import CompletionPayload
 
 completions_bp = Blueprint('completions_v2', __name__)

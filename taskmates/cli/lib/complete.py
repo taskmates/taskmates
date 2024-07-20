@@ -5,11 +5,12 @@ import signal
 from typeguard import typechecked
 
 from taskmates.assistances.markdown.markdown_completion_assistance import MarkdownCompletionAssistance
-from taskmates.bridges.websocket_bridges import OutputSignalsToWebsocketBridge, WebsocketToControlSignalsBridge
+from taskmates.io.websocket_to_control_signals_bridge import WebsocketToControlSignalsBridge
+from taskmates.io.output_signals_to_websocket_bridge import OutputSignalsToWebsocketBridge
 from taskmates.config import CompletionContext, ClientConfig, ServerConfig, CompletionOpts
 from taskmates.signal_config import SignalConfig, SignalMethod
 from taskmates.signals.signals import Signals
-from taskmates.sinks.stdout_sink import StdoutSink
+from taskmates.io.stdout_sink import StdoutSink
 
 # Global variable to store the received signal
 received_signal = None

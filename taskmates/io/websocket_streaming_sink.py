@@ -5,7 +5,7 @@ from pydantic import BaseModel
 from quart import websocket
 
 from taskmates.signals.signals import Signals
-from taskmates.sinks.streaming_sink import StreamingSink
+from taskmates.io.streaming_sink import StreamingSink
 
 
 class WebsocketStreamingSink(BaseModel, StreamingSink):
