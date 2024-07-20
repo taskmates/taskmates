@@ -4,8 +4,8 @@ from pathlib import Path
 from nbconvert.filters import strip_ansi
 from typeguard import typechecked
 
-from taskmates.assistances.code_execution.jupyter_.code_execution import CodeExecution
-from taskmates.assistances.code_execution.jupyter_.code_execution_output_appender import CodeExecutionOutputAppender
+from taskmates.core.code_execution.code_cells.code_execution import CodeExecution
+from taskmates.core.code_execution.code_cells.code_execution_output_appender import CodeExecutionOutputAppender
 from taskmates.signals.signals import Signals
 
 

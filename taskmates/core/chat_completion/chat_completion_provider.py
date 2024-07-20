@@ -2,8 +2,8 @@ import json
 
 from typeguard import typechecked
 
-from taskmates.assistances.chat_completion.chat_completion_editor_completion import ChatCompletionEditorCompletion
-from taskmates.assistances.completion_assistance import CompletionAssistance
+from taskmates.core.chat_completion.chat_completion_editor_completion import ChatCompletionEditorCompletion
+from taskmates.core.completion_provider import CompletionProvider
 from taskmates.config.completion_context import CompletionContext
 from taskmates.config.completion_opts import CompletionOpts, COMPLETION_OPTS
 from taskmates.formats.markdown.metadata.get_model_conf import get_model_conf
@@ -15,7 +15,7 @@ from taskmates.signals.signals import Signals
 from taskmates.types import Chat
 
 
-class MarkdownChatCompletionAssistance(CompletionAssistance):
+class ChatCompletionProvider(CompletionProvider):
     def stop(self):
         raise NotImplementedError("Not implemented")
 

@@ -11,13 +11,13 @@ from anthropic.types.beta.tools import ToolsBetaMessage, ToolUseBlock, ToolsBeta
     ToolsBetaContentBlockDeltaEvent, InputJsonDelta
 from typeguard import typechecked
 
-from taskmates.assistances.chat_completion.openai_adapters.anthropic_openai_adapter.request.convert_and_merge_messages import \
+from taskmates.core.chat_completion.openai_adapters.anthropic_openai_adapter.request.convert_and_merge_messages import \
     convert_and_merge_messages
-from taskmates.assistances.chat_completion.openai_adapters.anthropic_openai_adapter.response.convert_anthropic_tool_call_to_openai import \
+from taskmates.core.chat_completion.openai_adapters.anthropic_openai_adapter.response.convert_anthropic_tool_call_to_openai import \
     convert_anthropic_tool_call_to_openai
-from taskmates.assistances.chat_completion.openai_adapters.anthropic_openai_adapter.request.convert_openai_tools_to_anthropic import \
+from taskmates.core.chat_completion.openai_adapters.anthropic_openai_adapter.request.convert_openai_tools_to_anthropic import \
     convert_openai_tools_to_anthropic
-from taskmates.assistances.chat_completion.openai_adapters.anthropic_openai_adapter.parsing.split_system_message import \
+from taskmates.core.chat_completion.openai_adapters.anthropic_openai_adapter.parsing.split_system_message import \
     split_system_message
 from taskmates.function_registry import function_registry
 from taskmates.lib.openai_.model.chat_completion_chunk_model import ChatCompletionChunkModel

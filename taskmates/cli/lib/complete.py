@@ -4,7 +4,7 @@ import signal
 
 from typeguard import typechecked
 
-from taskmates.assistances.markdown.markdown_completion_assistance import MarkdownCompletionAssistance
+from taskmates.core.completion_engine import CompletionEngine
 from taskmates.config.client_config import ClientConfig
 from taskmates.config.completion_context import CompletionContext
 from taskmates.config.completion_opts import CompletionOpts
@@ -77,7 +77,7 @@ async def complete(markdown: str,
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
 
-    process_task = asyncio.create_task(MarkdownCompletionAssistance().perform_completion(
+    process_task = asyncio.create_task(CompletionEngine().perform_completion(
         context,
         markdown,
         server_config,

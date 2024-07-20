@@ -5,7 +5,7 @@ from quart import Blueprint, Response
 from quart import websocket
 
 import taskmates
-from taskmates.assistances.markdown.markdown_completion_assistance import MarkdownCompletionAssistance
+from taskmates.core.completion_engine import CompletionEngine
 from taskmates.config.client_config import CLIENT_CONFIG
 from taskmates.config.completion_context import COMPLETION_CONTEXT, CompletionContext
 from taskmates.config.completion_opts import COMPLETION_OPTS, CompletionOpts
@@ -74,12 +74,12 @@ async def taskmates_completions():
 
             completion_task = asyncio.create_task(
                 # TODO
-                MarkdownCompletionAssistance().perform_completion(completion_context,
-                                                                  markdown_chat,
-                                                                  SERVER_CONFIG.get(),
-                                                                  CLIENT_CONFIG.get(),
-                                                                  COMPLETION_OPTS.get(),
-                                                                  signals)
+                CompletionEngine().perform_completion(completion_context,
+                                                      markdown_chat,
+                                                      SERVER_CONFIG.get(),
+                                                      CLIENT_CONFIG.get(),
+                                                      COMPLETION_OPTS.get(),
+                                                      signals)
             )
 
             completion_task.add_done_callback(lambda t: receive_interrupt_task.cancel("Completion Task Finished"))

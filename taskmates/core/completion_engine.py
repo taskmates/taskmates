@@ -1,9 +1,9 @@
 from typeguard import typechecked
 
 from taskmates.actions.parse_markdown_chat import parse_markdown_chat
-from taskmates.assistances.chat_completion.markdown_chat_completion_assistance import MarkdownChatCompletionAssistance
-from taskmates.assistances.code_execution.jupyter_.markdown_code_cells_assistance import MarkdownCodeCellsAssistance
-from taskmates.assistances.code_execution.tool_.markdown_tools_assistance import MarkdownToolsAssistance
+from taskmates.core.chat_completion.chat_completion_provider import ChatCompletionProvider
+from taskmates.core.code_execution.code_cells.code_cell_execution_completion_provider import CodeCellExecutionCompletionProvider
+from taskmates.core.code_execution.tools.tool_execution_completion_provider import ToolExecutionCompletionProvider
 from taskmates.config.client_config import ClientConfig
 from taskmates.config.completion_context import CompletionContext
 from taskmates.config.completion_opts import CompletionOpts
@@ -13,7 +13,7 @@ from taskmates.signals.signals import Signals
 from taskmates.types import Chat
 
 
-class MarkdownCompletionAssistance:
+class CompletionEngine:
     @typechecked
     async def perform_completion(self,
                                  context: CompletionContext,
@@ -144,9 +144,9 @@ class MarkdownCompletionAssistance:
     @staticmethod
     def get_next_completion(chat):
         assistances = [
-            MarkdownCodeCellsAssistance(),
-            MarkdownToolsAssistance(),
-            MarkdownChatCompletionAssistance()
+            CodeCellExecutionCompletionProvider(),
+            ToolExecutionCompletionProvider(),
+            ChatCompletionProvider()
         ]
 
         for assistance in assistances:

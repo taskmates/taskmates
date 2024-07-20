@@ -2,7 +2,7 @@ from typing import Unpack
 
 from typeguard import typechecked
 
-from taskmates.assistances.markdown.markdown_completion_assistance import MarkdownCompletionAssistance
+from taskmates.core.completion_engine import CompletionEngine
 from taskmates.config.client_config import ClientConfig, CLIENT_CONFIG
 from taskmates.config.completion_context import COMPLETION_CONTEXT
 from taskmates.config.completion_opts import COMPLETION_OPTS, CompletionOpts
@@ -43,7 +43,7 @@ async def async_complete(markdown,
 
     try:
         with updated_config(COMPLETION_OPTS, completion_opts):
-            await MarkdownCompletionAssistance().perform_completion(
+            await CompletionEngine().perform_completion(
                 completion_context,
                 markdown,
                 server_config,

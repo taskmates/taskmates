@@ -6,7 +6,7 @@ from typing import Union
 import pytest
 from typeguard import typechecked
 
-from taskmates.assistances.code_execution.jupyter_.parse_notebook import parse_notebook
+from taskmates.core.code_execution.code_cells.parse_notebook import parse_notebook
 from taskmates.formats.markdown.metadata.get_available_tools import get_available_tools
 from taskmates.formats.markdown.metadata.prepend_recipient_system import prepend_recipient_system
 from taskmates.formats.markdown.parsing.parse_front_matter_and_messages import parse_front_matter_and_messages

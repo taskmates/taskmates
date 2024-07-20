@@ -5,7 +5,7 @@ from taskmates.signals.signals import Signals
 from taskmates.types import Chat
 
 
-class CompletionAssistance(ABC):
+class CompletionProvider(ABC):
     @abstractmethod
     def stop(self):
         pass

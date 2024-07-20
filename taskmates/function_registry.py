@@ -5,7 +5,7 @@ import json
 
 from typeguard import typechecked
 
-from taskmates.assistances.code_execution.shell_.run_shell_command import run_shell_command
+from taskmates.core.code_execution.shell.run_shell_command import run_shell_command
 from taskmates.tools.chroma_.chromadb_search import chromadb_search
 from taskmates.tools.dalle_.convert_to_svg import convert_to_svg
 from taskmates.tools.dalle_.generate_images import generate_images

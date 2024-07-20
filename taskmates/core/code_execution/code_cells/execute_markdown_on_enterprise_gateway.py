@@ -10,9 +10,9 @@ from nbclient.exceptions import CellExecutionError
 from nbconvert.filters import strip_ansi
 from nbformat import NotebookNode
 
-from taskmates.assistances.code_execution.jupyter_.jupyter_enterprise_gateway_client import get_kernel_manager, \
+from taskmates.core.code_execution.code_cells.jupyter_enterprise_gateway_client import get_kernel_manager, \
     DEFAULT_GATEWAY_URL
-from taskmates.assistances.code_execution.jupyter_.parse_notebook import parse_notebook
+from taskmates.core.code_execution.code_cells.parse_notebook import parse_notebook
 
 
 async def setup_kernel(kernel_manager, cwd=None):

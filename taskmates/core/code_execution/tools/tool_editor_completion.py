@@ -1,5 +1,5 @@
-from taskmates.assistances.code_execution.jupyter_.code_execution import CodeExecution
-from taskmates.assistances.markdown.editor_appender import EditorAppender
+from taskmates.core.code_execution.code_cells.code_execution import CodeExecution
+from taskmates.core.code_execution.tools.editor_appender import EditorAppender
 from taskmates.signals.signals import Signals
 
 

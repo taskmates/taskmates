@@ -10,7 +10,7 @@ import pytest
 from jupyter_client import AsyncKernelManager, AsyncKernelClient
 from nbformat import NotebookNode
 
-from taskmates.assistances.code_execution.jupyter_.parse_notebook import parse_notebook
+from taskmates.core.code_execution.code_cells.parse_notebook import parse_notebook
 from taskmates.logging import logger
 from taskmates.signals.signals import Signals, SIGNALS
 

@@ -4,8 +4,8 @@ from typing import Dict
 from typeguard import typechecked
 
 from taskmates.actions.invoke_function import invoke_function
-from taskmates.assistances.completion_assistance import CompletionAssistance
-from taskmates.assistances.markdown.tool_editor_completion import ToolEditorCompletion
+from taskmates.core.completion_provider import CompletionProvider
+from taskmates.core.code_execution.tools.tool_editor_completion import ToolEditorCompletion
 from taskmates.config.completion_context import CompletionContext
 from taskmates.function_registry import function_registry
 from taskmates.model.tool_call import ToolCall
@@ -13,7 +13,7 @@ from taskmates.signals.signals import Signals
 from taskmates.types import Chat
 
 
-class MarkdownToolsAssistance(CompletionAssistance):
+class ToolExecutionCompletionProvider(CompletionProvider):
     def stop(self):
         raise NotImplementedError("Not implemented")
 

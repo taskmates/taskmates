@@ -2,16 +2,16 @@ import textwrap
 
 import pytest
 
-from taskmates.assistances.code_execution.jupyter_.code_cells_editor_completion import CodeCellsEditorCompletion
-from taskmates.assistances.code_execution.jupyter_.execute_markdown_on_local_kernel import \
+from taskmates.core.code_execution.code_cells.code_cells_editor_completion import CodeCellsEditorCompletion
+from taskmates.core.code_execution.code_cells.execute_markdown_on_local_kernel import \
     execute_markdown_on_local_kernel
-from taskmates.assistances.completion_assistance import CompletionAssistance
+from taskmates.core.completion_provider import CompletionProvider
 from taskmates.config.completion_context import CompletionContext
 from taskmates.signals.signals import SIGNALS, Signals
 from taskmates.types import Chat
 
 
-class MarkdownCodeCellsAssistance(CompletionAssistance):
+class CodeCellExecutionCompletionProvider(CompletionProvider):
     def stop(self):
         raise NotImplementedError("Not implemented")
 
@@ -79,7 +79,7 @@ async def test_markdown_code_cells_assistance_streaming(tmp_path):
 
     context = {"markdown_path": str(tmp_path), "cwd": str(tmp_path)}
 
-    assistance = MarkdownCodeCellsAssistance()
+    assistance = CodeCellExecutionCompletionProvider()
     await assistance.perform_completion(context, chat, signals)
 
     assert "".join(markdown_chunks) == ('###### Cell Output: stdout [cell_0]\n'
