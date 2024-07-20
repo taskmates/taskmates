@@ -4,7 +4,7 @@ import textwrap
 
 from typeguard import typechecked
 
-from taskmates.formats.markdown.metadata.load_model_config import load_model_config
+from taskmates.config.load_model_config import load_model_config
 from taskmates.lib.openai_.count_tokens import count_tokens
 
 

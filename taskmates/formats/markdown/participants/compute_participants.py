@@ -1,4 +1,4 @@
-from taskmates.environment.participants.load_participant_config import load_participant_config
+from taskmates.config.load_participant_config import load_participant_config
 from taskmates.formats.markdown.participants.compute_and_reassign_roles import compute_and_reassign_roles
 from taskmates.formats.markdown.participants.compute_recipient import compute_recipient
 from taskmates.formats.markdown.participants.process_participants import process_participants

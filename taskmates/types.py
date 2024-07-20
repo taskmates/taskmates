@@ -1,6 +1,7 @@
 from typing import TypedDict, NotRequired, Dict, List, Union
 
-from taskmates.config import CompletionContext, CompletionOpts
+from taskmates.config.completion_context import CompletionContext
+from taskmates.config.completion_opts import CompletionOpts
 
 
 class Chat(TypedDict):

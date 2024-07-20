@@ -8,7 +8,7 @@ from quart.testing.connections import WebsocketDisconnectError
 from typeguard import typechecked
 
 import taskmates
-from taskmates.config import SERVER_CONFIG
+from taskmates.config.server_config import SERVER_CONFIG
 from taskmates.server.blueprints.taskmates_completions import completions_bp as completions_v2_bp
 from taskmates.types import CompletionPayload
 

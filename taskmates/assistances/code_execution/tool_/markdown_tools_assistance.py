@@ -6,7 +6,7 @@ from typeguard import typechecked
 from taskmates.actions.invoke_function import invoke_function
 from taskmates.assistances.completion_assistance import CompletionAssistance
 from taskmates.assistances.markdown.tool_editor_completion import ToolEditorCompletion
-from taskmates.config import CompletionContext
+from taskmates.config.completion_context import CompletionContext
 from taskmates.function_registry import function_registry
 from taskmates.model.tool_call import ToolCall
 from taskmates.signals.signals import Signals

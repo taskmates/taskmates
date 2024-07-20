@@ -5,9 +5,12 @@ import signal
 from typeguard import typechecked
 
 from taskmates.assistances.markdown.markdown_completion_assistance import MarkdownCompletionAssistance
+from taskmates.config.client_config import ClientConfig
+from taskmates.config.completion_context import CompletionContext
+from taskmates.config.completion_opts import CompletionOpts
+from taskmates.config.server_config import ServerConfig
 from taskmates.io.websocket_to_control_signals_bridge import WebsocketToControlSignalsBridge
 from taskmates.io.output_signals_to_websocket_bridge import OutputSignalsToWebsocketBridge
-from taskmates.config import CompletionContext, ClientConfig, ServerConfig, CompletionOpts
 from taskmates.signal_config import SignalConfig, SignalMethod
 from taskmates.signals.signals import Signals
 from taskmates.io.stdout_sink import StdoutSink

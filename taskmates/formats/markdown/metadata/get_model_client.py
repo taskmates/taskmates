@@ -7,7 +7,7 @@ from taskmates.assistances.chat_completion.openai_adapters.anthropic_openai_adap
     AsyncAnthropicOpenAIAdapter
 from taskmates.assistances.chat_completion.openai_adapters.echo.echo import Echo
 from taskmates.assistances.chat_completion.openai_adapters.echo.quote import Quote
-from taskmates.formats.markdown.metadata.load_model_config import load_model_config
+from taskmates.config.load_model_config import load_model_config
 
 
 @typechecked

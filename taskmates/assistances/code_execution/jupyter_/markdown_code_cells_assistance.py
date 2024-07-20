@@ -6,7 +6,7 @@ from taskmates.assistances.code_execution.jupyter_.code_cells_editor_completion 
 from taskmates.assistances.code_execution.jupyter_.execute_markdown_on_local_kernel import \
     execute_markdown_on_local_kernel
 from taskmates.assistances.completion_assistance import CompletionAssistance
-from taskmates.config import CompletionContext
+from taskmates.config.completion_context import CompletionContext
 from taskmates.signals.signals import SIGNALS, Signals
 from taskmates.types import Chat
 

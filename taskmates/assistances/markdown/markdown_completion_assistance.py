@@ -4,8 +4,10 @@ from taskmates.actions.parse_markdown_chat import parse_markdown_chat
 from taskmates.assistances.chat_completion.markdown_chat_completion_assistance import MarkdownChatCompletionAssistance
 from taskmates.assistances.code_execution.jupyter_.markdown_code_cells_assistance import MarkdownCodeCellsAssistance
 from taskmates.assistances.code_execution.tool_.markdown_tools_assistance import MarkdownToolsAssistance
-from taskmates.config import CompletionContext, CompletionOpts, \
-    ClientConfig, ServerConfig
+from taskmates.config.client_config import ClientConfig
+from taskmates.config.completion_context import CompletionContext
+from taskmates.config.completion_opts import CompletionOpts
+from taskmates.config.server_config import ServerConfig
 from taskmates.logging import logger
 from taskmates.signals.signals import Signals
 from taskmates.types import Chat

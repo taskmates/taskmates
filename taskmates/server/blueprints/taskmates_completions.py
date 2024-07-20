@@ -6,8 +6,11 @@ from quart import websocket
 
 import taskmates
 from taskmates.assistances.markdown.markdown_completion_assistance import MarkdownCompletionAssistance
-from taskmates.config import CompletionContext, CompletionOpts, COMPLETION_CONTEXT, COMPLETION_OPTS, \
-    updated_config, SERVER_CONFIG, ClientConfig, CLIENT_CONFIG
+from taskmates.config.client_config import CLIENT_CONFIG
+from taskmates.config.completion_context import COMPLETION_CONTEXT, CompletionContext
+from taskmates.config.completion_opts import COMPLETION_OPTS, CompletionOpts
+from taskmates.config.server_config import SERVER_CONFIG
+from taskmates.config.updated_config import updated_config
 from taskmates.lib.json_.json_utils import snake_case
 from taskmates.logging import logger
 from taskmates.signals.signals import SIGNALS, Signals

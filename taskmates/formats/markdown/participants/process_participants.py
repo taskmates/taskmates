@@ -3,7 +3,7 @@ from typing import Dict, Union
 
 from typeguard import typechecked
 
-from taskmates.environment.participants.load_participant_config import load_participant_config
+from taskmates.config.load_participant_config import load_participant_config
 
 
 @typechecked

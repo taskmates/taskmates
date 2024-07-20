@@ -7,7 +7,10 @@ from uuid import uuid4
 from typeguard import typechecked
 
 from taskmates.cli.lib.complete import complete
-from taskmates.config import CompletionContext, ClientConfig, COMPLETION_OPTS, ServerConfig, SERVER_CONFIG
+from taskmates.config.client_config import ClientConfig
+from taskmates.config.completion_context import CompletionContext
+from taskmates.config.completion_opts import COMPLETION_OPTS
+from taskmates.config.server_config import ServerConfig, SERVER_CONFIG
 from taskmates.signal_config import SignalConfig
 from taskmates.signals.signals import Signals, SIGNALS
 
