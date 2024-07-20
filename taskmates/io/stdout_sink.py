@@ -10,8 +10,8 @@ class StdoutSink:
         if self.format == 'full':
             signals.output.request.connect(process_chunk, weak=False)
             signals.output.formatting.connect(process_chunk, weak=False)
-            signals.output.responder.connect(process_chunk, weak=False)
             signals.output.response.connect(process_chunk, weak=False)
+            signals.output.responder.connect(process_chunk, weak=False)
             signals.output.error.connect(process_chunk, weak=False)
         elif self.format == 'original':
             signals.output.request.connect(process_chunk, weak=False)
