@@ -37,16 +37,10 @@ def main():
 
     args = parser.parse_args()
 
-    signal_config = SignalConfig(
-        input_method=SignalMethod(args.input_method),
-        output_method=SignalMethod(args.output_method),
-        websocket_url=args.websocket_url
-    )
-
     if args.command in commands:
         logger.info(f"Executing command: {args.command}")
         try:
-            asyncio.run(commands[args.command].execute(args, signal_config))
+            asyncio.run(commands[args.command].execute(args))
         except Exception as e:
             logger.error(f"Error executing command {args.command}: {str(e)}", exc_info=True)
     else:
