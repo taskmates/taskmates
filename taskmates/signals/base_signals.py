@@ -34,19 +34,33 @@ class LifecycleSignals(BaseSignals):
 class OutputSignals(LifecycleSignals):
     def __init__(self):
         super().__init__()
+
+        # Input echo Signal
         self.request = self.namespace.signal('request')
+
+        # Output
         self.formatting = self.namespace.signal('formatting')
         self.responder = self.namespace.signal('responder')
         self.response = self.namespace.signal('response')
-        self.error = self.namespace.signal('error')
-        self.completion = self.namespace.signal('completion')
-        self.artifact = self.namespace.signal('artifact')
-        self.return_value = self.namespace.signal('return_value')
         self.next_responder = self.namespace.signal('next_responder')
+
+        # Internal ouptut signals
         self.chat_completion = self.namespace.signal('chat_completion')
         self.code_cell_output = self.namespace.signal('code_cell_output')
 
-        # Connect signals to completion
+        # Logging signals
+        self.error = self.namespace.signal('error')
+
+        # Control Flow signals
+        self.return_value = self.namespace.signal('return_value')
+
+        # Telemetry signals
+        self.artifact = self.namespace.signal('artifact')
+
+        # Completion signal
+        self.completion = self.namespace.signal('completion')
+
+        # Derived
         self.formatting.connect(self.completion.send_async, weak=False)
         self.responder.connect(self.completion.send_async, weak=False)
         self.response.connect(self.completion.send_async, weak=False)
