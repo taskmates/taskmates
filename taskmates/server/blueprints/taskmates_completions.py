@@ -5,20 +5,34 @@ from quart import Blueprint, Response
 from quart import websocket
 
 import taskmates
-from taskmates.core.completion_engine import CompletionEngine
 from taskmates.config.client_config import CLIENT_CONFIG
 from taskmates.config.completion_context import COMPLETION_CONTEXT, CompletionContext
 from taskmates.config.completion_opts import COMPLETION_OPTS, CompletionOpts
 from taskmates.config.server_config import SERVER_CONFIG
 from taskmates.config.updated_config import updated_config
+from taskmates.core.completion_engine import CompletionEngine
+from taskmates.io.file_system_artifacts_sink import FileSystemArtifactsSink
+from taskmates.io.websocket_completion_streamer import WebsocketCompletionStreamer
 from taskmates.lib.json_.json_utils import snake_case
 from taskmates.logging import logger
 from taskmates.signals.signals import SIGNALS, Signals
-from taskmates.io.file_system_artifacts_sink import FileSystemArtifactsSink
-from taskmates.io.websocket_completion_streamer import WebsocketCompletionStreamer
 from taskmates.types import CompletionPayload
 
 completions_bp = Blueprint('completions_v2', __name__)
+
+
+async def handle_interrupt_or_kill(websocket, signals: Signals):
+    while True:
+        try:
+            raw_payload = await websocket.receive()
+            payload = snake_case(json.loads(raw_payload))
+            if payload.get("type") == "interrupt":
+                await signals.control.interrupt_request.send_async(None)
+            elif payload.get("type") == "kill":
+                logger.info(f"KILL Received kill message")
+                await signals.control.kill.send_async(None)
+        except asyncio.CancelledError:
+            break
 
 
 @completions_bp.websocket('/v2/taskmates/completions')
@@ -30,9 +44,8 @@ async def taskmates_completions():
     completion_task = None
 
     try:
-        logger.info("Waiting for websocket connection at /v2/taskmates/completions")
+        logger.info("Waiting for websocket connsection at /v2/taskmates/completions")
         raw_payload = await websocket.receive()
-
         payload: CompletionPayload = snake_case(json.loads(raw_payload))
 
         client_version = payload.get("version", "None")
@@ -41,7 +54,6 @@ async def taskmates_completions():
 
         server_config = SERVER_CONFIG.get()
         taskmates_dir = server_config["taskmates_dir"]
-
         completion_context: CompletionContext = payload["completion_context"]
         completion_opts: CompletionOpts = payload["completion_opts"]
         markdown_chat = payload["markdown_chat"]
@@ -57,23 +69,8 @@ async def taskmates_completions():
 
             await signals.output.artifact.send_async({"name": "websockets_api_payload.json", "content": payload})
 
-            async def handle_interrupt_or_kill():
-                while True:
-                    try:
-                        raw_payload = await websocket.receive()
-                        payload = snake_case(json.loads(raw_payload))
-                        if payload.get("type") == "interrupt":
-                            await signals.control.interrupt_request.send_async(None)
-                        elif payload.get("type") == "kill":
-                            logger.info(f"KILL Received kill message for request {request_id}")
-                            await signals.control.kill.send_async(None)
-                    except asyncio.CancelledError:
-                        break
-
-            receive_interrupt_task = asyncio.create_task(handle_interrupt_or_kill())
-
+            receive_interrupt_task = asyncio.create_task(handle_interrupt_or_kill(websocket, signals))
             completion_task = asyncio.create_task(
-                # TODO
                 CompletionEngine().perform_completion(completion_context,
                                                       markdown_chat,
                                                       SERVER_CONFIG.get(),
@@ -95,17 +92,13 @@ async def taskmates_completions():
     except asyncio.CancelledError:
         logger.info(f"REQUEST CANCELLED Request cancelled due to client disconnection")
         await signals.control.kill.send_async(None)
-        if receive_interrupt_task:
-            receive_interrupt_task.cancel("Request cancelled due to client disconnection")
-        if completion_task:
-            completion_task.cancel("Request cancelled due to client disconnection")
     except Exception as e:
         # logger.exception(e)
         await signals.response.error.send_async(e)
     finally:
-        if receive_interrupt_task:
+        if receive_interrupt_task and not receive_interrupt_task.done():
             receive_interrupt_task.cancel()
-        if completion_task:
+        if completion_task and not completion_task.done():
             completion_task.cancel()
         logger.info("DONE Closing websocket connection")
 
