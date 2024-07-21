@@ -57,16 +57,19 @@ class InterruptedOrKilledHandler:
     def __init__(self):
         self.interrupted_or_killed = False
 
-    async def handle_interrupted_or_killed(self, _sender):
+    async def handle_interrupted(self, _sender):
+        self.interrupted_or_killed = True
+
+    async def handle_killed(self, _sender):
         self.interrupted_or_killed = True
 
     def connect(self, signals):
-        signals.lifecycle.interrupted.connect(self.handle_interrupted_or_killed)
-        signals.lifecycle.killed.connect(self.handle_interrupted_or_killed)
+        signals.lifecycle.interrupted.connect(self.handle_interrupted)
+        signals.lifecycle.killed.connect(self.handle_killed)
 
     def disconnect(self, signals):
-        signals.lifecycle.interrupted.disconnect(self.handle_interrupted_or_killed)
-        signals.lifecycle.killed.disconnect(self.handle_interrupted_or_killed)
+        signals.lifecycle.interrupted.disconnect(self.handle_interrupted)
+        signals.lifecycle.killed.disconnect(self.handle_killed)
 
 
 class InterruptRequestHandler:
@@ -126,14 +129,6 @@ class CompletionEngine:
             current_interaction = 0
             max_interactions = completion_opts["max_interactions"]
             while True:
-                if return_value_processor.return_value is not None:
-                    logger.debug(f"Return status is not None: {return_value_processor.return_value}")
-                    break
-
-                if interruption_handler.interrupted_or_killed:
-                    logger.debug("Interrupted")
-                    break
-
                 current_markdown = markdown_collector.get_current_markdown()
 
                 logger.debug(f"Parsing markdown chat")
@@ -150,21 +145,31 @@ class CompletionEngine:
 
                 logger.debug(f"Computing next completion assistance")
                 completion_assistance = compute_next_completion(chat)
+
                 logger.debug(f"Next completion assistance: {completion_assistance}")
+                if not completion_assistance:
+                    break
 
-                if completion_assistance:
-                    current_interaction += 1
+                current_interaction += 1
 
-                    if current_interaction > max_interactions:
-                        break
+                if current_interaction > max_interactions:
+                    break
 
-                    if current_interaction > 1:
-                        separator = compute_separator(current_markdown)
-                        if separator:
-                            await signals.response.response.send_async(separator)
+                if current_interaction > 1:
+                    separator = compute_separator(current_markdown)
+                    if separator:
+                        await signals.response.response.send_async(separator)
 
-                    await completion_assistance.perform_completion(context, chat, signals)
-                else:
+                # NOTE: Completion
+
+                await completion_assistance.perform_completion(context, chat, signals)
+
+                if return_value_processor.return_value is not None:
+                    logger.debug(f"Return status is not None: {return_value_processor.return_value}")
+                    break
+
+                if interruption_handler.interrupted_or_killed:
+                    logger.debug("Interrupted")
                     break
 
             logger.debug(f"Finished completion assistance")
