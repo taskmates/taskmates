@@ -6,6 +6,7 @@ from uuid import uuid4
 
 from typeguard import typechecked
 
+from taskmates.cli.lib.merge_template_params import merge_template_params
 from taskmates.config.client_config import ClientConfig
 from taskmates.config.completion_context import CompletionContext
 from taskmates.config.completion_opts import COMPLETION_OPTS
@@ -22,12 +23,12 @@ received_signal = None
 
 
 # noinspection PyUnusedLocal
-def signal_handler(sig, frame):
+def process_signal_handler(sig, frame):
     global received_signal
     received_signal = sig
 
 
-async def handle_signals(signals):
+async def handle_signals(signals: Signals):
     global received_signal
     while True:
         if received_signal == signal.SIGINT:
@@ -108,8 +109,8 @@ async def complete(markdown: str,
 
     signals.output.return_value.connect(process_return_value, weak=False)
 
-    signal.signal(signal.SIGINT, signal_handler)
-    signal.signal(signal.SIGTERM, signal_handler)
+    signal.signal(signal.SIGINT, process_signal_handler)
+    signal.signal(signal.SIGTERM, process_signal_handler)
 
     process_task = asyncio.create_task(CompletionEngine().perform_completion(
         context,
@@ -135,8 +136,3 @@ async def complete(markdown: str,
             await output_bridge.close()
 
 
-def merge_template_params(template_params: list) -> dict:
-    merged = {}
-    for params in template_params:
-        merged.update(params)
-    return merged
