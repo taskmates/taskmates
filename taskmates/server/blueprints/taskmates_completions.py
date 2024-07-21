@@ -15,7 +15,7 @@ from taskmates.lib.json_.json_utils import snake_case
 from taskmates.logging import logger
 from taskmates.signals.signals import SIGNALS, Signals
 from taskmates.io.file_system_artifacts_sink import FileSystemArtifactsSink
-from taskmates.io.websocket_streaming_sink import WebsocketStreamingSink
+from taskmates.io.websocket_completion_streamer import WebsocketCompletionStreamer
 from taskmates.types import CompletionPayload
 
 completions_bp = Blueprint('completions_v2', __name__)
@@ -48,7 +48,7 @@ async def taskmates_completions():
         request_id = completion_context['request_id']
 
         # TODO
-        WebsocketStreamingSink().connect(signals)
+        WebsocketCompletionStreamer().connect(signals)
         FileSystemArtifactsSink(taskmates_dir, request_id).connect(signals)
 
         with updated_config(COMPLETION_CONTEXT, completion_context), \

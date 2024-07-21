@@ -1,4 +1,4 @@
-class StdoutSink:
+class StdoutCompletionStreamer:
     def __init__(self, format):
         self.format = format
 

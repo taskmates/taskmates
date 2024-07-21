@@ -13,7 +13,7 @@ from taskmates.io.websocket_to_control_signals_bridge import WebsocketToControlS
 from taskmates.io.output_signals_to_websocket_bridge import OutputSignalsToWebsocketBridge
 from taskmates.signal_config import SignalConfig, SignalMethod
 from taskmates.signals.signals import Signals
-from taskmates.io.stdout_sink import StdoutSink
+from taskmates.io.stdout_completion_streamer import StdoutCompletionStreamer
 
 # Global variable to store the received signal
 received_signal = None
@@ -62,7 +62,7 @@ async def complete(markdown: str,
         await output_bridge.connect()
 
     format = client_config.get('format', 'text')
-    StdoutSink(format).connect(signals)
+    StdoutCompletionStreamer(format).connect(signals)
 
     async def process_return_value(status):
         if status['result']:

@@ -1,23 +1,20 @@
 import json
 
 from loguru import logger
-from pydantic import BaseModel
 from quart import websocket
 
 from taskmates.signals.signals import Signals
-from taskmates.io.streaming_sink import StreamingSink
 
 
-class WebsocketStreamingSink(BaseModel, StreamingSink):
-    class Config:
-        arbitrary_types_allowed = True
-
+class WebsocketCompletionStreamer:
     def connect(self, signals: Signals):
-        signals.response.completion.connect(self.send_completion, weak=False)
-        return self
+        signals.response.completion.connect(self.handle_complete, weak=False)
+
+    def disconnect(self, signals: Signals):
+        signals.response.completion.disconnect(self.handle_complete)
 
     @staticmethod
-    async def send_completion(chunk):
+    async def handle_complete(chunk):
         if chunk is None:
             return
         logger.debug(f"response {chunk!r}")

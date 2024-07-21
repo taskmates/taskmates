@@ -16,4 +16,7 @@ class FileSystemArtifactsSink:
         dump_resource(full_path, sender.get('content'))
 
     def connect(self, signals: Signals):
-        signals.output.artifact.connect(self.handle_artifact)
+        signals.output.artifact.connect(self.handle_artifact, weak=False)
+
+    def disconnect(self, signals: Signals):
+        signals.output.artifact.disconnect(self.handle_artifact)
