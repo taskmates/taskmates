@@ -1,19 +1,21 @@
 import asyncio
 import os
 import signal
+from pathlib import Path
+from uuid import uuid4
 
 from typeguard import typechecked
 
-from taskmates.core.completion_engine import CompletionEngine
 from taskmates.config.client_config import ClientConfig
 from taskmates.config.completion_context import CompletionContext
-from taskmates.config.completion_opts import CompletionOpts
-from taskmates.config.server_config import ServerConfig
-from taskmates.io.websocket_to_control_signals_bridge import WebsocketToControlSignalsBridge
+from taskmates.config.completion_opts import COMPLETION_OPTS
+from taskmates.config.server_config import ServerConfig, SERVER_CONFIG
+from taskmates.core.completion_engine import CompletionEngine
 from taskmates.io.output_signals_to_websocket_bridge import OutputSignalsToWebsocketBridge
-from taskmates.signal_config import SignalConfig, SignalMethod
-from taskmates.signals.signals import Signals
 from taskmates.io.stdout_completion_streamer import StdoutCompletionStreamer
+from taskmates.io.websocket_to_control_signals_bridge import WebsocketToControlSignalsBridge
+from taskmates.signal_config import SignalConfig, SignalMethod
+from taskmates.signals.signals import Signals, SIGNALS
 
 # Global variable to store the received signal
 received_signal = None
@@ -44,12 +46,39 @@ async def handle_signals(signals):
 
 @typechecked
 async def complete(markdown: str,
-                   context: CompletionContext,
-                   server_config: ServerConfig,
-                   client_config: ClientConfig,
-                   completion_opts: CompletionOpts,
-                   signal_config: SignalConfig,
-                   signals: Signals):
+                   args,
+                   signal_config: SignalConfig):
+    request_id = str(uuid4())
+
+    # If --output is not provided, write to request_id file in /var/tmp
+    # output = args.output or f"~/.taskmates/completions/{request_id}.md"
+    # Path(output).parent.mkdir(parents=True, exist_ok=True)
+
+    context: CompletionContext = {
+        "request_id": request_id,
+        "markdown_path": str(Path(os.getcwd()) / f"{request_id}.md"),
+        "cwd": os.getcwd(),
+    }
+
+    server_config: ServerConfig = SERVER_CONFIG.get()
+
+    client_config = ClientConfig(interactive=False,
+                                 format=args.format,
+                                 endpoint=args.endpoint,
+                                 # output=(output if args.output else None)
+                                 )
+
+    completion_opts = {
+        "model": args.model,
+        "template_params": merge_template_params(args.template_params),
+        "max_interactions": args.max_interactions,
+    }
+
+    COMPLETION_OPTS.set({**COMPLETION_OPTS.get(), **completion_opts})
+
+    signals = Signals()
+    SIGNALS.set(signals)
+
     input_bridge = None
     output_bridge = None
 
@@ -101,3 +130,8 @@ async def complete(markdown: str,
             await output_bridge.close()
 
 
+def merge_template_params(template_params: list) -> dict:
+    merged = {}
+    for params in template_params:
+        merged.update(params)
+    return merged
