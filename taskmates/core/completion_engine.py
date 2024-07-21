@@ -12,6 +12,105 @@ from taskmates.signals.signals import Signals
 from taskmates.types import Chat
 
 
+class CompletionEngine:
+    @typechecked
+    async def perform_completion(self,
+                                 context: CompletionContext,
+                                 markdown_chat: str,
+                                 server_config: ServerConfig,
+                                 client_config: ClientConfig,
+                                 completion_opts: CompletionOpts,
+                                 signals: Signals
+                                 ):
+
+        taskmates_dir = server_config.get("taskmates_dir")
+        interactive = client_config["interactive"]
+
+        markdown_collector = FullMarkdownCollector()
+        return_value_processor = ReturnValueProcessor()
+        interruption_handler = InterruptedOrKilledHandler()
+        interrupt_request_handler = InterruptRequestHandler(signals)
+
+        with signals.connected_to(
+                [markdown_collector,
+                 interrupt_request_handler,
+                 interruption_handler,
+                 return_value_processor]):
+
+            # Echo input
+            await signals.input.input.send_async(markdown_chat)
+
+            # Pre-Completion
+            separator = compute_separator(markdown_chat)
+            if separator:
+                await signals.response.formatting.send_async(separator)
+
+            # Lifecycle: Start
+            await signals.lifecycle.start.send_async({})
+
+            current_interaction = 0
+            while True:
+                current_markdown = markdown_collector.get_current_markdown()
+
+                logger.debug(f"Parsing markdown chat")
+                chat: Chat = await parse_markdown_chat(markdown_chat=current_markdown,
+                                                       markdown_path=context["markdown_path"],
+                                                       taskmates_dir=taskmates_dir,
+                                                       template_params=completion_opts["template_params"])
+
+                if "model" in chat["metadata"]:
+                    completion_opts["model"] = chat["metadata"]["model"]
+
+                if completion_opts["model"] in ("quote", "echo"):
+                    completion_opts["max_interactions"] = 1
+
+                logger.debug(f"Computing next completion assistance")
+                completion_assistance = compute_next_completion(chat)
+
+                logger.debug(f"Next completion assistance: {completion_assistance}")
+                if not completion_assistance:
+                    break
+
+                # Pre-Step
+
+                current_interaction += 1
+
+                if current_interaction > completion_opts["max_interactions"]:
+                    break
+
+                if current_interaction > 1:
+                    separator = compute_separator(current_markdown)
+                    if separator:
+                        await signals.response.response.send_async(separator)
+
+                # Step
+                await completion_assistance.perform_completion(context, chat, signals)
+
+                # Post-Step
+                if return_value_processor.return_value is not None:
+                    logger.debug(f"Return status is not None: {return_value_processor.return_value}")
+                    break
+
+                if interruption_handler.interrupted_or_killed:
+                    logger.debug("Interrupted")
+                    break
+
+            logger.debug(f"Finished completion assistance")
+
+            # Post-Completion
+            if interactive and not interruption_handler.interrupted_or_killed:
+                separator = compute_separator(markdown_collector.get_current_markdown())
+                if separator:
+                    await signals.response.next_responder.send_async(separator)
+
+                recipient = chat["messages"][-1]["recipient"]
+                if recipient:
+                    await signals.response.next_responder.send_async(f"**{recipient}>** ")
+
+            # Lifecycle: Success
+            await signals.lifecycle.success.send_async({})
+
+
 class FullMarkdownCollector:
     def __init__(self):
         self.markdown_chunks = []
@@ -91,96 +190,3 @@ class InterruptRequestHandler:
 
     def disconnect(self, signals):
         signals.control.interrupt_request.disconnect(self.handle_interrupt_request)
-
-
-class CompletionEngine:
-    @typechecked
-    async def perform_completion(self,
-                                 context: CompletionContext,
-                                 markdown_chat: str,
-                                 server_config: ServerConfig,
-                                 client_config: ClientConfig,
-                                 completion_opts: CompletionOpts,
-                                 signals: Signals
-                                 ):
-
-        taskmates_dir = server_config.get("taskmates_dir")
-        interactive = client_config["interactive"]
-
-        markdown_collector = FullMarkdownCollector()
-        return_value_processor = ReturnValueProcessor()
-        interruption_handler = InterruptedOrKilledHandler()
-        interrupt_request_handler = InterruptRequestHandler(signals)
-
-        with signals.connected_to(
-                [markdown_collector,
-                 interrupt_request_handler,
-                 interruption_handler,
-                 return_value_processor]):
-
-            await signals.input.input.send_async(markdown_chat)
-
-            separator = compute_separator(markdown_chat)
-            if separator:
-                await signals.response.formatting.send_async(separator)
-
-            await signals.lifecycle.start.send_async({})
-
-            current_interaction = 0
-            max_interactions = completion_opts["max_interactions"]
-            while True:
-                current_markdown = markdown_collector.get_current_markdown()
-
-                logger.debug(f"Parsing markdown chat")
-                chat: Chat = await parse_markdown_chat(markdown_chat=current_markdown,
-                                                       markdown_path=context["markdown_path"],
-                                                       taskmates_dir=taskmates_dir,
-                                                       template_params=completion_opts["template_params"])
-
-                if "model" in chat["metadata"]:
-                    completion_opts["model"] = chat["metadata"]["model"]
-
-                if completion_opts["model"] in ("quote", "echo"):
-                    max_interactions = 1
-
-                logger.debug(f"Computing next completion assistance")
-                completion_assistance = compute_next_completion(chat)
-
-                logger.debug(f"Next completion assistance: {completion_assistance}")
-                if not completion_assistance:
-                    break
-
-                current_interaction += 1
-
-                if current_interaction > max_interactions:
-                    break
-
-                if current_interaction > 1:
-                    separator = compute_separator(current_markdown)
-                    if separator:
-                        await signals.response.response.send_async(separator)
-
-                # NOTE: Completion
-
-                await completion_assistance.perform_completion(context, chat, signals)
-
-                if return_value_processor.return_value is not None:
-                    logger.debug(f"Return status is not None: {return_value_processor.return_value}")
-                    break
-
-                if interruption_handler.interrupted_or_killed:
-                    logger.debug("Interrupted")
-                    break
-
-            logger.debug(f"Finished completion assistance")
-
-            if interactive and not interruption_handler.interrupted_or_killed:
-                separator = compute_separator(markdown_collector.get_current_markdown())
-                if separator:
-                    await signals.response.next_responder.send_async(separator)
-
-                recipient = chat["messages"][-1]["recipient"]
-                if recipient:
-                    await signals.response.next_responder.send_async(f"**{recipient}>** ")
-
-            await signals.lifecycle.success.send_async({})
