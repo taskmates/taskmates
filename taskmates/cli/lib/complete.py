@@ -46,8 +46,13 @@ async def handle_signals(signals):
 
 @typechecked
 async def complete(markdown: str,
-                   args,
-                   signal_config: SignalConfig):
+                   args):
+    signal_config = SignalConfig(
+        input_method=SignalMethod(args.input_method),
+        output_method=SignalMethod(args.output_method),
+        websocket_url=args.websocket_url
+    )
+
     request_id = str(uuid4())
 
     # If --output is not provided, write to request_id file in /var/tmp

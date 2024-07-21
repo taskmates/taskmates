@@ -5,7 +5,6 @@ import sys
 from typeguard import typechecked
 
 from taskmates.cli.lib.complete import complete
-from taskmates.signal_config import SignalConfig, SignalMethod
 
 
 class CompleteCommand:
@@ -24,14 +23,8 @@ class CompleteCommand:
                             help='Output format')
 
     async def execute(self, args):
-        signal_config = SignalConfig(
-            input_method=SignalMethod(args.input_method),
-            output_method=SignalMethod(args.output_method),
-            websocket_url=args.websocket_url
-        )
-
         markdown = self.compose_input_markdown(args)
-        await complete(markdown, args, signal_config)
+        await complete(markdown, args)
 
     @typechecked
     def compose_input_markdown(self, args) -> str:
