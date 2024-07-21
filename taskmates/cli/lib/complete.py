@@ -48,17 +48,15 @@ async def handle_signals(signals: Signals):
 @typechecked
 async def complete(markdown: str,
                    args):
+    # --- Context ---
+    request_id = str(uuid4())
+
+    # --- Config ---
     signal_config = SignalConfig(
         input_method=SignalMethod(args.input_method),
         output_method=SignalMethod(args.output_method),
         websocket_url=args.websocket_url
     )
-
-    request_id = str(uuid4())
-
-    # If --output is not provided, write to request_id file in /var/tmp
-    # output = args.output or f"~/.taskmates/completions/{request_id}.md"
-    # Path(output).parent.mkdir(parents=True, exist_ok=True)
 
     context: CompletionContext = {
         "request_id": request_id,
@@ -68,11 +66,15 @@ async def complete(markdown: str,
 
     server_config: ServerConfig = SERVER_CONFIG.get()
 
+    # If --output is not provided, write to request_id file in /var/tmp
+    # output = args.output or f"~/.taskmates/completions/{request_id}.md"
+    # Path(output).parent.mkdir(parents=True, exist_ok=True)
     client_config = ClientConfig(interactive=False,
                                  format=args.format,
                                  endpoint=args.endpoint,
                                  # output=(output if args.output else None)
                                  )
+    format = client_config.get('format', 'text')
 
     completion_opts = {
         "model": args.model,
@@ -88,6 +90,8 @@ async def complete(markdown: str,
     input_bridge = None
     output_bridge = None
 
+    # --- Bind ---
+
     if signal_config.input_method == SignalMethod.WEBSOCKET:
         input_bridge = WebsocketToControlSignalsBridge(signals.control, signal_config.websocket_url)
         await input_bridge.connect()
@@ -96,7 +100,6 @@ async def complete(markdown: str,
         output_bridge = OutputSignalsToWebsocketBridge(signals.response, signal_config.websocket_url)
         await output_bridge.connect()
 
-    format = client_config.get('format', 'text')
     StdoutCompletionStreamer(format).connect(signals)
 
     async def process_return_value(status):
@@ -111,6 +114,8 @@ async def complete(markdown: str,
 
     signal.signal(signal.SIGINT, process_signal_handler)
     signal.signal(signal.SIGTERM, process_signal_handler)
+
+    # --- Execute ---
 
     process_task = asyncio.create_task(CompletionEngine().perform_completion(
         context,
@@ -130,9 +135,10 @@ async def complete(markdown: str,
         for task in pending:
             task.cancel()
     finally:
+
+        # --- Clean up ---
+
         if input_bridge:
             await input_bridge.close()
         if output_bridge:
             await output_bridge.close()
-
-

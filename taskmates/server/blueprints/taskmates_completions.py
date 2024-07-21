@@ -43,6 +43,9 @@ async def taskmates_completions():
     receive_interrupt_task = None
     completion_task = None
 
+    # TODO
+    WebsocketCompletionStreamer().connect(signals)
+
     try:
         logger.info("Waiting for websocket connsection at /v2/taskmates/completions")
         raw_payload = await websocket.receive()
@@ -52,6 +55,8 @@ async def taskmates_completions():
         if client_version != taskmates.__version__:
             raise ValueError(f"Incompatible client version: {client_version}. Expected: {taskmates.__version__}")
 
+        # --- Config ---
+
         server_config = SERVER_CONFIG.get()
         taskmates_dir = server_config["taskmates_dir"]
         completion_context: CompletionContext = payload["completion_context"]
@@ -59,17 +64,22 @@ async def taskmates_completions():
         markdown_chat = payload["markdown_chat"]
         request_id = completion_context['request_id']
 
+        # --- Bind ---
+
         # TODO
-        WebsocketCompletionStreamer().connect(signals)
         FileSystemArtifactsSink(taskmates_dir, request_id).connect(signals)
 
         with updated_config(COMPLETION_CONTEXT, completion_context), \
                 updated_config(COMPLETION_OPTS, completion_opts):
+
             logger.info(f"[{request_id}] CONNECT /v2/taskmates/completions")
 
             await signals.output.artifact.send_async({"name": "websockets_api_payload.json", "content": payload})
 
             receive_interrupt_task = asyncio.create_task(handle_interrupt_or_kill(websocket, signals))
+
+            # --- Execute ---
+
             completion_task = asyncio.create_task(
                 CompletionEngine().perform_completion(completion_context,
                                                       markdown_chat,
@@ -96,6 +106,7 @@ async def taskmates_completions():
         # logger.exception(e)
         await signals.response.error.send_async(e)
     finally:
+        # --- Clean up ---
         if receive_interrupt_task and not receive_interrupt_task.done():
             receive_interrupt_task.cancel()
         if completion_task and not completion_task.done():
