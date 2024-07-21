@@ -32,9 +32,9 @@ async def async_complete(markdown,
         nonlocal return_value
         return_value = status
 
-    signals.output.response.connect(process_response_chunk)
+    signals.response.response.connect(process_response_chunk)
     signals.output.return_value.connect(process_return_value)
-    signals.output.error.connect(process_error)
+    signals.response.error.connect(process_error)
 
     completion_context = COMPLETION_CONTEXT.get()
 

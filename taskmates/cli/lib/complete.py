@@ -58,7 +58,7 @@ async def complete(markdown: str,
         await input_bridge.connect()
 
     if signal_config.output_method == SignalMethod.WEBSOCKET:
-        output_bridge = OutputSignalsToWebsocketBridge(signals.output, signal_config.websocket_url)
+        output_bridge = OutputSignalsToWebsocketBridge(signals.response, signal_config.websocket_url)
         await output_bridge.connect()
 
     format = client_config.get('format', 'text')

@@ -101,7 +101,7 @@ async def taskmates_completions():
             completion_task.cancel("Request cancelled due to client disconnection")
     except Exception as e:
         # logger.exception(e)
-        await signals.output.error.send_async(e)
+        await signals.response.error.send_async(e)
     finally:
         if receive_interrupt_task:
             receive_interrupt_task.cancel()

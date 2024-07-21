@@ -136,4 +136,4 @@ class CodeCellsEditorCompletion:
 
     async def append(self, text):
         self.appended_completions.append(text)
-        await self.signals.output.response.send_async(text)
+        await self.signals.response.response.send_async(text)

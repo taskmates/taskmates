@@ -35,7 +35,7 @@ class ChatCompletionProvider(CompletionProvider):
             choice = chat_completion_chunk.model_dump()['choices'][0]
             await chat_completion_editor_completion.process_chat_completion_chunk(choice)
 
-        with signals.output.chat_completion.connected_to(restream_completion_chunk):
+        with signals.response.chat_completion.connected_to(restream_completion_chunk):
             model_conf = get_model_conf(model_name=model, messages=chat["messages"])
             tools = list(map(function_registry.__getitem__, chat["available_tools"]))
             tools_schemas = [tool_schema(f) for f in tools]

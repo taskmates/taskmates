@@ -13,7 +13,7 @@ class WebsocketStreamingSink(BaseModel, StreamingSink):
         arbitrary_types_allowed = True
 
     def connect(self, signals: Signals):
-        signals.output.completion.connect(self.send_completion, weak=False)
+        signals.response.completion.connect(self.send_completion, weak=False)
         return self
 
     @staticmethod

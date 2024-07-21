@@ -21,9 +21,9 @@ async def api_request(messages: list, model_conf: dict, model_params: dict) -> d
     signals = SIGNALS.get()
 
     streamed_response = StreamedResponse()
-    signals.output.chat_completion.connect(streamed_response.accept, weak=False)
+    signals.response.chat_completion.connect(streamed_response.accept, weak=False)
 
-    if signals.output.chat_completion.receivers:
+    if signals.response.chat_completion.receivers:
         model_conf.update({"stream": True})
 
     llm_client_args = get_llm_client_args(messages, model_conf, model_params)
@@ -62,7 +62,7 @@ async def api_request(messages: list, model_conf: dict, model_params: dict) -> d
                                 content: str = choice.delta.content
                                 # TODO move this to ChatCompletionPreProcessor
                                 choice.delta.content = content.replace("\r", "")
-                        await signals.output.chat_completion.send_async(chat_completion_chunk)
+                        await signals.response.chat_completion.send_async(chat_completion_chunk)
 
                 except asyncio.CancelledError:
                     await signals.output.artifact.send_async({"name": "response_cancelled.json", "content": str(True)})

@@ -24,18 +24,18 @@ class FullMarkdownCollector:
         return "".join(self.markdown_chunks)
 
     def connect(self, signals):
-        signals.output.request.connect(self.handle, weak=False)
-        signals.output.formatting.connect(self.handle, weak=False)
-        signals.output.response.connect(self.handle, weak=False)
-        signals.output.responder.connect(self.handle, weak=False)
-        signals.output.error.connect(self.handle, weak=False)
+        signals.input.input.connect(self.handle, weak=False)
+        signals.response.formatting.connect(self.handle, weak=False)
+        signals.response.response.connect(self.handle, weak=False)
+        signals.response.responder.connect(self.handle, weak=False)
+        signals.response.error.connect(self.handle, weak=False)
 
     def disconnect(self, signals):
-        signals.output.request.connect(self.handle, weak=False)
-        signals.output.formatting.connect(self.handle, weak=False)
-        signals.output.response.connect(self.handle, weak=False)
-        signals.output.responder.connect(self.handle, weak=False)
-        signals.output.error.connect(self.handle, weak=False)
+        signals.input.input.connect(self.handle, weak=False)
+        signals.response.formatting.connect(self.handle, weak=False)
+        signals.response.response.connect(self.handle, weak=False)
+        signals.response.responder.connect(self.handle, weak=False)
+        signals.response.error.connect(self.handle, weak=False)
 
 
 class ReturnValueProcessor:
@@ -115,11 +115,11 @@ class CompletionEngine:
                  interruption_handler,
                  return_value_processor]):
 
-            await signals.output.request.send_async(markdown_chat)
+            await signals.input.input.send_async(markdown_chat)
 
             separator = compute_separator(markdown_chat)
             if separator:
-                await signals.output.formatting.send_async(separator)
+                await signals.response.formatting.send_async(separator)
 
             await signals.lifecycle.start.send_async({})
 
@@ -161,7 +161,7 @@ class CompletionEngine:
                     if current_interaction > 1:
                         separator = compute_separator(current_markdown)
                         if separator:
-                            await signals.output.response.send_async(separator)
+                            await signals.response.response.send_async(separator)
 
                     await completion_assistance.perform_completion(context, chat, signals)
                 else:
@@ -172,10 +172,10 @@ class CompletionEngine:
             if interactive and not interruption_handler.interrupted_or_killed:
                 separator = compute_separator(markdown_collector.get_current_markdown())
                 if separator:
-                    await signals.output.next_responder.send_async(separator)
+                    await signals.response.next_responder.send_async(separator)
 
                 recipient = chat["messages"][-1]["recipient"]
                 if recipient:
-                    await signals.output.next_responder.send_async(f"**{recipient}>** ")
+                    await signals.response.next_responder.send_async(f"**{recipient}>** ")
 
             await signals.lifecycle.success.send_async({})

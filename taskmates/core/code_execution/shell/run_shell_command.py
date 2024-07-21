@@ -18,7 +18,7 @@ async def stream_output(fd, stream, signals):
         if not line:
             break
         with restore_stdout_and_stderr():
-            await signals.output.response.send_async(line)
+            await signals.response.response.send_async(line)
 
 
 async def run_shell_command(cmd: str) -> str:
@@ -83,7 +83,7 @@ async def test_run_shell_command(capsys):
     async def capture_chunk(chunk):
         chunks.append(chunk)
 
-    signals.output.response.connect(capture_chunk)
+    signals.response.response.connect(capture_chunk)
 
     if platform.system() == "Windows":
         cmd = "echo Hello, World!"
@@ -104,7 +104,7 @@ async def test_run_shell_command_interrupt(capsys):
     async def capture_chunk(chunk):
         chunks.append(chunk)
 
-    signals.output.response.connect(capture_chunk)
+    signals.response.response.connect(capture_chunk)
 
     async def send_interrupt():
         while len(chunks) < 5:
@@ -137,7 +137,7 @@ async def test_run_shell_command_kill(capsys):
     async def capture_chunk(chunk):
         chunks.append(chunk)
 
-    signals.output.response.connect(capture_chunk)
+    signals.response.response.connect(capture_chunk)
 
     async def send_kill():
         while len(chunks) < 3:
