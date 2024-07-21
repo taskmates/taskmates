@@ -39,13 +39,13 @@ async def api_request(messages: list, model_conf: dict, model_params: dict) -> d
             nonlocal interrupted_or_killed
             interrupted_or_killed = True
             await chat_completion.response.aclose()
-            await signals.output.interrupted.send_async(None)
+            await signals.lifecycle.interrupted.send_async(None)
 
         async def kill_handler(sender):
             nonlocal interrupted_or_killed
             interrupted_or_killed = True
             await chat_completion.response.aclose()
-            await signals.output.killed.send_async(None)
+            await signals.lifecycle.killed.send_async(None)
 
         with signals.control.interrupt.connected_to(interrupt_handler), \
                 signals.control.kill.connected_to(kill_handler):

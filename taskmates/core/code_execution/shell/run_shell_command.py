@@ -55,14 +55,14 @@ async def run_shell_command(cmd: str) -> str:
             process.send_signal(signal.CTRL_BREAK_EVENT)
         else:
             os.killpg(os.getpgid(process.pid), signal.SIGINT)
-        await signals.output.interrupted.send_async(None)
+        await signals.lifecycle.interrupted.send_async(None)
 
     async def kill_handler(sender):
         if platform.system() == "Windows":
             process.kill()
         else:
             os.killpg(os.getpgid(process.pid), signal.SIGKILL)
-        await signals.output.killed.send_async(None)
+        await signals.lifecycle.killed.send_async(None)
 
     with signals.control.interrupt.connected_to(interrupt_handler), \
             signals.control.kill.connected_to(kill_handler):

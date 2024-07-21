@@ -16,7 +16,7 @@ class FullMarkdownCollector:
     def __init__(self):
         self.markdown_chunks = []
 
-    async def append_markdown(self, markdown):
+    async def handle(self, markdown):
         if markdown is not None:
             self.markdown_chunks.append(markdown)
 
@@ -24,33 +24,33 @@ class FullMarkdownCollector:
         return "".join(self.markdown_chunks)
 
     def connect(self, signals):
-        signals.output.request.connect(self.append_markdown, weak=False)
-        signals.output.formatting.connect(self.append_markdown, weak=False)
-        signals.output.response.connect(self.append_markdown, weak=False)
-        signals.output.responder.connect(self.append_markdown, weak=False)
-        signals.output.error.connect(self.append_markdown, weak=False)
+        signals.output.request.connect(self.handle, weak=False)
+        signals.output.formatting.connect(self.handle, weak=False)
+        signals.output.response.connect(self.handle, weak=False)
+        signals.output.responder.connect(self.handle, weak=False)
+        signals.output.error.connect(self.handle, weak=False)
 
     def disconnect(self, signals):
-        signals.output.request.connect(self.append_markdown, weak=False)
-        signals.output.formatting.connect(self.append_markdown, weak=False)
-        signals.output.response.connect(self.append_markdown, weak=False)
-        signals.output.responder.connect(self.append_markdown, weak=False)
-        signals.output.error.connect(self.append_markdown, weak=False)
+        signals.output.request.connect(self.handle, weak=False)
+        signals.output.formatting.connect(self.handle, weak=False)
+        signals.output.response.connect(self.handle, weak=False)
+        signals.output.responder.connect(self.handle, weak=False)
+        signals.output.error.connect(self.handle, weak=False)
 
 
 class ReturnValueProcessor:
     def __init__(self):
         self.return_value = None
 
-    async def process_return_value(self, status):
+    async def handle_return_value(self, status):
         logger.debug(f"Return status: {status}")
         self.return_value = status
 
     def connect(self, signals):
-        signals.output.return_value.connect(self.process_return_value)
+        signals.output.return_value.connect(self.handle_return_value)
 
     def disconnect(self, signals):
-        signals.output.return_value.disconnect(self.process_return_value)
+        signals.output.return_value.disconnect(self.handle_return_value)
 
 
 class InterruptedOrKilledHandler:
@@ -61,12 +61,12 @@ class InterruptedOrKilledHandler:
         self.interrupted_or_killed = True
 
     def connect(self, signals):
-        signals.output.interrupted.connect(self.handle_interrupted_or_killed)
-        signals.output.killed.connect(self.handle_interrupted_or_killed)
+        signals.lifecycle.interrupted.connect(self.handle_interrupted_or_killed)
+        signals.lifecycle.killed.connect(self.handle_interrupted_or_killed)
 
     def disconnect(self, signals):
-        signals.output.interrupted.disconnect(self.handle_interrupted_or_killed)
-        signals.output.killed.disconnect(self.handle_interrupted_or_killed)
+        signals.lifecycle.interrupted.disconnect(self.handle_interrupted_or_killed)
+        signals.lifecycle.killed.disconnect(self.handle_interrupted_or_killed)
 
 
 class InterruptRequestHandler:
@@ -121,7 +121,7 @@ class CompletionEngine:
             if separator:
                 await signals.output.formatting.send_async(separator)
 
-            await signals.output.start.send_async({})
+            await signals.lifecycle.start.send_async({})
 
             current_interaction = 0
             max_interactions = completion_opts["max_interactions"]
@@ -178,4 +178,4 @@ class CompletionEngine:
                 if recipient:
                     await signals.output.next_responder.send_async(f"**{recipient}>** ")
 
-            await signals.output.success.send_async({})
+            await signals.lifecycle.success.send_async({})

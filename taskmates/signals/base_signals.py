@@ -1,5 +1,6 @@
 import traceback
 
+import pytest
 from blinker import Namespace
 
 
@@ -20,21 +21,26 @@ class ControlSignals(BaseSignals):
         self.kill = self.namespace.signal('kill')
 
 
-class OutputSignals(BaseSignals):
+class LifecycleSignals(BaseSignals):
     def __init__(self):
         super().__init__()
         self.start = self.namespace.signal('start')
+        self.finish = self.namespace.signal('finish')
+        self.success = self.namespace.signal('success')
+        self.interrupted = self.namespace.signal('interrupted')
+        self.killed = self.namespace.signal('killed')
+
+
+class OutputSignals(LifecycleSignals):
+    def __init__(self):
+        super().__init__()
         self.request = self.namespace.signal('request')
         self.formatting = self.namespace.signal('formatting')
         self.responder = self.namespace.signal('responder')
         self.response = self.namespace.signal('response')
-        self.success = self.namespace.signal('success')
         self.error = self.namespace.signal('error')
-        self.finish = self.namespace.signal('finish')
         self.completion = self.namespace.signal('completion')
         self.artifact = self.namespace.signal('artifact')
-        self.interrupted = self.namespace.signal('interrupted')
-        self.killed = self.namespace.signal('killed')
         self.return_value = self.namespace.signal('return_value')
         self.next_responder = self.namespace.signal('next_responder')
         self.chat_completion = self.namespace.signal('chat_completion')
@@ -51,3 +57,23 @@ class OutputSignals(BaseSignals):
             await self.completion.send_async(formatted)
 
         self.error.connect(send_error_completion, weak=False)
+
+
+@pytest.mark.asyncio
+async def test_error_completion():
+    output = OutputSignals()
+    received = []
+
+    @output.completion.connect
+    async def receiver(sender):
+        received.append(sender)
+
+    try:
+        raise ValueError("Test error")
+    except ValueError as e:
+        await output.error.send_async(e)
+
+    assert len(received) == 1
+    assert "**error>** Test error: ValueError" in received[0]
+    assert "<pre>" in received[0]
+    assert "Traceback (most recent call last):" in received[0]

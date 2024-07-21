@@ -2,12 +2,13 @@ import contextvars
 from contextlib import contextmanager
 from typing import List
 
-from taskmates.signals.base_signals import ControlSignals, OutputSignals
+from taskmates.signals.base_signals import ControlSignals, OutputSignals, LifecycleSignals
 
 
 class Signals:
     def __init__(self):
         self.control = ControlSignals()
+        self.lifecycle = LifecycleSignals()
         self.output = OutputSignals()
 
     @contextmanager

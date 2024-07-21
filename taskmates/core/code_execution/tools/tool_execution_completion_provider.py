@@ -45,8 +45,8 @@ class ToolExecutionCompletionProvider(CompletionProvider):
             async def handle_killed(sender):
                 await signals.output.response.send_async("--- KILL ---\n")
 
-            with signals.output.interrupted.connected_to(handle_interrupted), \
-                    signals.output.killed.connected_to(handle_killed):
+            with signals.lifecycle.interrupted.connected_to(handle_interrupted), \
+                    signals.lifecycle.killed.connected_to(handle_killed):
                 original_cwd = os.getcwd()
                 try:
                     try:

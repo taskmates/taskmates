@@ -54,7 +54,7 @@ async def execute_markdown_on_local_kernel(content, path: str = None, cwd: str =
         nonlocal notebook_finished
         notebook_finished = True
         await kernel_manager.interrupt_kernel()
-        await signals.output.interrupted.send_async(None)
+        await signals.lifecycle.interrupted.send_async(None)
 
     async def kill_handler(sender):
         nonlocal notebook_finished
@@ -67,7 +67,7 @@ async def execute_markdown_on_local_kernel(content, path: str = None, cwd: str =
         await kernel_manager.signal_kernel(signal.SIGKILL)
         iopub_task.cancel()
         shell_task.cancel()
-        await signals.output.killed.send_async(None)
+        await signals.lifecycle.killed.send_async(None)
         await kernel_manager.shutdown_kernel(now=True)
 
     with signals.control.interrupt.connected_to(interrupt_handler), \
