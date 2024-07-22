@@ -1,6 +1,7 @@
 from typeguard import typechecked
 
 from taskmates.actions.parse_markdown_chat import parse_markdown_chat
+from taskmates.cli.lib.handler import Handler
 from taskmates.config.client_config import ClientConfig
 from taskmates.config.completion_context import CompletionContext
 from taskmates.config.completion_opts import CompletionOpts
@@ -111,7 +112,7 @@ class CompletionEngine:
             await signals.lifecycle.success.send_async({})
 
 
-class FullMarkdownCollector:
+class FullMarkdownCollector(Handler):
     def __init__(self):
         self.markdown_chunks = []
 
@@ -137,7 +138,7 @@ class FullMarkdownCollector:
         signals.response.error.connect(self.handle, weak=False)
 
 
-class ReturnValueProcessor:
+class ReturnValueProcessor(Handler):
     def __init__(self):
         self.return_value = None
 
@@ -152,7 +153,7 @@ class ReturnValueProcessor:
         signals.output.return_value.disconnect(self.handle_return_value)
 
 
-class InterruptedOrKilledHandler:
+class InterruptedOrKilledHandler(Handler):
     def __init__(self):
         self.interrupted_or_killed = False
 
@@ -171,7 +172,7 @@ class InterruptedOrKilledHandler:
         signals.lifecycle.killed.disconnect(self.handle_killed)
 
 
-class InterruptRequestHandler:
+class InterruptRequestHandler(Handler):
     def __init__(self, signals):
         self.interrupt_requested = False
         self.signals = signals
