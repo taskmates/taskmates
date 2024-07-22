@@ -3,10 +3,11 @@ import json
 from loguru import logger
 from quart import websocket
 
+from taskmates.cli.lib.handler import Handler
 from taskmates.signals.signals import Signals
 
 
-class WebsocketCompletionStreamer:
+class WebsocketCompletionStreamer(Handler):
     def connect(self, signals: Signals):
         signals.response.completion.connect(self.handle_complete, weak=False)
 
