@@ -30,6 +30,7 @@ def server_config(tmp_path):
         SERVER_CONFIG.reset(token)
 
 
+@pytest.mark.timeout(5)
 async def test_chat_completion(app, tmp_path):
     test_client = app.test_client()
 
@@ -66,6 +67,7 @@ async def test_chat_completion(app, tmp_path):
     assert markdown_response == expected_response
 
 
+@pytest.mark.timeout(5)
 async def test_chat_completion_with_mention(app, tmp_path):
     test_client = app.test_client()
 
@@ -105,6 +107,7 @@ async def test_chat_completion_with_mention(app, tmp_path):
     assert markdown_response == expected_response
 
 
+@pytest.mark.timeout(5)
 async def test_tool_completion(app, tmp_path):
     test_client = app.test_client()
 
@@ -152,6 +155,7 @@ async def test_tool_completion(app, tmp_path):
     assert markdown_response == expected_response
 
 
+@pytest.mark.timeout(5)
 async def test_code_cell_completion(app, tmp_path):
     test_client = app.test_client()
 
@@ -197,6 +201,7 @@ async def test_code_cell_completion(app, tmp_path):
     assert markdown_response == expected_completion
 
 
+@pytest.mark.timeout(5)
 async def test_error_completion(app, tmp_path):
     test_client = app.test_client()
 
@@ -313,6 +318,7 @@ async def test_interrupt_tool(app, tmp_path):
     assert markdown_response == expected_response
 
 
+@pytest.mark.timeout(5)
 async def test_code_cell_no_output(app, tmp_path):
     test_client = app.test_client()
 
@@ -566,7 +572,8 @@ async def collect_until_closed(ws):
     messages = []
     try:
         while True:
-            message = json.loads(await ws.receive())
+            received = await ws.receive()
+            message = json.loads(received)
             messages.append(message)
     except WebsocketDisconnectError:
         pass
