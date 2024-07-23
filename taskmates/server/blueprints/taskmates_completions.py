@@ -29,7 +29,6 @@ def build_context(payload: CompletionPayload):
     completion_context: CompletionContext = payload["completion_context"]
     completion_opts: CompletionOpts = payload["completion_opts"]
 
-    # Ensure template_params is present in completion_opts
     if "template_params" not in completion_opts:
         completion_opts["template_params"] = {}
 
@@ -53,14 +52,13 @@ async def taskmates_completions():
     signals = Signals()
     SIGNALS.set(signals)
 
-    server_config = SERVER_CONFIG.get()
-    taskmates_dir = server_config["taskmates_dir"]
-
     websocket_handler = WebSocketCompletionStreamer(websocket)
     interrupt_handler = WebSocketInterruptAndKillHandler(websocket)
+    file_system_artifacts_sink = FileSystemArtifactsSink()
     handlers = [
         websocket_handler,
         interrupt_handler,
+        file_system_artifacts_sink,
     ]
 
     # Connect handlers
@@ -80,11 +78,6 @@ async def taskmates_completions():
             request_id = context['context']['request_id']
             markdown_chat = payload["markdown_chat"]
 
-            # Add FileSystemArtifactsSink as a handler
-            file_system_handler = FileSystemArtifactsSink(taskmates_dir, request_id)
-            file_system_handler.connect(signals)
-            handlers.append(file_system_handler)
-
             await signals.output.artifact.send_async({"name": "websockets_api_payload.json", "content": payload})
 
             logger.info(f"[{request_id}] CONNECT /v2/taskmates/completions")
@@ -100,6 +93,7 @@ async def taskmates_completions():
 
             return result
 
+    # TODO: remove after we properly tested client disconnect
     except asyncio.CancelledError:
         logger.info(f"REQUEST CANCELLED Request cancelled due to client disconnection")
         await signals.control.kill.send_async({})
