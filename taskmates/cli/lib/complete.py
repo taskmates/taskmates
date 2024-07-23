@@ -49,7 +49,8 @@ def build_context(args):
 @typechecked
 async def complete(markdown: str, args, handlers: Optional[List[Handler]] = None):
     if handlers is None:
-        handlers = [StdoutCompletionStreamer(args.format), SigIntAndSigTermControls()]
+        handlers = [StdoutCompletionStreamer(args.format),
+                    SigIntAndSigTermControls()]
 
     signals = Signals()
     SIGNALS.set(signals)

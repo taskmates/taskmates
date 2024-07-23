@@ -578,3 +578,62 @@ async def collect_until_closed(ws):
     except WebsocketDisconnectError:
         pass
     return messages
+
+
+@pytest.mark.timeout(5)
+async def test_client_disconnect(app, tmp_path):
+    test_client = app.test_client()
+
+    markdown_chat = textwrap.dedent("""\
+    Run a long-running task
+
+    **assistant>**
+
+    Certainly! I'll run a long-running task.
+
+    ```python .eval
+    import time
+    for i in range(5):
+        print(f"Step {i + 1}")
+        time.sleep(1)
+    print("Task completed")
+    ```
+
+    """)
+
+    test_payload: CompletionPayload = {
+        "type": "completions_request",
+        "version": taskmates.__version__,
+        "markdown_chat": markdown_chat,
+        "completion_context": {
+            "request_id": "test_client_disconnect",
+            "cwd": str(tmp_path),
+            "markdown_path": str(tmp_path / "test.md"),
+        },
+        "completion_opts": {
+            "model": "quote",
+        },
+    }
+
+    async with test_client.websocket('/v2/taskmates/completions') as ws:
+        await ws.send(json.dumps(test_payload))
+        messages = []
+
+        while True:
+            message = json.loads(await ws.receive())
+            messages.append(message)
+            if message["type"] == "completion":
+                if "Step 1" in message["payload"]["markdown_chunk"]:
+                    break
+
+        # Close the connection abruptly
+        await ws.close(code=1000)
+
+    expected_response = ('###### Cell Output: stdout [cell_0]\n'
+                         '\n'
+                         '<pre>\n'
+                         'Step 1\n')
+
+    markdown_response = await get_markdown_response(messages)
+
+    assert markdown_response == expected_response
