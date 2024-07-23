@@ -33,7 +33,7 @@ def build_context(payload: CompletionPayload):
         completion_opts["template_params"] = {}
 
     client_config = ClientConfig(interactive=True,
-                                 format="completion", )
+                                 format="completion")
 
     server_config = SERVER_CONFIG.get()
 
@@ -49,17 +49,14 @@ def build_context(payload: CompletionPayload):
 
 @completions_bp.websocket('/v2/taskmates/completions')
 async def taskmates_completions():
+    handlers = [
+        WebSocketInterruptAndKillController(websocket),
+        WebSocketCompletionStreamer(websocket),
+        FileSystemArtifactsSink(),
+    ]
+
     signals = Signals()
     SIGNALS.set(signals)
-
-    websocket_completion_streamer = WebSocketCompletionStreamer(websocket)
-    websocket_interrupt_controls = WebSocketInterruptAndKillController(websocket)
-    file_system_artifacts_sink = FileSystemArtifactsSink()
-    handlers = [
-        websocket_completion_streamer,
-        websocket_interrupt_controls,
-        file_system_artifacts_sink,
-    ]
 
     # Connect handlers
     for handler in handlers:
