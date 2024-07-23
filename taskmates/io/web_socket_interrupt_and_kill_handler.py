@@ -13,22 +13,26 @@ class WebSocketInterruptAndKillHandler(Handler):
         self.websocket = websocket
         self.task = None
 
-    async def handle_interrupt_or_kill(self, signals: Signals):
+    async def send_signals(self, signals: Signals):
         while True:
             try:
                 raw_payload = await self.websocket.receive()
                 payload = snake_case(json.loads(raw_payload))
                 if payload.get("type") == "interrupt":
                     logger.info("Interrupt received")
-                    await signals.control.interrupt_request.send_async(None)
+                    await signals.control.interrupt_request.send_async({})
                 elif payload.get("type") == "kill":
                     logger.info("Kill received")
-                    await signals.control.kill.send_async(None)
+                    await signals.control.kill.send_async({})
+                    break
             except asyncio.CancelledError:
                 break
+            except Exception as e:
+                logger.error(f"Error processing WebSocket message: {e}")
+            await asyncio.sleep(0.1)
 
     def connect(self, signals: Signals):
-        self.task = asyncio.create_task(self.handle_interrupt_or_kill(signals))
+        self.task = asyncio.create_task(self.send_signals(signals))
 
     def disconnect(self, signals: Signals):
         if self.task and not self.task.done():

@@ -89,33 +89,21 @@ async def taskmates_completions():
 
             logger.info(f"[{request_id}] CONNECT /v2/taskmates/completions")
 
-            completion_task = asyncio.create_task(
-                CompletionEngine().perform_completion(
-                    context['context'],
-                    markdown_chat,
-                    context['server_config'],
-                    context['client_config'],
-                    context['completion_opts'],
-                    signals
-                )
+            result = await CompletionEngine().perform_completion(
+                context['context'],
+                markdown_chat,
+                context['server_config'],
+                context['client_config'],
+                context['completion_opts'],
+                signals
             )
 
-            done, pending = await asyncio.wait(
-                [completion_task, interrupt_handler.task],
-                return_when=asyncio.FIRST_COMPLETED
-            )
-
-            if completion_task in done:
-                await completion_task
-            else:
-                completion_task.cancel()
-                await asyncio.wait([completion_task])
+            return result
 
     except asyncio.CancelledError:
         logger.info(f"REQUEST CANCELLED Request cancelled due to client disconnection")
-        await signals.control.kill.send_async(None)
+        await signals.control.kill.send_async({})
     except Exception as e:
-        # logger.exception(e)
         await signals.response.error.send_async(e)
     finally:
         # Disconnect handlers
