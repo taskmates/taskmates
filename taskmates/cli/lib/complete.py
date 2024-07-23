@@ -13,7 +13,7 @@ from taskmates.config.completion_opts import COMPLETION_OPTS
 from taskmates.config.server_config import SERVER_CONFIG
 from taskmates.config.updated_config import updated_config
 from taskmates.core.completion_engine import CompletionEngine
-from taskmates.io.sig_int_and_sig_term_controls import SigIntAndSigTermControls
+from taskmates.io.sig_int_and_sig_term_controller import SigIntAndSigTermController
 from taskmates.io.stdout_completion_streamer import StdoutCompletionStreamer
 from taskmates.signals.signals import Signals, SIGNALS
 
@@ -50,7 +50,7 @@ def build_context(args):
 async def complete(markdown: str, args, handlers: Optional[List[Handler]] = None):
     if handlers is None:
         handlers = [StdoutCompletionStreamer(args.format),
-                    SigIntAndSigTermControls()]
+                    SigIntAndSigTermController()]
 
     signals = Signals()
     SIGNALS.set(signals)

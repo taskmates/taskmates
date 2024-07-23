@@ -14,7 +14,7 @@ from taskmates.config.updated_config import updated_config
 from taskmates.core.completion_engine import CompletionEngine
 from taskmates.io.file_system_artifacts_sink import FileSystemArtifactsSink
 from taskmates.io.web_socket_completion_streamer import WebSocketCompletionStreamer
-from taskmates.io.web_socket_interrupt_and_kill_handler import WebSocketInterruptAndKillHandler
+from taskmates.io.web_socket_interrupt_and_kill_controller import WebSocketInterruptAndKillController
 from taskmates.lib.json_.json_utils import snake_case
 from taskmates.logging import logger
 from taskmates.signals.signals import SIGNALS, Signals
@@ -52,12 +52,12 @@ async def taskmates_completions():
     signals = Signals()
     SIGNALS.set(signals)
 
-    websocket_handler = WebSocketCompletionStreamer(websocket)
-    interrupt_handler = WebSocketInterruptAndKillHandler(websocket)
+    websocket_completion_streamer = WebSocketCompletionStreamer(websocket)
+    websocket_interrupt_controls = WebSocketInterruptAndKillController(websocket)
     file_system_artifacts_sink = FileSystemArtifactsSink()
     handlers = [
-        websocket_handler,
-        interrupt_handler,
+        websocket_completion_streamer,
+        websocket_interrupt_controls,
         file_system_artifacts_sink,
     ]
 

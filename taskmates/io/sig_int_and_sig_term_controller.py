@@ -5,7 +5,7 @@ from taskmates.cli.lib.handler import Handler
 from taskmates.signals.signals import Signals
 
 
-class SigIntAndSigTermControls(Handler):
+class SigIntAndSigTermController(Handler):
     def __init__(self):
         self.received_signal = None
         self.task = None
