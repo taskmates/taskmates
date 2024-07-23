@@ -13,7 +13,7 @@ class WebSocketInterruptAndKillHandler(Handler):
         self.websocket = websocket
         self.task = None
 
-    async def send_signals(self, signals: Signals):
+    async def emit_signals(self, signals: Signals):
         while True:
             try:
                 raw_payload = await self.websocket.receive()
@@ -32,7 +32,7 @@ class WebSocketInterruptAndKillHandler(Handler):
             await asyncio.sleep(0.1)
 
     def connect(self, signals: Signals):
-        self.task = asyncio.create_task(self.send_signals(signals))
+        self.task = asyncio.create_task(self.emit_signals(signals))
 
     def disconnect(self, signals: Signals):
         if self.task and not self.task.done():

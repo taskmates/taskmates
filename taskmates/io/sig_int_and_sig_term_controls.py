@@ -13,7 +13,7 @@ class SigIntAndSigTermControls(Handler):
     def connect(self, signals: Signals):
         signal.signal(signal.SIGINT, self.handle)
         signal.signal(signal.SIGTERM, self.handle)
-        self.task = asyncio.create_task(self.send_signals(signals))
+        self.task = asyncio.create_task(self.emit_signals(signals))
 
     def disconnect(self, signals: Signals):
         signal.signal(signal.SIGINT, signal.SIG_DFL)
@@ -23,7 +23,7 @@ class SigIntAndSigTermControls(Handler):
     def handle(self, sig, frame):
         self.received_signal = sig
 
-    async def send_signals(self, signals: Signals):
+    async def emit_signals(self, signals: Signals):
         while True:
             if self.received_signal == signal.SIGINT:
                 print(flush=True)
