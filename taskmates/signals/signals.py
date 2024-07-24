@@ -4,7 +4,10 @@ from contextlib import contextmanager
 from typing import List
 
 import pytest
-from blinker import Namespace
+from blinker import Namespace, Signal
+from ordered_set import OrderedSet
+
+Signal.set_class = OrderedSet
 
 
 class Signals:
@@ -20,7 +23,7 @@ class Signals:
         try:
             for obj in objs:
                 obj.connect(self)
-            yield
+            yield self
         finally:
             for obj in objs:
                 obj.disconnect(self)
@@ -49,7 +52,9 @@ class ControlSignals(BaseSignals):
 class InputSignals(BaseSignals):
     def __init__(self):
         super().__init__()
-        self.input = self.namespace.signal('input')
+        self.history = self.namespace.signal('history')
+        self.incoming_message = self.namespace.signal('incoming_message')
+        self.formatting = self.namespace.signal('input_formatting')
 
 
 class OutputSignals(BaseSignals):
@@ -74,7 +79,7 @@ class ResponseSignals(LifecycleSignals):
         super().__init__()
 
         # Output
-        self.formatting = self.namespace.signal('formatting')
+        self.formatting = self.namespace.signal('response_formatting')
         self.responder = self.namespace.signal('responder')
         self.response = self.namespace.signal('response')
         self.next_responder = self.namespace.signal('next_responder')
@@ -89,8 +94,10 @@ class ResponseSignals(LifecycleSignals):
         # Completion signal
         self.completion = self.namespace.signal('completion')
 
+        # TODO extract to a new Signals class
         # Derived
         self.formatting.connect(self.completion.send_async, weak=False)
+        # TODO split below
         self.responder.connect(self.completion.send_async, weak=False)
         self.response.connect(self.completion.send_async, weak=False)
         self.next_responder.connect(self.completion.send_async, weak=False)

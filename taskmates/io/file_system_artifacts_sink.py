@@ -1,18 +1,26 @@
 from datetime import datetime
 from pathlib import Path
 
-from taskmates.cli.lib.handler import Handler
 from taskmates.config.completion_context import COMPLETION_CONTEXT
 from taskmates.config.server_config import SERVER_CONFIG
 from taskmates.lib.resources_.resources import dump_resource
+from taskmates.signals.handler import Handler
 from taskmates.signals.signals import Signals
 
 
 class FileSystemArtifactsSink(Handler):
+
+    # TODO: logic for enabling/disabling handlers
+
     @staticmethod
     async def handle_artifact(sender):
+        # TODO: this is the part that is confusing
+        # Maybe we should get an artifacts_dir instead
+
         taskmates_dir = SERVER_CONFIG.get()["taskmates_dir"]
         request_id = COMPLETION_CONTEXT.get()["request_id"]
+
+        # The problem seems to be that we're mixing artifacts and logs
 
         timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S-%f')
         full_path = Path(taskmates_dir) / "logs" / f"[{request_id}][{timestamp}] {sender.get('name')}"

@@ -164,7 +164,8 @@ def test_interrupt_tool(cli_runner, tmp_path):
 
     <pre class='output' style='display:none'>
     2
-
+    --- INTERRUPT ---
+    
     Exit Code: -2
     </pre>
     -[x] Done
@@ -195,6 +196,7 @@ def test_kill_tool(cli_runner, tmp_path):
 
     <pre class='output' style='display:none'>
     Starting
+    --- KILL ---
 
     Exit Code: -9
     </pre>

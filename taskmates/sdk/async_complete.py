@@ -46,6 +46,7 @@ async def async_complete(markdown,
             await CompletionEngine().perform_completion(
                 completion_context,
                 markdown,
+                [],
                 server_config,
                 client_config,
                 completion_opts,

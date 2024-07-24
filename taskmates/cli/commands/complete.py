@@ -1,7 +1,7 @@
 import json
 import os
-import sys
 
+import sys
 from typeguard import typechecked
 
 from taskmates.cli.lib.complete import complete
@@ -12,37 +12,60 @@ class CompleteCommand:
 
     def add_arguments(self, parser):
         parser.add_argument('markdown', type=str, help='The markdown to complete')
-        parser.add_argument('--endpoint', type=str, default=None,
-                            help='The websocket endpoint')
+        parser.add_argument('--history', type=str, help='The history file to read from/save to')
+        parser.add_argument('--endpoint', type=str, default=None, help='The Taskmates websocket API endpoint')
+
+        # parser.add_argument('--input-method', choices=['default', 'websocket'], default='default',
+        #                     help='Select input method for control signals')
+        # parser.add_argument('--output-method', choices=['default', 'websocket'], default='default',
+        #                     help='Select output method for response signals')
+        # parser.add_argument('--websocket-url', default='ws://localhost:8765',
+        #                     help='WebSocket URL for websocket method')
+
         parser.add_argument('--model', type=str, default='claude-3-5-sonnet-20240620', help='The model to use')
         parser.add_argument('-n', '--max-interactions', type=int, default=100,
                             help='The maximum number of interactions')
         parser.add_argument('--template-params', type=json.loads, action='append', default=[],
                             help='JSON string with system prompt template parameters (can be specified multiple times)')
-        parser.add_argument('--format', type=str, default='text', choices=['full', 'original', 'completion', 'text'],
+        parser.add_argument('--format', type=str, default='text', choices=['full', 'completion', 'text'],
                             help='Output format')
 
     async def execute(self, args):
-        markdown = self.compose_input_markdown(args)
-        await complete(markdown, args)
+        history = self.read_args_history(args)
+        stdin_markdown = self.read_stdin_incoming_message()
+        args_markdown = await self.get_args_incoming_message(args)
+
+        if not history and not stdin_markdown and not args_markdown:
+            raise ValueError("No input provided")
+
+        await complete(history,
+                       [stdin_markdown, args_markdown],
+                       args)
+
+    @staticmethod
+    async def get_args_incoming_message(args):
+        args_markdown = args.markdown
+        if args_markdown and not args_markdown.startswith("**"):
+            args_markdown = "**user>** " + args_markdown
+        return args_markdown
+
+    @staticmethod
+    def read_args_history(args):
+        history = ""
+        if args.history:
+            with open(args.history, 'r') as f:
+                history = f.read()
+        return history
 
     @typechecked
-    def compose_input_markdown(self, args) -> str:
+    def read_stdin_incoming_message(self) -> str:
         # Read markdown from stdin if available
         stdin_markdown = ""
         pycharm_env = os.environ.get("PYCHARM_HOSTED", 0) == '1'
         if not pycharm_env and not sys.stdin.isatty():
             stdin_markdown = "".join(sys.stdin.readlines())
-        args_markdown = args.markdown
 
-        if stdin_markdown and args_markdown:
-            # Concatenate stdin markdown with --markdown argument if both are provided
-            # TODO: Not sure about this being hardcoded to user
-            markdown = stdin_markdown + "\n\n**user>** " + args_markdown
-        elif stdin_markdown:
-            markdown = stdin_markdown
-        elif args_markdown:
-            markdown = args_markdown
-        else:
-            raise ValueError("No markdown provided")
-        return markdown
+        if stdin_markdown and not stdin_markdown.startswith("**"):
+            stdin_markdown = "**user>** " + stdin_markdown
+
+        return stdin_markdown

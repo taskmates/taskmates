@@ -23,7 +23,6 @@ from taskmates.types import CompletionPayload
 completions_bp = Blueprint('completions_v2', __name__)
 
 
-@typechecked
 @contextmanager
 def build_context(payload: CompletionPayload):
     completion_context: CompletionContext = payload["completion_context"]
@@ -52,7 +51,7 @@ async def taskmates_completions():
     handlers = [
         WebSocketInterruptAndKillController(websocket),
         WebSocketCompletionStreamer(websocket),
-        FileSystemArtifactsSink(),
+        FileSystemArtifactsSink(), # TODO: this should be disabled by default
     ]
 
     signals = Signals()
@@ -65,23 +64,24 @@ async def taskmates_completions():
     try:
         logger.info("Waiting for websocket connection at /v2/taskmates/completions")
         raw_payload = await websocket.receive()
+
         payload: CompletionPayload = snake_case(json.loads(raw_payload))
+        request_id = payload['completion_context']['request_id']
+        logger.info(f"[{request_id}] CONNECT /v2/taskmates/completions")
 
         client_version = payload.get("version", "None")
         if client_version != taskmates.__version__:
             raise ValueError(f"Incompatible client version: {client_version}. Expected: {taskmates.__version__}")
 
         with build_context(payload) as context:
-            request_id = context['context']['request_id']
             markdown_chat = payload["markdown_chat"]
 
             await signals.output.artifact.send_async({"name": "websockets_api_payload.json", "content": payload})
 
-            logger.info(f"[{request_id}] CONNECT /v2/taskmates/completions")
-
             result = await CompletionEngine().perform_completion(
                 context['context'],
                 markdown_chat,
+                [],
                 context['server_config'],
                 context['client_config'],
                 context['completion_opts'],

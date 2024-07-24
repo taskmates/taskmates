@@ -5,7 +5,7 @@ from typeguard import typechecked
 from taskmates.core.chat_completion.chat_completion_editor_completion import ChatCompletionEditorCompletion
 from taskmates.core.completion_provider import CompletionProvider
 from taskmates.config.completion_context import CompletionContext
-from taskmates.config.completion_opts import CompletionOpts, COMPLETION_OPTS
+from taskmates.config.completion_opts import CompletionOpts
 from taskmates.formats.markdown.metadata.get_model_conf import get_model_conf
 from taskmates.function_registry import function_registry
 from taskmates.lib.not_set.not_set import NOT_SET
@@ -16,6 +16,9 @@ from taskmates.types import Chat
 
 
 class ChatCompletionProvider(CompletionProvider):
+    def __init__(self, completion_opts: CompletionOpts):
+        self.completion_opts = completion_opts
+
     def stop(self):
         raise NotImplementedError("Not implemented")
 
@@ -26,8 +29,7 @@ class ChatCompletionProvider(CompletionProvider):
 
     @typechecked
     async def perform_completion(self, context: CompletionContext, chat: Chat, signals: Signals):
-        completion_opts: CompletionOpts = COMPLETION_OPTS.get()
-        model = completion_opts["model"]
+        model = self.completion_opts["model"]
 
         chat_completion_editor_completion = ChatCompletionEditorCompletion(chat, signals)
 
@@ -72,4 +74,4 @@ class ChatCompletionProvider(CompletionProvider):
 
             await signals.output.artifact.send_async({"name": "parsed_chat.json", "content": chat})
 
-            return await api_request(messages, model_conf, model_params)
+            return await api_request(messages, model_conf, model_params, signals)

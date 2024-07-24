@@ -1,14 +1,15 @@
 from typeguard import typechecked
 
 from taskmates.actions.parse_markdown_chat import parse_markdown_chat
-from taskmates.cli.lib.handler import Handler
 from taskmates.config.client_config import ClientConfig
 from taskmates.config.completion_context import CompletionContext
 from taskmates.config.completion_opts import CompletionOpts
 from taskmates.config.server_config import ServerConfig
 from taskmates.core.completion_next_completion import compute_next_completion
 from taskmates.core.compute_separator import compute_separator
+from taskmates.io.formatting_processor import IncomingMessagesFormattingProcessor
 from taskmates.logging import logger
+from taskmates.signals.handler import Handler
 from taskmates.signals.signals import Signals
 from taskmates.types import Chat
 
@@ -17,7 +18,8 @@ class CompletionEngine:
     @typechecked
     async def perform_completion(self,
                                  context: CompletionContext,
-                                 markdown_chat: str,
+                                 history: str,
+                                 incoming_messages: list[str],
                                  server_config: ServerConfig,
                                  client_config: ClientConfig,
                                  completion_opts: CompletionOpts,
@@ -28,23 +30,27 @@ class CompletionEngine:
         interactive = client_config["interactive"]
 
         markdown_collector = FullMarkdownCollector()
+        incoming_messages_formatting_processor = IncomingMessagesFormattingProcessor(signals)
         return_value_processor = ReturnValueProcessor()
         interruption_handler = InterruptedOrKilledHandler()
         interrupt_request_handler = InterruptRequestHandler(signals)
 
         with signals.connected_to(
                 [markdown_collector,
+                 incoming_messages_formatting_processor,
                  interrupt_request_handler,
                  interruption_handler,
                  return_value_processor]):
 
-            # Echo input
-            await signals.input.input.send_async(markdown_chat)
+            # TODO think about remote control
+            # TODO think about history saving
 
-            # Pre-Completion
-            separator = compute_separator(markdown_chat)
-            if separator:
-                await signals.response.formatting.send_async(separator)
+            # Input
+            await signals.input.history.send_async(history)
+
+            for incoming_message in incoming_messages:
+                if incoming_message:
+                    await signals.input.incoming_message.send_async(incoming_message)
 
             # Lifecycle: Start
             await signals.lifecycle.start.send_async({})
@@ -66,7 +72,7 @@ class CompletionEngine:
                     completion_opts["max_interactions"] = 1
 
                 logger.debug(f"Computing next completion assistance")
-                completion_assistance = compute_next_completion(chat)
+                completion_assistance = compute_next_completion(chat, completion_opts)
 
                 logger.debug(f"Next completion assistance: {completion_assistance}")
                 if not completion_assistance:
@@ -87,6 +93,8 @@ class CompletionEngine:
                 # Step
                 await completion_assistance.perform_completion(context, chat, signals)
 
+                # TODO: Add lifecycle/checkpoint here
+
                 # Post-Step
                 if return_value_processor.return_value is not None:
                     logger.debug(f"Return status is not None: {return_value_processor.return_value}")
@@ -98,12 +106,14 @@ class CompletionEngine:
 
             logger.debug(f"Finished completion assistance")
 
+            # TODO: Add lifecycle/checkpoint here
+
+            separator = compute_separator(markdown_collector.get_current_markdown())
+            if separator:
+                await signals.response.formatting.send_async(separator)
+
             # Post-Completion
             if interactive and not interruption_handler.interrupted_or_killed:
-                separator = compute_separator(markdown_collector.get_current_markdown())
-                if separator:
-                    await signals.response.next_responder.send_async(separator)
-
                 recipient = chat["messages"][-1]["recipient"]
                 if recipient:
                     await signals.response.next_responder.send_async(f"**{recipient}>** ")
@@ -124,20 +134,25 @@ class FullMarkdownCollector(Handler):
         return "".join(self.markdown_chunks)
 
     def connect(self, signals):
-        signals.input.input.connect(self.handle, weak=False)
+        signals.input.history.connect(self.handle, weak=False)
+        signals.input.incoming_message.connect(self.handle, weak=False)
+        signals.input.formatting.connect(self.handle, weak=False)
         signals.response.formatting.connect(self.handle, weak=False)
         signals.response.response.connect(self.handle, weak=False)
         signals.response.responder.connect(self.handle, weak=False)
         signals.response.error.connect(self.handle, weak=False)
 
     def disconnect(self, signals):
-        signals.input.input.connect(self.handle, weak=False)
-        signals.response.formatting.connect(self.handle, weak=False)
-        signals.response.response.connect(self.handle, weak=False)
-        signals.response.responder.connect(self.handle, weak=False)
-        signals.response.error.connect(self.handle, weak=False)
+        signals.input.history.disconnect(self.handle)
+        signals.input.incoming_message.disconnect(self.handle)
+        signals.input.formatting.disconnect(self.handle)
+        signals.response.formatting.disconnect(self.handle)
+        signals.response.response.disconnect(self.handle)
+        signals.response.responder.disconnect(self.handle)
+        signals.response.error.disconnect(self.handle)
 
 
+# TODO: move return logic here
 class ReturnValueProcessor(Handler):
     def __init__(self):
         self.return_value = None
@@ -153,6 +168,7 @@ class ReturnValueProcessor(Handler):
         signals.output.return_value.disconnect(self.handle_return_value)
 
 
+# TODO: move interruption logic here
 class InterruptedOrKilledHandler(Handler):
     def __init__(self):
         self.interrupted_or_killed = False

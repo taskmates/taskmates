@@ -3,7 +3,7 @@ import json
 
 from loguru import logger
 
-from taskmates.cli.lib.handler import Handler
+from taskmates.signals.handler import Handler
 from taskmates.lib.json_.json_utils import snake_case
 from taskmates.signals.signals import Signals
 
