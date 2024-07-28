@@ -14,13 +14,11 @@ class HistorySink(Handler):
     def connect(self, signals):
         if self.path:
             self.file = open(self.path, "a")
-        signals.input.history.connect(self.process_chunk, weak=False)
         signals.input.incoming_message.connect(self.process_chunk, weak=False)
         signals.input.formatting.connect(self.process_chunk, weak=False)
         signals.response.completion.connect(self.process_chunk, weak=False)
 
     def disconnect(self, signals):
-        signals.input.history.disconnect(self.process_chunk)
         signals.input.incoming_message.disconnect(self.process_chunk)
         signals.input.formatting.disconnect(self.process_chunk)
         signals.response.completion.disconnect(self.process_chunk)
