@@ -5,7 +5,7 @@ from taskmates.formats.markdown.participants.process_participants import process
 from taskmates.logging import logger
 
 
-async def compute_participants(taskmates_dir, front_matter, messages) -> tuple[str | None, dict]:
+async def compute_participants(taskmates_dirs, front_matter, messages) -> tuple[str | None, dict]:
     front_matter_participants = front_matter.get("participants") or {}
 
     # Add user to participants_configs if not already present
@@ -15,7 +15,7 @@ async def compute_participants(taskmates_dir, front_matter, messages) -> tuple[s
             name = message.get("name", message.get("role"))
             history_participants[name] = await load_participant_config(history_participants,
                                                                        name,
-                                                                       taskmates_dir)
+                                                                       taskmates_dirs)
 
     # Add participants from the front matter
     participants_config_raw = {**history_participants, **front_matter_participants}
@@ -26,10 +26,10 @@ async def compute_participants(taskmates_dir, front_matter, messages) -> tuple[s
         participants_config_raw["assistant"] = {"role": "assistant"}
 
     participants_configs = await process_participants(participants_config_raw,
-                                                      taskmates_dir)
+                                                      taskmates_dirs)
 
     # TODO: Everything below this line can be moved to a separate function
-    await compute_and_assign_roles_and_recipients(messages, participants_configs, taskmates_dir)
+    await compute_and_assign_roles_and_recipients(messages, participants_configs, taskmates_dirs)
 
     recipient = messages[-1].get("recipient")
     recipient_role = messages[-1].get("recipient_role")
@@ -39,7 +39,7 @@ async def compute_participants(taskmates_dir, front_matter, messages) -> tuple[s
     return recipient, participants_configs
 
 
-async def compute_and_assign_roles_and_recipients(messages, participants_configs, taskmates_dir):
+async def compute_and_assign_roles_and_recipients(messages, participants_configs, taskmates_dirs):
     for messages_end in range(1, len(messages) + 1):
         current_messages = messages[:messages_end]
         current_message = current_messages[-1]
@@ -49,12 +49,14 @@ async def compute_and_assign_roles_and_recipients(messages, participants_configs
 
         if current_message["role"] not in ("system", "tool"):
             name = current_message.get("name", "user")
-            participants_configs[name] = await load_participant_config(participants_configs, name, taskmates_dir)
+            participants_configs[name] = await load_participant_config(participants_configs, name,
+                                                                       taskmates_dirs)
             current_message["role"] = participants_configs[name].get("role", "user")
 
         if recipient and recipient not in participants_configs:
-            participants_configs[recipient] = await load_participant_config(participants_configs, recipient,
-                                                                            taskmates_dir)
+            participants_configs[recipient] = await load_participant_config(participants_configs,
+                                                                            recipient,
+                                                                            taskmates_dirs)
             current_message["recipient_role"] = participants_configs[recipient].get("role", "user")
         elif recipient:
             current_message["recipient_role"] = participants_configs[recipient].get("role", "user")

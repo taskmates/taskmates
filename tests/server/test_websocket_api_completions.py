@@ -8,7 +8,6 @@ from quart.testing.connections import WebsocketDisconnectError
 from typeguard import typechecked
 
 import taskmates
-from taskmates.config.server_config import SERVER_CONFIG
 from taskmates.server.blueprints.taskmates_completions import completions_bp as completions_v2_bp
 from taskmates.types import CompletionPayload
 
@@ -18,16 +17,6 @@ def app():
     app = Quart(__name__)
     app.register_blueprint(completions_v2_bp, name='completions_v2')
     return app
-
-
-@pytest.fixture(autouse=True)
-def server_config(tmp_path):
-    token = SERVER_CONFIG.set({"taskmates_dir": str(tmp_path / "taskmates")})
-    try:
-        SERVER_CONFIG.set(SERVER_CONFIG.get())
-        yield
-    finally:
-        SERVER_CONFIG.reset(token)
 
 
 @pytest.mark.timeout(5)
@@ -71,8 +60,9 @@ async def test_chat_completion(app, tmp_path):
 async def test_chat_completion_with_mention(app, tmp_path):
     test_client = app.test_client()
 
-    (tmp_path / "taskmates" / "taskmates").mkdir(parents=True)
-    (tmp_path / "taskmates" / "taskmates" / "jeff.md").write_text("You're a helpful assistant\n")
+    taskmates_home = tmp_path / ".taskmates"
+    (taskmates_home / "taskmates").mkdir(parents=True)
+    (taskmates_home / "taskmates" / "jeff.md").write_text("You're a helpful assistant\n")
 
     markdown_chat = textwrap.dedent("""\
     Hey @jeff short answer. 1+1=
@@ -97,6 +87,7 @@ async def test_chat_completion_with_mention(app, tmp_path):
             "markdown_path": str(tmp_path / "test.md"),
         },
         "completion_opts": {
+            "taskmates_dirs": [str(taskmates_home)],
             "model": "quote",
         }
     }

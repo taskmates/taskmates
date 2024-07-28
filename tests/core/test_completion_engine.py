@@ -61,9 +61,9 @@ async def test_completion_engine_history(tmp_path):
         "cwd": str(tmp_path),
         "markdown_path": str(tmp_path / "test.md"),
     }
-    server_config = ServerConfig(taskmates_dir=str(tmp_path))
+    server_config = ServerConfig()
     client_config = ClientConfig(interactive=False, endpoint="local")
-    completion_opts = CompletionOpts(model="quote", template_params={})
+    completion_opts = CompletionOpts(model="quote", template_params={}, taskmates_dirs=[])
 
     engine = CompletionEngine()
     signals = Signals()
@@ -102,8 +102,8 @@ async def test_completion_engine_stdout_streamer(tmp_path):
         "cwd": "/tmp",
         "markdown_path": "/tmp/test.md",
     }
-    server_config = ServerConfig(taskmates_dir=str(tmp_path))
-    completion_opts = CompletionOpts(model="quote", template_params={})
+    server_config = ServerConfig()
+    completion_opts = CompletionOpts(model="quote", template_params={}, taskmates_dirs=[])
 
     engine = CompletionEngine()
 
@@ -139,8 +139,10 @@ async def test_completion_engine_stdout_streamer(tmp_path):
             server_config, client_config, completion_opts, signals
         )
 
-    text_filtered_signals = text_signal_capture.filter_signals(['history', 'incoming_message', 'input_formatting', 'error'])
-    full_filtered_signals = full_signal_capture.filter_signals(['history', 'incoming_message', 'input_formatting', 'error'])
+    text_filtered_signals = text_signal_capture.filter_signals(
+        ['history', 'incoming_message', 'input_formatting', 'error'])
+    full_filtered_signals = full_signal_capture.filter_signals(
+        ['history', 'incoming_message', 'input_formatting', 'error'])
 
     print(f"Text filtered signals: {text_filtered_signals}")  # Debug print
     print(f"Full filtered signals: {full_filtered_signals}")  # Debug print

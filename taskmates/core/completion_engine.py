@@ -18,7 +18,7 @@ class CompletionEngine:
     @typechecked
     async def perform_completion(self,
                                  context: CompletionContext,
-                                 history: str,
+                                 history: str | None,
                                  incoming_messages: list[str],
                                  server_config: ServerConfig,
                                  client_config: ClientConfig,
@@ -26,7 +26,7 @@ class CompletionEngine:
                                  signals: Signals
                                  ):
 
-        taskmates_dir = server_config.get("taskmates_dir")
+        taskmates_dirs = completion_opts.get("taskmates_dirs")
         interactive = client_config["interactive"]
 
         markdown_collector = FullMarkdownCollector()
@@ -46,7 +46,8 @@ class CompletionEngine:
             # TODO think about history saving
 
             # Input
-            await signals.input.history.send_async(history)
+            if history:
+                await signals.input.history.send_async(history)
 
             for incoming_message in incoming_messages:
                 if incoming_message:
@@ -62,7 +63,7 @@ class CompletionEngine:
                 logger.debug(f"Parsing markdown chat")
                 chat: Chat = await parse_markdown_chat(markdown_chat=current_markdown,
                                                        markdown_path=context["markdown_path"],
-                                                       taskmates_dir=taskmates_dir,
+                                                       taskmates_dirs=taskmates_dirs,
                                                        template_params=completion_opts["template_params"])
 
                 if "model" in chat["metadata"]:

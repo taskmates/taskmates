@@ -6,11 +6,10 @@ from typing_extensions import TypedDict
 
 
 class ServerConfig(TypedDict):
-    taskmates_dir: str
+    pass
 
 
 SERVER_CONFIG: contextvars.ContextVar[ServerConfig] = contextvars.ContextVar(
     "ServerConfig",
     default={
-        "taskmates_dir": os.environ.get("TASKMATES_HOME", str(Path.home() / ".taskmates")),
     })

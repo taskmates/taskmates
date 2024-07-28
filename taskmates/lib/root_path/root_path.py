@@ -1,5 +1,5 @@
 from pathlib import Path
 
 
-def root_path():
-    return Path(__file__).parent.parent.parent.parent
+def root_path() -> Path:
+    return Path(__file__).resolve().parent.parent.parent.parent

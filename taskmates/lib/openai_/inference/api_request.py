@@ -5,6 +5,7 @@ import pytest
 from httpx import ReadError
 from typeguard import typechecked
 
+from taskmates.config.completion_opts import COMPLETION_OPTS
 from taskmates.core.chat_completion.openai_adapters.anthropic_openai_adapter.response.chat_completion_pre_processor import \
     ChatCompletionPreProcessor
 from taskmates.core.chat_completion.openai_adapters.anthropic_openai_adapter.response.chat_completion_with_username import \
@@ -17,7 +18,7 @@ from taskmates.signals.signals import Signals
 
 
 @typechecked
-async def api_request(messages: list, model_conf: dict, model_params: dict, signals: Signals) -> dict:
+async def api_request(client, messages: list, model_conf: dict, model_params: dict, signals: Signals) -> dict:
     streamed_response = StreamedResponse()
     signals.response.chat_completion.connect(streamed_response.accept, weak=False)
 
@@ -25,8 +26,6 @@ async def api_request(messages: list, model_conf: dict, model_params: dict, sign
         model_conf.update({"stream": True})
 
     llm_client_args = get_llm_client_args(messages, model_conf, model_params)
-
-    client = get_model_client(model_conf["model"])
 
     with tracer.start_as_current_span(name="chat-completion"):
         await signals.output.artifact.send_async({"name": "openai_request_payload.json", "content": llm_client_args})
@@ -111,7 +110,8 @@ async def test_api_request_happy_path():
     ]
 
     # Call the api_request function with the defined parameters
-    response = await api_request(messages, model_conf, model_params, Signals())
+    client = get_model_client(model_conf["model"], COMPLETION_OPTS.get()["taskmates_dirs"])
+    response = await api_request(client, messages, model_conf, model_params, Signals())
 
     # Assert that the response is as expected
     assert 'choices' in response
@@ -195,7 +195,8 @@ async def test_api_request_with_complex_payload():
     # and the OpenAI API key is set in the environment or configuration
 
     # Call the api_request function with the defined parameters
-    response = await api_request(messages, model_conf, model_params, Signals())
+    client = get_model_client(model_conf["model"], COMPLETION_OPTS.get()["taskmates_dirs"])
+    response = await api_request(client, messages, model_conf, model_params, Signals())
 
     # Assert that the response is as expected
     assert 'choices' in response

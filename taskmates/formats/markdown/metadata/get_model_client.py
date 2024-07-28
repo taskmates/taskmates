@@ -3,16 +3,16 @@ import os
 import openai as oai
 from typeguard import typechecked
 
+from taskmates.config.load_model_config import load_model_config
 from taskmates.core.chat_completion.openai_adapters.anthropic_openai_adapter.anthropic_openai_adapter import \
     AsyncAnthropicOpenAIAdapter
 from taskmates.core.chat_completion.openai_adapters.echo.echo import Echo
 from taskmates.core.chat_completion.openai_adapters.echo.quote import Quote
-from taskmates.config.load_model_config import load_model_config
 
 
 @typechecked
-def get_model_client(model_name: str):
-    model_config = load_model_config(model_name)
+def get_model_client(model_name: str, taskmates_dirs: list):
+    model_config = load_model_config(model_name, taskmates_dirs)
 
     model_spec = model_config
     client_type = model_spec['client_type']

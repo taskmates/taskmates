@@ -53,6 +53,8 @@ class CompleteCommand:
     def read_args_history(args):
         history = ""
         if args.history:
+            if not os.path.exists(args.history):
+                return None
             with open(args.history, 'r') as f:
                 history = f.read()
         return history

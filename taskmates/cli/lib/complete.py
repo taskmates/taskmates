@@ -5,7 +5,6 @@ from uuid import uuid4
 
 from typeguard import typechecked
 
-from taskmates.signals.handler import Handler
 from taskmates.cli.lib.merge_template_params import merge_template_params
 from taskmates.config.client_config import ClientConfig
 from taskmates.config.completion_context import COMPLETION_CONTEXT, CompletionContext
@@ -13,10 +12,11 @@ from taskmates.config.completion_opts import COMPLETION_OPTS
 from taskmates.config.server_config import SERVER_CONFIG
 from taskmates.config.updated_config import updated_config
 from taskmates.core.completion_engine import CompletionEngine
+from taskmates.io.history_sink import HistorySink
 from taskmates.io.sig_int_and_sig_term_controller import SigIntAndSigTermController
 from taskmates.io.stdout_completion_streamer import StdoutCompletionStreamer
+from taskmates.signals.handler import Handler
 from taskmates.signals.signals import Signals, SIGNALS
-from taskmates.io.history_sink import HistorySink
 
 
 @contextmanager
@@ -47,7 +47,7 @@ def build_context(args):
 
 
 @typechecked
-async def complete(history: str, incoming_messages: list[str], args, handlers: Optional[List[Handler]] = None):
+async def complete(history: str | None, incoming_messages: list[str], args, handlers: Optional[List[Handler]] = None):
     if handlers is None:
         handlers = [
             SigIntAndSigTermController(),

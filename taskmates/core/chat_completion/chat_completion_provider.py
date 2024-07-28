@@ -2,10 +2,11 @@ import json
 
 from typeguard import typechecked
 
-from taskmates.core.chat_completion.chat_completion_editor_completion import ChatCompletionEditorCompletion
-from taskmates.core.completion_provider import CompletionProvider
 from taskmates.config.completion_context import CompletionContext
 from taskmates.config.completion_opts import CompletionOpts
+from taskmates.core.chat_completion.chat_completion_editor_completion import ChatCompletionEditorCompletion
+from taskmates.core.completion_provider import CompletionProvider
+from taskmates.formats.markdown.metadata.get_model_client import get_model_client
 from taskmates.formats.markdown.metadata.get_model_conf import get_model_conf
 from taskmates.function_registry import function_registry
 from taskmates.lib.not_set.not_set import NOT_SET
@@ -38,7 +39,8 @@ class ChatCompletionProvider(CompletionProvider):
             await chat_completion_editor_completion.process_chat_completion_chunk(choice)
 
         with signals.response.chat_completion.connected_to(restream_completion_chunk):
-            model_conf = get_model_conf(model_name=model, messages=chat["messages"])
+            taskmates_dirs = self.completion_opts["taskmates_dirs"]
+            model_conf = get_model_conf(model_name=model, messages=chat["messages"], taskmates_dirs=taskmates_dirs)
             tools = list(map(function_registry.__getitem__, chat["available_tools"]))
             tools_schemas = [tool_schema(f) for f in tools]
 
@@ -74,4 +76,5 @@ class ChatCompletionProvider(CompletionProvider):
 
             await signals.output.artifact.send_async({"name": "parsed_chat.json", "content": chat})
 
-            return await api_request(messages, model_conf, model_params, signals)
+            client = get_model_client(model_conf["model"], taskmates_dirs)
+            return await api_request(client, messages, model_conf, model_params, signals)

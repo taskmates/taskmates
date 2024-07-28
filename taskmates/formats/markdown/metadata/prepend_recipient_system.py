@@ -10,7 +10,7 @@ from taskmates.formats.markdown.participants.format_username_prompt import forma
 
 
 @typechecked
-def prepend_recipient_system(taskmates_dir: Path,
+def prepend_recipient_system(taskmates_dirs: list[str | Path],
                              participants_configs: dict,
                              recipient: str,
                              recipient_config: dict,
@@ -21,7 +21,7 @@ def prepend_recipient_system(taskmates_dir: Path,
     recipient_system_parts = []
     if recipient_config.get("system", None):
         recipient_system_parts.append(recipient_config.get("system").rstrip("\n") + "\n")
-    introduction_message = compute_introduction_message(participants_configs, taskmates_dir)
+    introduction_message = compute_introduction_message(participants_configs, taskmates_dirs)
     if introduction_message:
         recipient_system_parts.append(introduction_message)
     if recipient != "assistant":
@@ -37,7 +37,6 @@ def prepend_recipient_system(taskmates_dir: Path,
 
     if messages[0]["role"] == "system":
         messages[0]["content"] = render_template(messages[0]["content"], template_params)
-
 
     return messages
 
