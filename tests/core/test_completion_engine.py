@@ -52,9 +52,7 @@ async def test_completion_engine_history(tmp_path):
 
     signal_capture = SignalCaptureHandler()
     history_file = tmp_path / "history.txt"
-
-    if history_file.exists():
-        raise ValueError("fooo")
+    history_file.write_text(history)
 
     history_sink = HistorySink(history_file)
 
