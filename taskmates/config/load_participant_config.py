@@ -44,6 +44,9 @@ async def load_participant_config(participants_configs: dict,
         cached_config, cached_mtimes = load_cache[cache_key]
         if all(current_mtimes[key] == cached_mtimes[key] for key in current_mtimes):
             return cached_config.copy()  # Return a copy to prevent modifying the cached version
+        elif any(current_mtimes[key] is None for key in current_mtimes):
+            # If any file is missing, remove the cache entry
+            del load_cache[cache_key]
 
     updated_participant_config = (participants_configs.get(participant_name) or {}).copy()
     updated_participant_config["name"] = participant_name
@@ -186,7 +189,6 @@ System message
     # Remove the file from the first directory
     os.remove(taskmates_dirs[0] / "taskmates" / f"{participant_name}.md")
 
-    load_cache.clear()
     config = await load_participant_config(participants_configs, participant_name, taskmates_dirs)
 
     assert config["model"] == "gpt-4"  # Should now use the file from the second directory
