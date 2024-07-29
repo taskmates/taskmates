@@ -11,6 +11,7 @@ RUN apt-get update && \
     make \
     fd-find \
     ack-grep \
+    curl \
     && rm -rf /var/lib/apt/lists/* \
     && ln -s $(which fdfind) /usr/local/bin/fd \
     && ln -s $(which ack-grep) /usr/local/bin/ack
@@ -41,4 +42,4 @@ ENV PYTHONFAULTHANDLER=1 \
 EXPOSE 55000
 
 ENV QUART_APP=app
-CMD ["hypercorn", "--bind", "0.0.0.0:55000", "taskmates.server.server:app"]
+CMD ["taskmates", "server", "--host", "0.0.0.0", "--port", "55000"]
