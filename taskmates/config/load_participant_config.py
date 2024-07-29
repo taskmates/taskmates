@@ -186,6 +186,7 @@ System message
     # Remove the file from the first directory
     os.remove(taskmates_dirs[0] / "taskmates" / f"{participant_name}.md")
 
+    load_cache.clear()
     config = await load_participant_config(participants_configs, participant_name, taskmates_dirs)
 
     assert config["model"] == "gpt-4"  # Should now use the file from the second directory
