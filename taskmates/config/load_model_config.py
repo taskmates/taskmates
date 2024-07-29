@@ -3,10 +3,10 @@ from taskmates.config.load_participant_config import load_yaml_config
 
 
 def load_model_config(model_name: str, taskmates_dirs: list) -> dict:
-    config_path = find_config_file("model_config.yaml", taskmates_dirs)
+    config_path = find_config_file("models.yaml", taskmates_dirs)
     if config_path is None:
         raise FileNotFoundError(
-            f"Could not find model_config.yaml in any of the provided directories: {taskmates_dirs}")
+            f"Could not find models.yaml in any of the provided directories: {taskmates_dirs}")
     model_config = load_yaml_config(config_path)
 
     if model_name not in model_config:
@@ -31,25 +31,25 @@ def temp_config_structure(tmp_path):
     (temp_dir / "taskmates" / "default_config").mkdir(parents=True)
 
     # Create config files
-    (temp_dir / ".taskmates" / "model_config.yaml").write_text("""
+    (temp_dir / ".taskmates" / "models.yaml").write_text("""
     model1:
         type: gpt
         max_tokens: 100
     """)
 
-    (temp_dir / "home" / ".taskmates" / "model_config.yaml").write_text("""
+    (temp_dir / "home" / ".taskmates" / "models.yaml").write_text("""
     model2:
         type: gpt
         max_tokens: 200
     """)
 
-    (temp_dir / "taskmates" / "config" / "model_config.yaml").write_text("""
+    (temp_dir / "taskmates" / "config" / "models.yaml").write_text("""
     model3:
         type: gpt
         max_tokens: 300
     """)
 
-    (temp_dir / "taskmates" / "default_config" / "model_config.yaml").write_text("""
+    (temp_dir / "taskmates" / "default_config" / "models.yaml").write_text("""
     model4:
         type: gpt
         max_tokens: 400
@@ -72,19 +72,19 @@ def test_load_model_config(temp_config_structure):
     assert config["max_tokens"] == 100
 
     # Remove current directory config and test loading from home directory
-    (temp_config_structure / ".taskmates" / "model_config.yaml").unlink()
+    (temp_config_structure / ".taskmates" / "models.yaml").unlink()
     config = load_model_config("model2", taskmates_dirs)
     assert config["type"] == "gpt"
     assert config["max_tokens"] == 200
 
     # Remove home directory config and test loading from taskmates directory
-    (temp_config_structure / "home" / ".taskmates" / "model_config.yaml").unlink()
+    (temp_config_structure / "home" / ".taskmates" / "models.yaml").unlink()
     config = load_model_config("model3", taskmates_dirs)
     assert config["type"] == "gpt"
     assert config["max_tokens"] == 300
 
     # Remove taskmates directory config and test loading from default config
-    (temp_config_structure / "taskmates" / "config" / "model_config.yaml").unlink()
+    (temp_config_structure / "taskmates" / "config" / "models.yaml").unlink()
     config = load_model_config("model4", taskmates_dirs)
     assert config["type"] == "gpt"
     assert config["max_tokens"] == 400

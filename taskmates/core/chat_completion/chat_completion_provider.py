@@ -4,6 +4,7 @@ from typeguard import typechecked
 
 from taskmates.config.completion_context import CompletionContext
 from taskmates.config.completion_opts import CompletionOpts
+from taskmates.config.load_model_config import load_model_config
 from taskmates.core.chat_completion.chat_completion_editor_completion import ChatCompletionEditorCompletion
 from taskmates.core.completion_provider import CompletionProvider
 from taskmates.formats.markdown.metadata.get_model_client import get_model_client
@@ -77,4 +78,6 @@ class ChatCompletionProvider(CompletionProvider):
             await signals.output.artifact.send_async({"name": "parsed_chat.json", "content": chat})
 
             client = get_model_client(model_conf["model"], taskmates_dirs)
+            mapped_config = load_model_config(model_conf["model"], taskmates_dirs)
+            model_conf["model"] = mapped_config["model_name"]
             return await api_request(client, messages, model_conf, model_params, signals)

@@ -1,8 +1,22 @@
+default:
+  client_type: anthropic
+  endpoint: https://api.anthropic.com
+  max_context_window: 4096
+  model_name: claude-3-opus-20240229
+
+# openai
+
 gpt-4o:
   client_type: openai
   endpoint: https://api.openai.com/v1
   max_context_window: 128000
   model_name: gpt-4o
+
+gpt-4o-mini:
+  client_type: openai
+  endpoint: https://api.openai.com/v1
+  max_context_window: 128000
+  model_name: gpt-4o-mini
 
 gpt-4-turbo:
   client_type: openai
@@ -40,6 +54,7 @@ gpt-3.5-turbo-instruct:
   max_context_window: 4096
   model_name: gpt-3.5-turbo-instruct
 
+# groq
 
 llama3-70b-8192:
   client_type: openai
@@ -54,6 +69,8 @@ mixtral-8x7b-32768:
   max_context_window: 32768
   model_name: mixtral-8x7b-32768
   api_key: env:GROQ_API_KEY
+
+# anthropic
 
 claude-3-haiku-20240307:
   client_type: anthropic
@@ -80,11 +97,15 @@ claude-3-5-sonnet-20240620:
   model_name: claude-3-opus-20240229
 
 
+# qwen
+
 codeqwen:
   client_type: openai
   endpoint: http://localhost:11434/v1
   max_context_window: 64000
   model_name: codequeen
+
+# test
 
 echo:
   client_type: echo
