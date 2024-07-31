@@ -12,6 +12,7 @@ RUN apt-get update && \
     fd-find \
     ack-grep \
     curl \
+    git \
     && rm -rf /var/lib/apt/lists/* \
     && ln -s $(which fdfind) /usr/local/bin/fd \
     && ln -s $(which ack-grep) /usr/local/bin/ack
