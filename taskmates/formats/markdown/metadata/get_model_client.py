@@ -21,8 +21,11 @@ def get_model_client(model_name: str, taskmates_dirs: list):
 
     if client_type == 'openai':
         client = oai.AsyncOpenAI(base_url=endpoint)
-        if api_key and api_key.startswith('env:'):
-            client.api_key = os.getenv(api_key[4:])
+        if api_key:
+            if api_key.startswith('env:'):
+                client.api_key = os.getenv(api_key[4:])
+            else:
+                client.api_key = api_key
     elif client_type == 'anthropic':
         client = AsyncAnthropicOpenAIAdapter()
     elif client_type == 'echo':

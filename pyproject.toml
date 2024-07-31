@@ -86,6 +86,8 @@ pygithub = "^2.3.0"
 
 typing-extensions = "^4.12.2"
 ordered-set = "^4.1.0"
+ipytest = "^0.14.2"
+testcontainers = "^4.7.2"
 [tool.poetry.group.dev.dependencies]
 pytest-socket = "^0.7.0"
 icecream = "^2.1.3"
@@ -155,6 +157,7 @@ coverage = "^7.6.0"
 pytest-timeout = "^2.3.1"
 
 pytest-xdist = "^3.6.1"
+testcontainers = "^4.7.2"
 [tool.poetry.extras]
 chromadb = ["chromadb"]
 

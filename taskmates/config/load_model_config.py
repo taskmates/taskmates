@@ -7,10 +7,10 @@ def load_model_config(model_name: str, taskmates_dirs: list) -> dict:
     if config_path is None:
         raise FileNotFoundError(
             f"Could not find models.yaml in any of the provided directories: {taskmates_dirs}")
-    model_config = load_yaml_config(config_path)
+    model_config = load_yaml_config(config_path) or {}
 
     if model_name not in model_config:
-        raise ValueError(f"Unknown model {model_name}")
+        raise ValueError(f"Unknown model {model_name!r}")
     return model_config[model_name]
 
 

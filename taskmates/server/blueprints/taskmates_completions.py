@@ -1,9 +1,9 @@
 import asyncio
 import json
 from contextlib import contextmanager
+from pathlib import Path
 
 from quart import Blueprint, Response, websocket
-from typeguard import typechecked
 
 import taskmates
 from taskmates.config.client_config import ClientConfig
@@ -25,8 +25,13 @@ completions_bp = Blueprint('completions_v2', __name__)
 
 @contextmanager
 def build_context(payload: CompletionPayload):
-    completion_context: CompletionContext = payload["completion_context"]
-    completion_opts: CompletionOpts = payload["completion_opts"]
+    completion_context: CompletionContext = payload["completion_context"].copy()
+    completion_opts: CompletionOpts = payload["completion_opts"].copy()
+
+    # TODO: review this
+    completion_opts["taskmates_dirs"] = [str(Path(payload["completion_context"]["cwd"]) / ".taskmates"),
+                                         *completion_opts.get("taskmates_dirs",
+                                                              COMPLETION_OPTS.get()["taskmates_dirs"])]
 
     if "template_params" not in completion_opts:
         completion_opts["template_params"] = {}
@@ -51,7 +56,7 @@ async def taskmates_completions():
     handlers = [
         WebSocketInterruptAndKillController(websocket),
         WebSocketCompletionStreamer(websocket),
-        FileSystemArtifactsSink(), # TODO: this should be disabled by default
+        FileSystemArtifactsSink(),  # TODO: this should be disabled by default
     ]
 
     signals = Signals()
