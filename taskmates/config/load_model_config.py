@@ -90,5 +90,5 @@ def test_load_model_config(temp_config_structure):
     assert config["max_tokens"] == 400
 
     # Test unknown model
-    with pytest.raises(ValueError, match="Unknown model unknown_model"):
+    with pytest.raises(ValueError, match="Unknown model 'unknown_model'"):
         load_model_config("unknown_model", taskmates_dirs)
