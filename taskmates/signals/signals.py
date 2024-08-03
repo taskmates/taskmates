@@ -57,13 +57,6 @@ class InputSignals(BaseSignals):
         self.formatting = self.namespace.signal('input_formatting')
 
 
-class OutputSignals(BaseSignals):
-    def __init__(self):
-        super().__init__()
-        self.artifact = self.namespace.signal('artifact')
-        self.return_value = self.namespace.signal('return_value')
-
-
 class LifecycleSignals(BaseSignals):
     def __init__(self):
         super().__init__()
@@ -74,29 +67,52 @@ class LifecycleSignals(BaseSignals):
         self.killed = self.namespace.signal('killed')
 
 
+class OutputSignals(BaseSignals):
+    def __init__(self):
+        super().__init__()
+        self.artifact = self.namespace.signal('artifact')
+
+        # TODO
+        # self.outputs = self.namespace.signal('outputs')
+        # self.state = self.namespace.signal('state')
+
+        # Call
+        self.result = self.namespace.signal('result')
+
+
+# TODO
+# class ConfigSignals(BaseSignals):
+#     def __init__(self):
+#         super().__init__()
+#         self.config = self.namespace.signal('config')
+#         self.env = self.namespace.signal('env')
+#         self.path = self.namespace.signal('path')
+
+
 class ResponseSignals(LifecycleSignals):
     def __init__(self):
         super().__init__()
 
-        # Output
+        # TODO: Chat Signals
         self.formatting = self.namespace.signal('response_formatting')
         self.responder = self.namespace.signal('responder')
         self.response = self.namespace.signal('response')
         self.next_responder = self.namespace.signal('next_responder')
 
-        # Internal ouptut signals
+        # TODO: Internal ouptut signals
         self.chat_completion = self.namespace.signal('chat_completion')
         self.code_cell_output = self.namespace.signal('code_cell_output')
 
-        # Logging signals
+        # TODO: Response Stream signals
         self.error = self.namespace.signal('error')
 
-        # Completion signal
+        # TODO: Completion signal
         self.completion = self.namespace.signal('completion')
 
         # TODO extract to a new Signals class
-        # Derived
+        # Derived/Bindings
         self.formatting.connect(self.completion.send_async, weak=False)
+
         # TODO split below
         self.responder.connect(self.completion.send_async, weak=False)
         self.response.connect(self.completion.send_async, weak=False)

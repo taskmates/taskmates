@@ -31,7 +31,7 @@ class CompletionEngine:
 
         markdown_collector = FullMarkdownCollector()
         incoming_messages_formatting_processor = IncomingMessagesFormattingProcessor(signals)
-        return_value_processor = ReturnValueProcessor()
+        return_value_processor = ResultProcessor()
         interruption_handler = InterruptedOrKilledHandler()
         interrupt_request_handler = InterruptRequestHandler(signals)
 
@@ -97,8 +97,8 @@ class CompletionEngine:
                 # TODO: Add lifecycle/checkpoint here
 
                 # Post-Step
-                if return_value_processor.return_value is not None:
-                    logger.debug(f"Return status is not None: {return_value_processor.return_value}")
+                if return_value_processor.result is not None:
+                    logger.debug(f"Return status is not None: {return_value_processor.result}")
                     break
 
                 if interruption_handler.interrupted_or_killed:
@@ -154,19 +154,19 @@ class FullMarkdownCollector(Handler):
 
 
 # TODO: move return logic here
-class ReturnValueProcessor(Handler):
+class ResultProcessor(Handler):
     def __init__(self):
-        self.return_value = None
+        self.result = None
 
-    async def handle_return_value(self, status):
-        logger.debug(f"Return status: {status}")
-        self.return_value = status
+    async def handle_result(self, result):
+        logger.debug(f"Result: {result}")
+        self.result = result
 
     def connect(self, signals):
-        signals.output.return_value.connect(self.handle_return_value)
+        signals.output.result.connect(self.handle_result)
 
     def disconnect(self, signals):
-        signals.output.return_value.disconnect(self.handle_return_value)
+        signals.output.result.disconnect(self.handle_result)
 
 
 # TODO: move interruption logic here

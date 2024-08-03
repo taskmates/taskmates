@@ -33,7 +33,7 @@ async def async_complete(markdown,
         return_value = status
 
     signals.response.response.connect(process_response_chunk)
-    signals.output.return_value.connect(process_return_value)
+    signals.output.result.connect(process_return_value)
     signals.response.error.connect(process_error)
 
     completion_context = COMPLETION_CONTEXT.get()
