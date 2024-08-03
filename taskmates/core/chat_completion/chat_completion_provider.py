@@ -41,7 +41,7 @@ class ChatCompletionProvider(CompletionProvider):
 
         with signals.response.chat_completion.connected_to(restream_completion_chunk):
             taskmates_dirs = self.completion_opts["taskmates_dirs"]
-            model_conf = get_model_conf(model_name=model, messages=chat["messages"], taskmates_dirs=taskmates_dirs)
+            model_conf = get_model_conf(model_alias=model, messages=chat["messages"], taskmates_dirs=taskmates_dirs)
             tools = list(map(function_registry.__getitem__, chat["available_tools"]))
             tools_schemas = [tool_schema(f) for f in tools]
 
@@ -78,6 +78,4 @@ class ChatCompletionProvider(CompletionProvider):
             await signals.output.artifact.send_async({"name": "parsed_chat.json", "content": chat})
 
             client = get_model_client(model_conf["model"], taskmates_dirs)
-            mapped_config = load_model_config(model_conf["model"], taskmates_dirs)
-            model_conf["model"] = mapped_config["model_name"]
             return await api_request(client, messages, model_conf, model_params, signals)

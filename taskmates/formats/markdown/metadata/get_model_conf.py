@@ -31,7 +31,8 @@ def calculate_max_tokens(messages: list, model_name: str, taskmates_dirs: list):
 
 
 @typechecked
-def get_model_conf(model_name: str, messages: list, taskmates_dirs: list):
+def get_model_conf(model_alias: str, messages: list, taskmates_dirs: list):
+    model_name = load_model_config(model_alias, taskmates_dirs)["model_name"]
     max_tokens = calculate_max_tokens(messages, model_name, taskmates_dirs)
 
     model_conf = {
