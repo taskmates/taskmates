@@ -150,3 +150,5 @@ worktree
 node_modules
 chat.md
 tmp/
+
+.env.*.local
