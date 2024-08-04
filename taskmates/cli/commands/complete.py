@@ -11,7 +11,7 @@ class CompleteCommand:
     help = 'Complete a task'
 
     def add_arguments(self, parser):
-        parser.add_argument('markdown', type=str, help='The markdown to complete')
+        parser.add_argument('markdown', type=str, nargs='?', help='The markdown to complete')
         parser.add_argument('--history', type=str, help='The history file to read from/save to')
         parser.add_argument('--endpoint', type=str, default=None, help='The Taskmates websocket API endpoint')
 
