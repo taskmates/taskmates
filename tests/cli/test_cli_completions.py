@@ -304,3 +304,32 @@ def test_kill_code_cell(cli_runner, tmp_path):
 
     assert output == expected_response
     assert process.returncode == -9
+
+
+def test_chat_completion_from_stdin(tmp_path):
+    taskmates_home = tmp_path / ".taskmates"
+    env = os.environ.copy()
+    env["TASKMATES_HOME"] = str(taskmates_home)
+
+    cmd = ["taskmates", "complete", "--model=quote"]
+    process = subprocess.Popen(
+        cmd,
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        cwd=str(tmp_path),
+        env=env
+    )
+
+    stdin_input = "Short answer. 1+1="
+    stdout, stderr = process.communicate(input=stdin_input)
+
+    expected_response = textwrap.dedent("""
+    > Short answer. 1+1=
+    > 
+    > """)
+
+    assert process.returncode == 0
+    assert not stderr
+    assert stdout == expected_response
