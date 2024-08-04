@@ -2,7 +2,7 @@ default:
   client_type: anthropic
   endpoint: https://api.anthropic.com
   max_context_window: 4096
-  model_name: claude-3-opus-20240229
+  model_name: claude-3-5-sonnet-20240620
 
 # openai
 
