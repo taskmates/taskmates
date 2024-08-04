@@ -1,0 +1,15 @@
+#!/bin/bash
+
+set -Eeuo pipefail
+
+# Build the Docker image
+docker build \
+    --build-arg GITHUB_TOKEN="$GITHUB_TOKEN" \
+    -t taskmates-dev \
+    .devcontainer
+
+# Run the Docker container
+docker run -it \
+    -e GITHUB_TOKEN="$GITHUB_TOKEN" \
+    -v .:/workspace \
+    taskmates-dev

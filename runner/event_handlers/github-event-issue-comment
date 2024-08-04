@@ -1,0 +1,10 @@
+#!/bin/bash
+
+set -Eeuo pipefail
+
+# Extract values from GITHUB_EVENT
+issue_number=$(echo "$GITHUB_EVENT" | jq -r '.issue.number')
+comment_user=$(echo "$GITHUB_EVENT" | jq -r '.comment.user.login')
+
+# Run the issue comment workflow
+./runner/taskmates-issue-comment-workflow "$issue_number" "$comment_user"

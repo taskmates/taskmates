@@ -1,0 +1,18 @@
+#!/bin/bash
+
+set -Eeuo pipefail
+
+echo "Checking if PR creation is necessary..."
+
+taskmates complete --model claude-3-haiku-20240307 --format completion "@guard report true if source code has been modified" <"$MARKDOWN_CHAT_PATH" |
+tee "$RUNNER_TEMP/guard-pr.md"
+
+if grep -q "true" "$RUNNER_TEMP/guard-pr.md"; then
+    echo "Source code has been modified. Creating PR..."
+    taskmates complete --format full "Hey @gh please create a feature branch, commit the modified files, and open a PR" <"$MARKDOWN_CHAT_PATH" |
+    tee "$RUNNER_TEMP/create-pr.md"
+    
+    cp "$RUNNER_TEMP/create-pr.md" "$MARKDOWN_CHAT_PATH"
+else
+    echo "No source code modifications detected. Skipping PR creation."
+fi

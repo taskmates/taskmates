@@ -1,0 +1,21 @@
+#!/bin/bash
+
+set -Eeuo pipefail
+
+echo "Summarizing the response..."
+
+echo -n "**$RECIPIENT>** " > "$RUNNER_TEMP/report.md"
+cat "$MARKDOWN_CHAT_PATH" | taskmates complete \
+    --format text \
+    "Hey @progress please report this" | tee -a "$RUNNER_TEMP/report.md"
+
+echo
+echo "Reporting back..."
+if [ -n "${PR_NUMBER:-}" ]; then
+    cat "$RUNNER_TEMP/report.md" | gh pr comment $PR_NUMBER --body-file -
+else
+    cat "$RUNNER_TEMP/report.md" | gh issue comment $ISSUE_NUMBER --body-file -
+fi
+
+echo
+echo "Taskmates run completed: $?"
