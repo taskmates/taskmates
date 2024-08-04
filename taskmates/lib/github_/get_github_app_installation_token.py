@@ -9,10 +9,9 @@ from dotenv import load_dotenv
 
 from taskmates.lib.root_path.root_path import root_path
 
-load_dotenv(root_path() / '.env.production.local')
-
 
 def get_github_app_installation_token(installation_id):
+    load_dotenv(root_path() / '.env.production.local')
     github_app_id = os.environ['GITHUB_APP_ID']
     github_private_key = os.environ['GITHUB_PRIVATE_KEY']
     private_key_data = base64.b64decode(github_private_key)

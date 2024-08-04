@@ -10,10 +10,9 @@ from dotenv import load_dotenv
 
 from taskmates.lib.root_path.root_path import root_path
 
-load_dotenv(root_path() / '.env.production.local')
-
 
 def github_client(app_id):
+    load_dotenv(root_path() / '.env.production.local')
     private_key_data = base64.b64decode(os.environ['GITHUB_PRIVATE_KEY'])
     private_key = serialization.load_pem_private_key(
         private_key_data,
