@@ -2,16 +2,17 @@ from taskmates.config.find_config_file import find_config_file
 from taskmates.config.load_participant_config import load_yaml_config
 
 
-def load_model_config(model_name: str, taskmates_dirs: list) -> dict:
+def load_model_config(model_alias: str, taskmates_dirs: list) -> dict:
     config_path = find_config_file("models.yaml", taskmates_dirs)
     if config_path is None:
         raise FileNotFoundError(
             f"Could not find models.yaml in any of the provided directories: {taskmates_dirs}")
     model_config = load_yaml_config(config_path) or {}
 
-    if model_name not in model_config:
-        raise ValueError(f"Unknown model {model_name!r}")
-    return model_config[model_name]
+    if model_alias not in model_config:
+        raise ValueError(f"Unknown model {model_alias!r}")
+
+    return model_config[model_alias]
 
 
 # Add tests

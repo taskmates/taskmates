@@ -11,8 +11,8 @@ from taskmates.core.chat_completion.openai_adapters.echo.quote import Quote
 
 
 @typechecked
-def get_model_client(model_name: str, taskmates_dirs: list):
-    model_config = load_model_config(model_name, taskmates_dirs)
+def get_model_client(model_alias: str, taskmates_dirs: list):
+    model_config = load_model_config(model_alias, taskmates_dirs)
 
     model_spec = model_config
     client_type = model_spec['client_type']

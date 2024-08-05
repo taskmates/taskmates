@@ -13,7 +13,7 @@ from taskmates.lib.root_path.root_path import root_path
 def get_github_app_installation_token(installation_id):
     load_dotenv(root_path() / '.env.production.local')
     github_app_id = os.environ['GITHUB_APP_ID']
-    github_private_key = os.environ['GITHUB_PRIVATE_KEY']
+    github_private_key = os.environ['GITHUB_APP_PRIVATE_KEY']
     private_key_data = base64.b64decode(github_private_key)
     private_key = serialization.load_pem_private_key(
         private_key_data,

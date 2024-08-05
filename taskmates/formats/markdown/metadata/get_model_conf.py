@@ -10,7 +10,9 @@ from taskmates.lib.root_path.root_path import root_path
 
 
 @typechecked
-def calculate_max_tokens(messages: list, model_name: str, taskmates_dirs: list):
+def calculate_max_tokens(messages: list, model_config: dict):
+    model_name = model_config["model_name"]
+
     images = 0
     if "claude" in model_name:
         return 4096
@@ -25,15 +27,16 @@ def calculate_max_tokens(messages: list, model_name: str, taskmates_dirs: list):
                         del part["image_url"]
                         images += 1
 
-        available_tokens = load_model_config(model_name, taskmates_dirs)["max_context_window"] - count_tokens(
+        available_tokens = model_config["max_context_window"] - count_tokens(
             json.dumps(approximate_payload, ensure_ascii=False)) - (images * 100)
         return min(available_tokens - 200, 4096)
 
 
 @typechecked
 def get_model_conf(model_alias: str, messages: list, taskmates_dirs: list):
-    model_name = load_model_config(model_alias, taskmates_dirs)["model_name"]
-    max_tokens = calculate_max_tokens(messages, model_name, taskmates_dirs)
+    model_config = load_model_config(model_alias, taskmates_dirs)
+    model_name = model_config["model_name"]
+    max_tokens = calculate_max_tokens(messages, model_config)
 
     model_conf = {
         **{"model": model_name,
