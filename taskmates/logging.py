@@ -1,9 +1,9 @@
 import copy
 import logging
 import os
-import sys
 from pathlib import Path
 
+import sys
 from loguru import logger
 
 from taskmates.lib.resources_.resources import dump_resource
@@ -11,7 +11,8 @@ from taskmates.lib.resources_.resources import dump_resource
 level = os.environ.get("TASKMATES_LOG_LEVEL", "WARNING").upper()
 
 logging.basicConfig(handlers=[logging.StreamHandler(sys.stderr)],
-                    level=level)
+                    level=level,
+                    force=True)
 
 anthropic_logger: logging.Logger = logging.getLogger("anthropic")
 anthropic_logger.setLevel(level)

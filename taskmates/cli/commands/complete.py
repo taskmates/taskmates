@@ -1,98 +1,75 @@
 import json
 import os
-import sys
-from pathlib import Path
-from uuid import uuid4
+import select
 
+import sys
 from typeguard import typechecked
 
 from taskmates.cli.lib.complete import complete
-from taskmates.config import CompletionContext, ClientConfig, COMPLETION_OPTS, ServerConfig, SERVER_CONFIG
-from taskmates.signal_config import SignalConfig
-from taskmates.signals.signals import Signals, SIGNALS
 
 
 class CompleteCommand:
     help = 'Complete a task'
 
     def add_arguments(self, parser):
-        parser.add_argument('markdown', type=str, help='The markdown to complete')
-        # TODO: commented out because it's not currently implemented
-        # parser.add_argument('--output', type=str, help='The output file path')
-        parser.add_argument('--endpoint', type=str, default=None,
-                            help='The websocket endpoint')
+        parser.add_argument('markdown', type=str, nargs='?', help='The markdown to complete')
+        parser.add_argument('--history', type=str, help='The history file to read from/save to')
+        parser.add_argument('--endpoint', type=str, default=None, help='The Taskmates websocket API endpoint')
+
+        # parser.add_argument('--input-method', choices=['default', 'websocket'], default='default',
+        #                     help='Select input method for control signals')
+        # parser.add_argument('--output-method', choices=['default', 'websocket'], default='default',
+        #                     help='Select output method for response signals')
+        # parser.add_argument('--websocket-url', default='ws://localhost:8765',
+        #                     help='WebSocket URL for websocket method')
+
         parser.add_argument('--model', type=str, default='claude-3-5-sonnet-20240620', help='The model to use')
         parser.add_argument('-n', '--max-interactions', type=int, default=100,
                             help='The maximum number of interactions')
         parser.add_argument('--template-params', type=json.loads, action='append', default=[],
                             help='JSON string with system prompt template parameters (can be specified multiple times)')
-        parser.add_argument('--format', type=str, default='text', choices=['full', 'original', 'completion', 'text'],
+        parser.add_argument('--format', type=str, default='text', choices=['full', 'completion', 'text'],
                             help='Output format')
 
-    async def execute(self, args, signal_config: SignalConfig):
-        markdown = self.get_markdown(args)
+    async def execute(self, args):
+        history = self.read_args_history(args)
+        stdin_markdown = self.read_stdin_incoming_message()
+        args_markdown = await self.get_args_incoming_message(args)
 
-        request_id = str(uuid4())
+        if not history and not stdin_markdown and not args_markdown:
+            raise ValueError("No input provided")
 
-        # If --output is not provided, write to request_id file in /var/tmp
-        # output = args.output or f"~/.taskmates/completions/{request_id}.md"
-        # Path(output).parent.mkdir(parents=True, exist_ok=True)
-
-        context: CompletionContext = {
-            "request_id": request_id,
-            "markdown_path": str(Path(os.getcwd()) / f"{request_id}.md"),
-            "cwd": os.getcwd(),
-        }
-
-        server_config: ServerConfig = SERVER_CONFIG.get()
-
-        client_config = ClientConfig(interactive=False,
-                                     format=args.format,
-                                     endpoint=args.endpoint,
-                                     # output=(output if args.output else None)
-                                     )
-
-        completion_opts = {
-            "model": args.model,
-            "template_params": self.merge_template_params(args.template_params),
-            "max_interactions": args.max_interactions,
-        }
-
-        COMPLETION_OPTS.set({**COMPLETION_OPTS.get(), **completion_opts})
-
-        signals = Signals()
-        SIGNALS.set(signals)
-
-        await complete(markdown, context,
-                       server_config,
-                       client_config,
-                       completion_opts,
-                       signal_config, signals)
+        await complete(history,
+                       [stdin_markdown, args_markdown],
+                       args)
 
     @staticmethod
-    def merge_template_params(template_params: list) -> dict:
-        merged = {}
-        for params in template_params:
-            merged.update(params)
-        return merged
+    async def get_args_incoming_message(args):
+        args_markdown = args.markdown
+        if args_markdown and not args_markdown.startswith("**"):
+            args_markdown = "**user>** " + args_markdown
+        return args_markdown
+
+    @staticmethod
+    def read_args_history(args):
+        history = ""
+        if args.history:
+            if not os.path.exists(args.history):
+                return None
+            with open(args.history, 'r') as f:
+                history = f.read()
+        return history
 
     @typechecked
-    def get_markdown(self, args) -> str:
+    def read_stdin_incoming_message(self) -> str:
         # Read markdown from stdin if available
         stdin_markdown = ""
+        selected = select.select([sys.stdin,], [], [], 0.0)[0]
         pycharm_env = os.environ.get("PYCHARM_HOSTED", 0) == '1'
-        if not pycharm_env and not sys.stdin.isatty():
+        if (selected or not pycharm_env) and not sys.stdin.isatty():
             stdin_markdown = "".join(sys.stdin.readlines())
-        args_markdown = args.markdown
 
-        if stdin_markdown and args_markdown:
-            # Concatenate stdin markdown with --markdown argument if both are provided
-            # TODO: Not sure about this being hardcoded to user
-            markdown = stdin_markdown + "\n\n**user>** " + args_markdown
-        elif stdin_markdown:
-            markdown = stdin_markdown
-        elif args_markdown:
-            markdown = args_markdown
-        else:
-            raise ValueError("No markdown provided")
-        return markdown
+        if stdin_markdown and not stdin_markdown.startswith("**"):
+            stdin_markdown = "**user>** " + stdin_markdown
+
+        return stdin_markdown

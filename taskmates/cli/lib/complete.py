@@ -1,99 +1,81 @@
-import asyncio
 import os
-import signal
+from contextlib import contextmanager
+from typing import List, Optional
+from uuid import uuid4
 
 from typeguard import typechecked
 
-from taskmates.assistances.markdown.markdown_completion_assistance import MarkdownCompletionAssistance
-from taskmates.bridges.websocket_bridges import OutputSignalsToWebsocketBridge, WebsocketToControlSignalsBridge
-from taskmates.config import CompletionContext, ClientConfig, ServerConfig, CompletionOpts
-from taskmates.signal_config import SignalConfig, SignalMethod
-from taskmates.signals.signals import Signals
-from taskmates.sinks.stdout_sink import StdoutSink
-
-# Global variable to store the received signal
-received_signal = None
-
-
-# noinspection PyUnusedLocal
-def signal_handler(sig, frame):
-    global received_signal
-    received_signal = sig
+from taskmates.cli.lib.merge_template_params import merge_template_params
+from taskmates.config.client_config import ClientConfig
+from taskmates.config.completion_context import COMPLETION_CONTEXT, CompletionContext
+from taskmates.config.completion_opts import COMPLETION_OPTS
+from taskmates.config.server_config import SERVER_CONFIG
+from taskmates.config.updated_config import updated_config
+from taskmates.core.completion_engine import CompletionEngine
+from taskmates.io.history_sink import HistorySink
+from taskmates.io.sig_int_and_sig_term_controller import SigIntAndSigTermController
+from taskmates.io.stdout_completion_streamer import StdoutCompletionStreamer
+from taskmates.signals.handler import Handler
+from taskmates.signals.signals import Signals, SIGNALS
 
 
-async def handle_signals(signals):
-    global received_signal
-    while True:
-        if received_signal == signal.SIGINT:
-            print(flush=True)
-            print("Interrupting...", flush=True)
-            print("Press Ctrl+C again to kill", flush=True)
-            await signals.control.interrupt_request.send_async({})
-            await asyncio.sleep(5)
-            received_signal = None
-        elif received_signal == signal.SIGTERM:
-            await signals.control.kill.send_async({})
-            await asyncio.sleep(5)
-            break
-        await asyncio.sleep(0.1)
+@contextmanager
+def build_context(args):
+    request_id = str(uuid4())
+    completion_context: CompletionContext = {
+        "request_id": request_id,
+        "markdown_path": str(os.path.join(os.getcwd(), f"{request_id}.md")),
+        "cwd": os.getcwd(),
+    }
+    client_config = ClientConfig(interactive=False,
+                                 format=args.format,
+                                 endpoint=args.endpoint)
+    completion_opts = {
+        "model": args.model,
+        "template_params": merge_template_params(args.template_params),
+        "max_interactions": args.max_interactions,
+    }
+
+    with updated_config(COMPLETION_CONTEXT, completion_context), \
+            updated_config(COMPLETION_OPTS, completion_opts):
+        yield {
+            'context': COMPLETION_CONTEXT.get(),
+            'client_config': client_config,
+            'server_config': SERVER_CONFIG.get(),
+            'completion_opts': COMPLETION_OPTS.get()
+        }
 
 
 @typechecked
-async def complete(markdown: str,
-                   context: CompletionContext,
-                   server_config: ServerConfig,
-                   client_config: ClientConfig,
-                   completion_opts: CompletionOpts,
-                   signal_config: SignalConfig,
-                   signals: Signals):
-    input_bridge = None
-    output_bridge = None
+async def complete(history: str | None, incoming_messages: list[str], args, handlers: Optional[List[Handler]] = None):
+    if handlers is None:
+        handlers = [
+            SigIntAndSigTermController(),
+            StdoutCompletionStreamer(args.format),
+            HistorySink(args.history)
+        ]
 
-    if signal_config.input_method == SignalMethod.WEBSOCKET:
-        input_bridge = WebsocketToControlSignalsBridge(signals.control, signal_config.websocket_url)
-        await input_bridge.connect()
+    signals = Signals()
+    SIGNALS.set(signals)
 
-    if signal_config.output_method == SignalMethod.WEBSOCKET:
-        output_bridge = OutputSignalsToWebsocketBridge(signals.output, signal_config.websocket_url)
-        await output_bridge.connect()
-
-    format = client_config.get('format', 'text')
-    StdoutSink(format).connect(signals)
-
-    async def process_return_value(status):
-        if status['result']:
-            pass
-        else:
-            print(status['summary'], flush=True)
-            # noinspection PyUnresolvedReferences,PyProtectedMember
-            os._exit(-1)
-
-    signals.output.return_value.connect(process_return_value, weak=False)
-
-    signal.signal(signal.SIGINT, signal_handler)
-    signal.signal(signal.SIGTERM, signal_handler)
-
-    process_task = asyncio.create_task(MarkdownCompletionAssistance().perform_completion(
-        context,
-        markdown,
-        server_config,
-        client_config,
-        completion_opts,
-        signals))
-    signal_task = asyncio.create_task(handle_signals(signals))
+    # Connect handlers
+    for handler in handlers:
+        handler.connect(signals)
 
     try:
-        done, pending = await asyncio.wait(
-            [process_task, signal_task],
-            return_when=asyncio.FIRST_COMPLETED
-        )
-
-        for task in pending:
-            task.cancel()
+        with build_context(args) as config:
+            result = await CompletionEngine().perform_completion(
+                config['context'],
+                history,
+                incoming_messages,
+                config['server_config'],
+                config['client_config'],
+                config['completion_opts'],
+                signals
+            )
     finally:
-        if input_bridge:
-            await input_bridge.close()
-        if output_bridge:
-            await output_bridge.close()
+        # Disconnect handlers
+        for handler in handlers:
+            handler.disconnect(signals)
 
-
+    return result

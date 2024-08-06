@@ -5,7 +5,7 @@ import pytest_socket
 import tiktoken
 
 from taskmates.signals.signals import Signals, SIGNALS
-from taskmates.environment.participants.load_participant_config import load_cache
+from taskmates.config.load_participant_config import load_cache
 
 def pytest_configure(config):
     # Set up logging

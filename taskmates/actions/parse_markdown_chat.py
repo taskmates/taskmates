@@ -6,7 +6,7 @@ from typing import Union
 import pytest
 from typeguard import typechecked
 
-from taskmates.assistances.code_execution.jupyter_.parse_notebook import parse_notebook
+from taskmates.core.code_execution.code_cells.parse_notebook import parse_notebook
 from taskmates.formats.markdown.metadata.get_available_tools import get_available_tools
 from taskmates.formats.markdown.metadata.prepend_recipient_system import prepend_recipient_system
 from taskmates.formats.markdown.parsing.parse_front_matter_and_messages import parse_front_matter_and_messages
@@ -20,11 +20,8 @@ from taskmates.types import Chat
 @typechecked
 async def parse_markdown_chat(markdown_chat: str,
                               markdown_path: Union[str, Path] | None,
-                              taskmates_dir: Union[str, Path] = os.environ.get("TASKMATES_HOME",
-                                                                               str(Path.home() / ".taskmates")),
+                              taskmates_dirs: list[str | Path],
                               template_params: dict | None = None) -> Chat:
-    taskmates_dir = Path(taskmates_dir)
-
     if markdown_path is None:
         markdown_path = Path(os.getcwd()) / f"{get_digest(markdown_chat)}.md"
     markdown_path = Path(markdown_path)
@@ -35,7 +32,7 @@ async def parse_markdown_chat(markdown_chat: str,
                                                                          "user")
 
     # compute
-    recipient, participants_configs = await compute_participants(taskmates_dir, front_matter, split_messages)
+    recipient, participants_configs = await compute_participants(taskmates_dirs, front_matter, split_messages)
     recipient_config = participants_configs.get(recipient, {})
     available_tools = get_available_tools(front_matter, recipient_config)
 
@@ -45,7 +42,7 @@ async def parse_markdown_chat(markdown_chat: str,
     front_matter_template_params = front_matter.get("template_params", {})
 
     if recipient:
-        messages = prepend_recipient_system(taskmates_dir,
+        messages = prepend_recipient_system(taskmates_dirs,
                                             participants_configs,
                                             recipient,
                                             recipient_config,
@@ -69,9 +66,10 @@ async def parse_markdown_chat(markdown_chat: str,
 
 @pytest.fixture
 def taskmates_dir(tmp_path):
-    base_dir = tmp_path / "taskmates"
+    base_dir = tmp_path / ".taskmates"
+    (base_dir / "engine").mkdir(parents=True)
+    (base_dir / "engine" / "chat_introduction.md").write_text("CHAT_INTRODUCTION\n")
     (base_dir / "taskmates").mkdir(parents=True)
-    (base_dir / "taskmates" / "_introduction.md").write_text("THREAD_INTRODUCTION\n")
     (base_dir / "taskmates" / "mediator.md").write_text("MEDIATOR_PROMPT\n")
     (base_dir / "taskmates" / "mediator.description.md").write_text("MEDIATOR_ROLE\n")
     (base_dir / "taskmates" / "browser.md").write_text("---\ntools:\n  BROWSER_TOOL:\n---\n\nBROWSER_PROMPT\n")
@@ -99,7 +97,7 @@ async def test_recipient_by_mention(taskmates_dir, markdown_path):
     @browser search the latest news @not_a_mention
     """
     markdown_path.write_text(textwrap.dedent(markdown_chat))
-    result = await parse_markdown_chat(textwrap.dedent(markdown_chat), markdown_path, taskmates_dir)
+    result = await parse_markdown_chat(textwrap.dedent(markdown_chat), markdown_path, [taskmates_dir])
 
     assert result['messages'][0]["role"] == "system"
     assert result['messages'][0]["content"] == f"BROWSER_PROMPT\n\n{format_username_prompt('browser')}\n"
@@ -126,7 +124,7 @@ async def test_single_participant(taskmates_dir, markdown_path):
     markdown_path.write_text(textwrap.dedent(markdown_chat_content))
 
     # Process the markdown chat
-    result = await parse_markdown_chat(textwrap.dedent(markdown_chat_content), markdown_path, taskmates_dir)
+    result = await parse_markdown_chat(textwrap.dedent(markdown_chat_content), markdown_path, [taskmates_dir])
 
     # Assertions to check if the participants and system messages are processed correctly
     assert result['messages'][0]['role'] == 'system'
@@ -160,7 +158,7 @@ async def test_multiple_participants_and_recipient(taskmates_dir, markdown_path)
     markdown_path.write_text(textwrap.dedent(markdown_chat_content))
 
     # Process the markdown chat
-    result = await parse_markdown_chat(textwrap.dedent(markdown_chat_content), markdown_path, taskmates_dir)
+    result = await parse_markdown_chat(textwrap.dedent(markdown_chat_content), markdown_path, [taskmates_dir])
 
     # Assertions to check if the participants and system messages are processed correctly
     assert result['messages'][0]['role'] == 'system'
@@ -168,7 +166,8 @@ async def test_multiple_participants_and_recipient(taskmates_dir, markdown_path)
     expected_content = f"""\
         BROWSER_PROMPT
         
-        THREAD_INTRODUCTION
+        
+        CHAT_INTRODUCTION
         
         The following participants are in this chat:
         
@@ -198,7 +197,7 @@ async def test_empty_participants(markdown_path, taskmates_dir):
 
     result = await parse_markdown_chat(textwrap.dedent(markdown_chat_content),
                                        markdown_path,
-                                       taskmates_dir)
+                                       [taskmates_dir])
 
     assert list(result['participants'].keys()) == ['user', 'assistant']
 
@@ -215,7 +214,7 @@ async def test_missing_user_participant(markdown_path, taskmates_dir):
     """
 
     result = await parse_markdown_chat(textwrap.dedent(markdown_chat_content), markdown_path,
-                                       taskmates_dir)
+                                       [taskmates_dir])
 
     assert list(result['participants'].keys()) == ['user', 'browser']
 
@@ -237,6 +236,6 @@ async def test_participant_dictionary_format(markdown_path, taskmates_dir):
     """
 
     result = await parse_markdown_chat(textwrap.dedent(markdown_chat_content), markdown_path,
-                                       taskmates_dir)
+                                       [taskmates_dir])
 
     assert list(result['participants'].keys()) == ['user', 'my_assistant', 'my_user']

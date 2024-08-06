@@ -4,12 +4,15 @@ import textwrap
 
 from typeguard import typechecked
 
-from taskmates.formats.markdown.metadata.load_model_config import load_model_config
+from taskmates.config.load_model_config import load_model_config
 from taskmates.lib.openai_.count_tokens import count_tokens
+from taskmates.lib.root_path.root_path import root_path
 
 
 @typechecked
-def calculate_max_tokens(messages: list, model_name: str):
+def calculate_max_tokens(messages: list, model_config: dict):
+    model_name = model_config["model_name"]
+
     images = 0
     if "claude" in model_name:
         return 4096
@@ -24,14 +27,16 @@ def calculate_max_tokens(messages: list, model_name: str):
                         del part["image_url"]
                         images += 1
 
-        available_tokens = load_model_config(model_name)["max_context_window"] - count_tokens(
+        available_tokens = model_config["max_context_window"] - count_tokens(
             json.dumps(approximate_payload, ensure_ascii=False)) - (images * 100)
         return min(available_tokens - 200, 4096)
 
 
 @typechecked
-def get_model_conf(model_name: str, messages: list):
-    max_tokens = calculate_max_tokens(messages, model_name)
+def get_model_conf(model_alias: str, messages: list, taskmates_dirs: list):
+    model_config = load_model_config(model_alias, taskmates_dirs)
+    model_name = model_config["model_name"]
+    max_tokens = calculate_max_tokens(messages, model_config)
 
     model_conf = {
         **{"model": model_name,
@@ -62,7 +67,9 @@ def test_handling_wrapped_json_in_payload_role():
             }
         ]
     }
-    updated_payload = get_model_conf("gpt-4", payload["messages"])
+
+    default_config_dir = root_path() / "taskmates" / "default_config"
+    updated_payload = get_model_conf("gpt-4", payload["messages"], [default_config_dir])
     assert updated_payload == {'max_tokens': 4096,
                                'model': 'gpt-4',
                                'stop': ['\n######'],
@@ -89,7 +96,8 @@ def test_handling_wrapped_json_and_extra_text_in_payload_role():
             }
         ]
     }
-    updated_payload = get_model_conf("gpt-4", payload["messages"])
+    default_config_dir = root_path() / "taskmates" / "default_config"
+    updated_payload = get_model_conf("gpt-4", payload["messages"], [default_config_dir])
     assert updated_payload == {'max_tokens': 4096,
                                'model': 'gpt-4',
                                'stop': ['\n######'],

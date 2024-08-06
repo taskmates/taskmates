@@ -5,7 +5,7 @@ import pyparsing as pp
 
 def code_cell_parser():
     code_cell_with_language_start = pp.Combine(
-        pp.line_start + pp.Regex(r"```[a-z]+( \.eval)?", re.MULTILINE) + pp.line_end).set_name(
+        pp.line_start + pp.Regex(r"```[a-zA-Z0-9]+( \.eval)?", re.MULTILINE) + pp.line_end).set_name(
         "code_cell_with_language_start")
     code_cell_with_language = pp.Forward().set_name("code_cell_with_language")
     code_cell_end = pp.Regex(r"^```(`*)(\n|\Z)", re.MULTILINE).set_name("code_cell_end")

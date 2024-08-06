@@ -2,9 +2,12 @@ from typing import Unpack
 
 from typeguard import typechecked
 
-from taskmates.assistances.markdown.markdown_completion_assistance import MarkdownCompletionAssistance
-from taskmates.config import CompletionOpts, COMPLETION_CONTEXT, updated_config, COMPLETION_OPTS, ServerConfig, \
-    SERVER_CONFIG, ClientConfig, CLIENT_CONFIG
+from taskmates.core.completion_engine import CompletionEngine
+from taskmates.config.client_config import ClientConfig, CLIENT_CONFIG
+from taskmates.config.completion_context import COMPLETION_CONTEXT
+from taskmates.config.completion_opts import COMPLETION_OPTS, CompletionOpts
+from taskmates.config.server_config import ServerConfig, SERVER_CONFIG
+from taskmates.config.updated_config import updated_config
 from taskmates.lib.not_set.not_set import NOT_SET
 from taskmates.signals.signals import SIGNALS, Signals
 
@@ -29,9 +32,9 @@ async def async_complete(markdown,
         nonlocal return_value
         return_value = status
 
-    signals.output.response.connect(process_response_chunk)
-    signals.output.return_value.connect(process_return_value)
-    signals.output.error.connect(process_error)
+    signals.response.response.connect(process_response_chunk)
+    signals.output.result.connect(process_return_value)
+    signals.response.error.connect(process_error)
 
     completion_context = COMPLETION_CONTEXT.get()
 
@@ -40,9 +43,10 @@ async def async_complete(markdown,
 
     try:
         with updated_config(COMPLETION_OPTS, completion_opts):
-            await MarkdownCompletionAssistance().perform_completion(
+            await CompletionEngine().perform_completion(
                 completion_context,
                 markdown,
+                [],
                 server_config,
                 client_config,
                 completion_opts,

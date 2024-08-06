@@ -5,7 +5,8 @@ import signal
 import websockets
 from websockets.exceptions import ConnectionClosed
 
-from taskmates.config import ClientConfig, COMPLETION_CONTEXT
+from taskmates.config.client_config import ClientConfig
+from taskmates.config.completion_context import COMPLETION_CONTEXT
 
 
 async def on_message(message):

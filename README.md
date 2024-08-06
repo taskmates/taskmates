@@ -41,10 +41,20 @@ Please note that they can and are getting better (at a fast speed) via:
 ## Installation
 
 ```bash
+# install pipx
+brew install pipx
+pipx ensurepath
+sudo pipx ensurepath --global # optional to allow pipx actions with --global argument
+
+# install/update taskmates
 pipx install --force --python 3.11 git+https://github.com/taskmates/taskmates.git
 
-# optionally, install pre-built Taskmates 
+# install pre-built Taskmates 
 git clone https://@github.com/taskmates/taskmates-directory.git "${TASKMATES_HOME:-"$HOME/.taskmates"}/taskmates"
+
+# test installation
+export TASKMATES_API_KEY=<your_api_key>
+taskmates complete "Hey @taskmates what can you do?"
 ```
 
 ## Quick Start

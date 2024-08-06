@@ -7,7 +7,6 @@ from taskmates.cli.commands.complete import CompleteCommand
 from taskmates.cli.commands.parse import ParseCommand
 from taskmates.cli.commands.screenshot import ScreenshotCommand
 from taskmates.cli.commands.server import ServerCommand
-from taskmates.signal_config import SignalConfig, SignalMethod
 from taskmates.logging import logger
 
 env.bootstrap()
@@ -16,12 +15,6 @@ env.bootstrap()
 def main():
     parser = argparse.ArgumentParser(description='Taskmates CLI')
     parser.add_argument('--version', action='version', version=f'Taskmates {taskmates.__version__}')
-    parser.add_argument('--input-method', choices=['default', 'websocket'], default='default',
-                        help='Select input method for control signals')
-    parser.add_argument('--output-method', choices=['default', 'websocket'], default='default',
-                        help='Select output method for response signals')
-    parser.add_argument('--websocket-url', default='ws://localhost:8765',
-                        help='WebSocket URL for websocket method')
     subparsers = parser.add_subparsers(dest='command')
 
     commands = {
@@ -37,16 +30,10 @@ def main():
 
     args = parser.parse_args()
 
-    signal_config = SignalConfig(
-        input_method=SignalMethod(args.input_method),
-        output_method=SignalMethod(args.output_method),
-        websocket_url=args.websocket_url
-    )
-
     if args.command in commands:
         logger.info(f"Executing command: {args.command}")
         try:
-            asyncio.run(commands[args.command].execute(args, signal_config))
+            asyncio.run(commands[args.command].execute(args))
         except Exception as e:
             logger.error(f"Error executing command {args.command}: {str(e)}", exc_info=True)
     else:

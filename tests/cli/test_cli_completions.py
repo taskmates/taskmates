@@ -10,7 +10,7 @@ import pytest
 def cli_runner(tmp_path):
     def run_cli_command(args):
         cmd = ["taskmates"] + args
-        taskmates_home = tmp_path / "taskmates"
+        taskmates_home = tmp_path / ".taskmates"
         env = os.environ.copy()
         env["TASKMATES_HOME"] = str(taskmates_home)
         process = subprocess.Popen(
@@ -37,12 +37,14 @@ def test_chat_completion(cli_runner, tmp_path):
     > """)
 
     assert returncode == 0
+    assert not stderr
     assert stdout == expected_response
 
 
 def test_chat_completion_with_mention(cli_runner, tmp_path):
-    (tmp_path / "taskmates" / "taskmates").mkdir(parents=True)
-    (tmp_path / "taskmates" / "taskmates" / "jeff.md").write_text("You're a helpful assistant\n")
+    taskmates_home = tmp_path / ".taskmates"
+    (taskmates_home / "taskmates").mkdir(parents=True)
+    (taskmates_home / "taskmates" / "jeff.md").write_text("You're a helpful assistant\n")
 
     args = ["complete", "--model=quote", "Hey @jeff short answer. 1+1="]
     stdout, stderr, returncode = cli_runner(args)
@@ -53,6 +55,7 @@ def test_chat_completion_with_mention(cli_runner, tmp_path):
     > """)
 
     assert returncode == 0
+    assert not stderr
     assert stdout == expected_response
 
 
@@ -86,6 +89,7 @@ def test_tool_completion(cli_runner, tmp_path):
     """)
 
     assert returncode == 0
+    assert not stderr
     assert stdout == expected_response
 
 
@@ -116,6 +120,8 @@ def test_code_cell_completion(cli_runner, tmp_path):
     """)
 
     assert returncode == 0
+    # TODO: get rid of jupyter warnings
+    # assert not stderr
     assert stdout == expected_completion
 
 
@@ -164,7 +170,8 @@ def test_interrupt_tool(cli_runner, tmp_path):
 
     <pre class='output' style='display:none'>
     2
-
+    --- INTERRUPT ---
+    
     Exit Code: -2
     </pre>
     -[x] Done
@@ -195,6 +202,7 @@ def test_kill_tool(cli_runner, tmp_path):
 
     <pre class='output' style='display:none'>
     Starting
+    --- KILL ---
 
     Exit Code: -9
     </pre>
@@ -249,6 +257,8 @@ def test_code_cell_no_output(cli_runner, tmp_path):
     """)
 
     assert returncode == 0
+    # TODO: get rid of jupyter warnings
+    # assert not stderr
     assert stdout == expected_completion
 
 
@@ -294,3 +304,32 @@ def test_kill_code_cell(cli_runner, tmp_path):
 
     assert output == expected_response
     assert process.returncode == -9
+
+
+def test_chat_completion_from_stdin(tmp_path):
+    taskmates_home = tmp_path / ".taskmates"
+    env = os.environ.copy()
+    env["TASKMATES_HOME"] = str(taskmates_home)
+
+    cmd = ["taskmates", "complete", "--model=quote"]
+    process = subprocess.Popen(
+        cmd,
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        cwd=str(tmp_path),
+        env=env
+    )
+
+    stdin_input = "Short answer. 1+1="
+    stdout, stderr = process.communicate(input=stdin_input)
+
+    expected_response = textwrap.dedent("""
+    > Short answer. 1+1=
+    > 
+    > """)
+
+    assert process.returncode == 0
+    assert not stderr
+    assert stdout == expected_response
