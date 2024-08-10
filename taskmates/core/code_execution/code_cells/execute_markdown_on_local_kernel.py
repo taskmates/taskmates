@@ -5,6 +5,7 @@ import signal
 import textwrap
 from queue import Empty
 
+import pytest
 import sys
 from jupyter_client import AsyncKernelManager, AsyncKernelClient
 from nbformat import NotebookNode
@@ -79,7 +80,22 @@ async def execute_markdown_on_local_kernel(content, markdown_path: str = None, c
 
                 cell_finished = False
 
-                msg_id = kernel_client.execute(cell.source)
+                source: str = cell.source
+                # see https://stackoverflow.com/questions/57984815/whats-the-difference-between-bash-and-bang
+                # in our case, `ack` is not working when called via %%bash
+                if source.startswith("%%bash\n"):
+                    # Remove the "%%bash\n" prefix
+                    bash_content = source[7:]
+
+                    # Escape newlines and single quotes
+                    escaped_source = bash_content.replace("'", "'\\''").replace("\n", "\\n")
+
+                    # Wrap the escaped content in $'...' syntax
+                    escaped_source = f"$'{escaped_source}'"
+
+                    source = f"!bash -c {escaped_source}"
+
+                msg_id = kernel_client.execute(source)
                 logger.debug("msg_id:", msg_id)
 
                 while True:
@@ -113,7 +129,7 @@ async def execute_markdown_on_local_kernel(content, markdown_path: str = None, c
                     logger.debug("sending msg:", msg["msg_type"])
                     await signals.response.code_cell_output.send_async({
                         "msg_id": msg_id,
-                        "cell_source": cell.source,
+                        "cell_source": source,
                         "msg": msg
                     })
         finally:
