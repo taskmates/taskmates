@@ -3,9 +3,14 @@ import logging
 import pytest
 import pytest_socket
 import tiktoken
+from dotenv import load_dotenv
 
-from taskmates.signals.signals import Signals, SIGNALS
 from taskmates.config.load_participant_config import load_cache
+from taskmates.signals.signals import Signals, SIGNALS
+
+load_dotenv('.env', override=True)
+load_dotenv('.env.local', override=True)
+
 
 def pytest_configure(config):
     # Set up logging
@@ -30,12 +35,9 @@ def pytest_runtest_setup(item):
         pytest_socket.socket_allow_hosts(['127.0.0.1', '::1', 'fe80::1'])
 
 
-
-
 @pytest.fixture
 def subject(request):
     return request.getfixturevalue(request.param)
-
 
 
 @pytest.fixture(autouse=True)
