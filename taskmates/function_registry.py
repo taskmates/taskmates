@@ -13,10 +13,12 @@ from taskmates.tools.evaluation_.report_evaluation import report_evaluation
 from taskmates.tools.filesystem_.read_file import read_file
 from taskmates.tools.filesystem_.write_file import write_file
 from taskmates.tools.google_.google_search import google_search
-from taskmates.tools.jira_.jira_ import create_issue, add_comment, update_status, search_issues, delete_issues, dump_context, \
+from taskmates.tools.jira_.jira_ import create_issue, add_comment, update_status, search_issues, delete_issues, \
+    dump_context, \
     read_issue
 
 function_registry = {}
+
 
 async def echo(message: str):
     """
@@ -26,6 +28,7 @@ async def echo(message: str):
     :return:
     """
     return message
+
 
 def initialize_function_registry(function_registry):
     # debugging
@@ -72,7 +75,7 @@ def get_fullname(obj):
         return obj.__qualname__
 
 
-async def list_functions():
+async def cli_list_functions():
     # TODO return full command line
     # root_path / "bin/function_registry" "invoke"
 
@@ -81,7 +84,7 @@ async def list_functions():
 
 
 @typechecked
-async def invoke_function(name: str, arguments: dict):
+async def cli_invoke_function(name: str, arguments: dict):
     if name not in function_registry:
         raise ValueError(f"Function '{name}' not found in the constructors.")
     func = function_registry[name]
@@ -110,9 +113,9 @@ def main():
     # Parse the arguments
     args = parser.parse_args()
     if args.command == 'list':
-        print(asyncio.run(list_functions()))
-    elif args.command == 'invoke':
-        asyncio.run(invoke_function(args.name, args.arguments))
+        print(asyncio.run(cli_list_functions()))
+    # elif args.command == 'invoke':
+    #     asyncio.run(invoke_function(args.name, args.arguments))
     else:
         parser.print_help()
 
