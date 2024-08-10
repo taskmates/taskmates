@@ -2,11 +2,10 @@ import argparse
 import asyncio
 import os
 import signal
-import sys
 import textwrap
 from queue import Empty
 
-import pytest
+import sys
 from jupyter_client import AsyncKernelManager, AsyncKernelClient
 from nbformat import NotebookNode
 
@@ -18,14 +17,14 @@ kernel_pool: dict[str, AsyncKernelManager] = {}
 
 
 # Main execution function
-async def execute_markdown_on_local_kernel(content, path: str = None, cwd: str = None):
+async def execute_markdown_on_local_kernel(content, markdown_path: str = None, cwd: str = None, env: dict = None):
     signals: Signals = SIGNALS.get()
 
     notebook: NotebookNode
     code_cells: list[NotebookNode]
     notebook, code_cells = parse_notebook(content)
 
-    kernel_manager, kernel_client, setup_msgs = await get_or_start_kernel(cwd, path)
+    kernel_manager, kernel_client, setup_msgs = await get_or_start_kernel(cwd, markdown_path, env)
 
     msg_queue = asyncio.Queue()
 
@@ -123,25 +122,29 @@ async def execute_markdown_on_local_kernel(content, path: str = None, cwd: str =
             kernel_client.stop_channels()
 
 
-async def get_or_start_kernel(cwd, path):
+async def get_or_start_kernel(cwd, markdown_path, env=None):
     ignored = []
-    is_new_kernel = True
     # Get or create a kernel manager for the given path
-    if path in kernel_pool and (await kernel_pool[path].is_alive()):
-        kernel_manager = kernel_pool[path]
+    if markdown_path in kernel_pool and (await kernel_pool[markdown_path].is_alive()):
         is_new_kernel = False
+        kernel_manager = kernel_pool[markdown_path]
     else:
+        is_new_kernel = True
         kernel_manager = AsyncKernelManager(kernel_name='python3')
-        await kernel_manager.start_kernel()
-        kernel_pool[path] = kernel_manager
+        kernel_args = {}
+        if env is not None:
+            kernel_args["env"] = env
+        if cwd is not None:
+            kernel_args["cwd"] = cwd
+
+        await kernel_manager.start_kernel(**kernel_args)
+        kernel_pool[markdown_path] = kernel_manager
     kernel_client: AsyncKernelClient = kernel_manager.client()
     kernel_client.start_channels()
     await kernel_client.wait_for_ready()
     if is_new_kernel:
         ignored.append(kernel_client.execute("%load_ext taskmates.magics.file_editing_magics"))
         ignored.append(kernel_client.execute("%matplotlib inline"))
-        if cwd is not None:
-            ignored.append(kernel_client.execute(f"%cd {cwd}"))
     return kernel_manager, kernel_client, ignored
 
 
@@ -153,16 +156,15 @@ async def main(argv=None):
     # Parse command-line arguments
     parser = argparse.ArgumentParser(description="Execute markdown as Jupyter notebook.")
     parser.add_argument("--content", type=str, help="Markdown string to execute.")
-    parser.add_argument("--path", type=str, help="Path associated with the kernel.")
+    parser.add_argument("--markdown-path", type=str, help="Path associated with the kernel.")
     parser.add_argument("--cwd", type=str, help="Current working directory for the notebook execution.")
     args = parser.parse_args(argv)
 
     # Execute markdown
-    await execute_markdown_on_local_kernel(content=args.content, path=args.path,
+    await execute_markdown_on_local_kernel(content=args.content, markdown_path=args.path,
                                            cwd=args.cwd)
 
 
-@pytest.mark.asyncio
 async def test_code_cells_no_code():
     signals = SIGNALS.get()
     chunks = []
@@ -177,11 +179,10 @@ async def test_code_cells_no_code():
 
         This is a paragraph.
     """)
-    await execute_markdown_on_local_kernel(input_md, path="test_no_code")
+    await execute_markdown_on_local_kernel(input_md, markdown_path="test_no_code")
     assert chunks == []
 
 
-@pytest.mark.asyncio
 async def test_single_cell():
     signals = SIGNALS.get()
     chunks = []
@@ -197,14 +198,13 @@ async def test_single_cell():
         x
         ```
     """)
-    await execute_markdown_on_local_kernel(input_md, path="test_simple_code")
+    await execute_markdown_on_local_kernel(input_md, markdown_path="test_simple_code")
 
     assert len(chunks) > 0
 
     assert len({chunk["msg_id"] for chunk in chunks}) == 1
 
 
-@pytest.mark.asyncio
 async def test_multiple_cells(tmp_path):
     signals = SIGNALS.get()
     chunks = []
@@ -228,12 +228,11 @@ async def test_multiple_cells(tmp_path):
     ```
     """)
 
-    await execute_markdown_on_local_kernel(content, path=str(tmp_path))
+    await execute_markdown_on_local_kernel(content, markdown_path=str(tmp_path))
 
     assert len({chunk["msg_id"] for chunk in chunks}) == 2
 
 
-@pytest.mark.asyncio
 async def test_cell_error():
     signals = SIGNALS.get()
     chunks = []
@@ -253,12 +252,11 @@ async def test_cell_error():
         ```
 
     """)
-    await execute_markdown_on_local_kernel(input_md, path="test_error_code")
+    await execute_markdown_on_local_kernel(input_md, markdown_path="test_error_code")
 
     assert 'error' in [chunk['msg']['msg_type'] for chunk in chunks]
 
 
-@pytest.mark.asyncio
 async def test_cwd(tmp_path):
     signals = SIGNALS.get()
     chunks = []
@@ -277,7 +275,7 @@ async def test_cwd(tmp_path):
     """)
 
     # Execute the markdown with cwd set to the temporary directory
-    await execute_markdown_on_local_kernel(input_md, path="test_with_cwd", cwd=str(tmp_path))
+    await execute_markdown_on_local_kernel(input_md, markdown_path="test_with_cwd", cwd=str(tmp_path))
 
     # Check if the output contains the expected directory path
     output_path = chunks[-1]['msg']['content']['text'].strip()
@@ -287,7 +285,6 @@ async def test_cwd(tmp_path):
     assert os.path.normpath(output_path) == os.path.normpath(expected_path)
 
 
-@pytest.mark.asyncio
 async def test_change_cwd(tmp_path):
     signals = SIGNALS.get()
     chunks = []
@@ -308,7 +305,7 @@ async def test_change_cwd(tmp_path):
     """)
 
     # Execute the markdown with cwd set to the temporary directory
-    await execute_markdown_on_local_kernel(input_md, path="test_change_cwd", cwd=str(tmp_path))
+    await execute_markdown_on_local_kernel(input_md, markdown_path="test_change_cwd", cwd=str(tmp_path))
 
     # Markdown content that gets the current working directory
     input_md = textwrap.dedent(f"""\
@@ -319,7 +316,7 @@ async def test_change_cwd(tmp_path):
     """)
 
     # Execute the markdown with cwd set to the temporary directory
-    await execute_markdown_on_local_kernel(input_md, path="test_change_cwd", cwd=str(tmp_path))
+    await execute_markdown_on_local_kernel(input_md, markdown_path="test_change_cwd", cwd=str(tmp_path))
 
     # Check if the output contains the expected directory path
     output_path = chunks[-1]['msg']['content']['text'].strip()
@@ -329,7 +326,6 @@ async def test_change_cwd(tmp_path):
     assert os.path.normpath(output_path) == os.path.normpath(expected_path)
 
 
-@pytest.mark.asyncio
 async def test_interrupt(capsys):
     signals = SIGNALS.get()
     chunks = []
@@ -362,7 +358,7 @@ async def test_interrupt(capsys):
 
     interrupt_task = asyncio.create_task(send_interrupt())
 
-    await execute_markdown_on_local_kernel(input_md, path="test_interrupt")
+    await execute_markdown_on_local_kernel(input_md, markdown_path="test_interrupt")
 
     await interrupt_task
 
@@ -373,7 +369,6 @@ async def test_interrupt(capsys):
     assert 'KeyboardInterrupt' in chunks[-1]['msg']['content']['ename']
 
 
-@pytest.mark.asyncio
 async def test_kill(capsys):
     signals = SIGNALS.get()
     chunks = []
@@ -406,7 +401,7 @@ async def test_kill(capsys):
 
     kill_task = asyncio.create_task(send_kill())
 
-    await execute_markdown_on_local_kernel(input_md, path="test_kill")
+    await execute_markdown_on_local_kernel(input_md, markdown_path="test_kill")
 
     await kill_task
 
@@ -417,3 +412,41 @@ async def test_kill(capsys):
     is_alive = await kernel_pool["test_kill"].is_alive()
 
     assert is_alive is False
+
+
+async def test_custom_env():
+    signals = SIGNALS.get()
+    chunks = []
+
+    async def capture_chunk(chunk):
+        chunks.append(chunk)
+
+    signals.response.code_cell_output.connect(capture_chunk)
+
+    custom_env = os.environ.copy()
+    custom_env['CUSTOM_VAR'] = 'test_value'
+
+    input_md = textwrap.dedent("""\
+        ```python .eval
+        import os
+        print(os.environ.get('CUSTOM_VAR', 'Not found'))
+        ```
+    """)
+
+    await execute_markdown_on_local_kernel(input_md, markdown_path="test_custom_env", env=custom_env)
+
+    assert len(chunks) > 0
+    assert chunks[-1]['msg']['content']['text'].strip() == 'test_value'
+
+    # Test that the custom environment doesn't persist for new kernels
+    input_md = textwrap.dedent("""\
+        ```python .eval
+        import os
+        print(os.environ.get('CUSTOM_VAR', 'Not found'))
+        ```
+    """)
+
+    await execute_markdown_on_local_kernel(input_md, markdown_path="test_custom_env_2")
+
+    assert len(chunks) > 1
+    assert chunks[-1]['msg']['content']['text'].strip() == 'Not found'

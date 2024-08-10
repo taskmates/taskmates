@@ -382,7 +382,7 @@ async def test_interrupt_code_cell(app, tmp_path):
                          '<pre>\n'
                          '---------------------------------------------------------------------------\n'
                          'KeyboardInterrupt                         Traceback (most recent call last)\n'
-                         'Cell In[4], line 3\n'
+                         'Cell In[3], line 3\n'
                          '      1 import time\n'
                          '      2 print(2)\n'
                          '----&gt; 3 time.sleep(60)\n'

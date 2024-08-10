@@ -36,7 +36,7 @@ class CodeCellExecutionCompletionProvider(CompletionProvider):
 
         with signals.response.code_cell_output.connected_to(on_code_cell_chunk):
             await execute_markdown_on_local_kernel(content=messages[-1]["content"],
-                                                   path=markdown_path,
+                                                   markdown_path=markdown_path,
                                                    cwd=cwd)
 
         await editor_completion.process_code_cells_completed()
