@@ -1,0 +1,4 @@
+services:
+  shell:
+    build: .
+    command: tail -f /dev/null

@@ -62,14 +62,16 @@ class ToolExecutionCompletionProvider(CompletionProvider):
 
     @staticmethod
     @typechecked
-    async def execute_task(context: Dict, tool_call: ToolCall, signals):
+    async def execute_task(context: CompletionContext, tool_call: ToolCall, signals):
         tool_call_id = tool_call.id
         function_name = tool_call.function.name
         arguments = tool_call.function.arguments
 
-        child_context = {**context, "tool_call_id": tool_call_id}
+        child_context = context.copy()
+        child_context["env"] = context["env"].copy()
+        child_context["env"]["TOOL_CALL_ID"] = tool_call_id
 
         function = function_registry[function_name]
-        return_value = await invoke_function(function, arguments, signals)
+        return_value = await invoke_function(function, arguments, child_context, signals)
 
         return return_value
