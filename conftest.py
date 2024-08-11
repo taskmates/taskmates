@@ -6,6 +6,7 @@ import tiktoken
 from dotenv import load_dotenv
 
 from taskmates.config.load_participant_config import load_cache
+from taskmates.core.code_execution.code_cells.execute_markdown_on_local_kernel import kernel_pool
 from taskmates.signals.signals import Signals, SIGNALS
 
 load_dotenv('.env', override=True)
@@ -50,3 +51,12 @@ def signals():
     stream = Signals()
     SIGNALS.set(stream)
     return stream
+
+
+@pytest.fixture(scope="function", autouse=True)
+async def teardown_after_all_tests():
+    yield
+
+    for path, kernel in kernel_pool.items():
+        kernel.shutdown_kernel(now=True)
+    kernel_pool.clear()

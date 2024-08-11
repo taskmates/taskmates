@@ -9,6 +9,7 @@ from taskmates.lib.openai_.count_tokens import count_tokens
 
 
 @pytest.mark.timeout(5)
+@pytest.mark.xdist_group(name="performance")
 def test_performance():
     pp.enable_all_warnings()
 
@@ -79,6 +80,7 @@ def test_performance():
 
 
 @pytest.mark.timeout(5)
+@pytest.mark.xdist_group(name="performance")
 def test_performance_single_lines():
     partial = textwrap.dedent("""\
     **user>** This is a test message
@@ -91,6 +93,7 @@ def test_performance_single_lines():
 
 
 @pytest.mark.timeout(5)
+@pytest.mark.xdist_group(name="performance")
 def test_performance_long_lines():
     partial = textwrap.dedent("""\
     **user>** This is a test message This is a test message This is a test message This is a test message This is a test message This is a test message This is a test message
@@ -103,6 +106,7 @@ def test_performance_long_lines():
 
 
 @pytest.mark.timeout(5)
+@pytest.mark.xdist_group(name="performance")
 def test_performance_single_lines_plus_new_line():
     partial = textwrap.dedent("""\
     **user>** This is a test message
@@ -116,6 +120,7 @@ def test_performance_single_lines_plus_new_line():
 
 
 @pytest.mark.timeout(5)
+@pytest.mark.xdist_group(name="performance")
 def test_performance_line_break_plus_message():
     partial = textwrap.dedent("""\
     **user>**
@@ -129,6 +134,7 @@ def test_performance_line_break_plus_message():
 
 
 @pytest.mark.timeout(5)
+@pytest.mark.xdist_group(name="performance")
 def test_performance_multiple_lines():
     partial = textwrap.dedent("""\
     **user>** This is a test message
@@ -144,6 +150,7 @@ def test_performance_multiple_lines():
 
 
 @pytest.mark.timeout(5)
+@pytest.mark.xdist_group(name="performance")
 def test_performance_tool_calls():
     partial = textwrap.dedent("""\
     **assistant>** Here's an example of tool calls:
@@ -181,6 +188,7 @@ def test_performance_tool_calls():
 
 
 @pytest.mark.timeout(5)
+@pytest.mark.xdist_group(name="performance")
 def test_performance_code_cells():
     partial = textwrap.dedent("""\
     **assistant>** Here's an example of how to print "Hello, World!" in Python:

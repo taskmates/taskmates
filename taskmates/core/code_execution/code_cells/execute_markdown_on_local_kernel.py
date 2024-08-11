@@ -11,6 +11,7 @@ from jupyter_client import AsyncKernelManager, AsyncKernelClient
 from nbformat import NotebookNode
 
 from taskmates.core.code_execution.code_cells.parse_notebook import parse_notebook
+from taskmates.lib.root_path.root_path import root_path
 from taskmates.logging import logger
 from taskmates.signals.signals import Signals, SIGNALS
 
@@ -159,6 +160,8 @@ async def get_or_start_kernel(cwd, markdown_path, env=None):
     kernel_client.start_channels()
     await kernel_client.wait_for_ready()
     if is_new_kernel:
+        package_path = root_path()
+        ignored.append(kernel_client.execute(f"import sys; sys.path.append('{package_path}')"))
         ignored.append(kernel_client.execute("%load_ext taskmates.magics.file_editing_magics"))
         ignored.append(kernel_client.execute("%matplotlib inline"))
     return kernel_manager, kernel_client, ignored

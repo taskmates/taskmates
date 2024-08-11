@@ -8,6 +8,7 @@ from quart.testing.connections import WebsocketDisconnectError
 from typeguard import typechecked
 
 import taskmates
+from taskmates.config.completion_context import COMPLETION_CONTEXT
 from taskmates.server.blueprints.taskmates_completions import completions_bp as completions_v2_bp
 from taskmates.types import CompletionPayload
 
@@ -40,11 +41,7 @@ async def test_chat_completion(app, tmp_path):
         "type": "completions_request",
         "version": taskmates.__version__,
         "markdown_chat": markdown_chat,
-        "completion_context": {
-            "request_id": "test_request_id",
-            "cwd": str(tmp_path),
-            "markdown_path": str(tmp_path / "test.md"),
-        },
+        "completion_context": COMPLETION_CONTEXT.get(),
         "completion_opts": {
             "model": "quote",
         },
@@ -81,11 +78,7 @@ async def test_chat_completion_with_mention(app, tmp_path):
         "type": "completions_request",
         "version": taskmates.__version__,
         "markdown_chat": markdown_chat,
-        "completion_context": {
-            "request_id": "test_request_id",
-            "cwd": str(tmp_path),
-            "markdown_path": str(tmp_path / "test.md"),
-        },
+        "completion_context": COMPLETION_CONTEXT.get(),
         "completion_opts": {
             "taskmates_dirs": [str(taskmates_home)],
             "model": "quote",
@@ -130,11 +123,7 @@ async def test_tool_completion(app, tmp_path):
         "type": "completions_request",
         "version": taskmates.__version__,
         "markdown_chat": markdown_chat,
-        "completion_context": {
-            "request_id": "test_echo_tool",
-            "cwd": str(tmp_path),
-            "markdown_path": str(tmp_path / "test.md"),
-        },
+        "completion_context": COMPLETION_CONTEXT.get(),
         "completion_opts": {
             "model": "quote",
         },
@@ -176,11 +165,7 @@ async def test_code_cell_completion(app, tmp_path):
         "type": "completions_request",
         "version": taskmates.__version__,
         "markdown_chat": markdown_chat,
-        "completion_context": {
-            "request_id": "test_echo_code_cell",
-            "cwd": str(tmp_path),
-            "markdown_path": str(tmp_path / "test.md"),
-        },
+        "completion_context": COMPLETION_CONTEXT.get(),
         "completion_opts": {
             "model": "quote",
         },
@@ -206,11 +191,7 @@ async def test_error_completion(app, tmp_path):
         "type": "completions_request",
         "version": taskmates.__version__,
         "markdown_chat": "REQUEST\n\n",
-        "completion_context": {
-            "request_id": "test_error_completion",
-            "cwd": str(tmp_path),
-            "markdown_path": str(tmp_path / "test.md"),
-        },
+        "completion_context": COMPLETION_CONTEXT.get(),
         "completion_opts": {
             "model": "non-existent-model",
         },
@@ -278,11 +259,7 @@ async def test_interrupt_tool(app, tmp_path):
         "type": "completions_request",
         "version": taskmates.__version__,
         "markdown_chat": markdown_chat,
-        "completion_context": {
-            "request_id": "test_interrupt_tool",
-            "cwd": str(tmp_path),
-            "markdown_path": str(tmp_path / "test.md"),
-        },
+        "completion_context": COMPLETION_CONTEXT.get(),
         "completion_opts": {
             "model": "quote",
         },
@@ -299,7 +276,7 @@ async def test_interrupt_tool(app, tmp_path):
                 if "5" in message["payload"]["markdown_chunk"]:
                     break
 
-        await ws.send(json.dumps({"type": "interrupt", "completion_context": {"request_id": "test_interrupt_tool"}}))
+        await ws.send(json.dumps({"type": "interrupt", "completion_context": COMPLETION_CONTEXT.get()}))
 
         remaining = await collect_until_closed(ws)
         messages.extend(remaining)
@@ -335,11 +312,7 @@ async def test_code_cell_no_output(app, tmp_path):
         "type": "completions_request",
         "version": taskmates.__version__,
         "markdown_chat": markdown_chat,
-        "completion_context": {
-            "request_id": "test_echo_code_cell_no_output",
-            "cwd": str(tmp_path),
-            "markdown_path": str(tmp_path / "test.md"),
-        },
+        "completion_context": COMPLETION_CONTEXT.get(),
         "completion_opts": {
             "model": "quote",
         },
@@ -371,6 +344,7 @@ async def test_interrupt_code_cell(app, tmp_path):
     
     """)
 
+    ignored = 3
     expected_response = ('###### Cell Output: stdout [cell_0]\n'
                          '\n'
                          '<pre>\n'
@@ -382,7 +356,7 @@ async def test_interrupt_code_cell(app, tmp_path):
                          '<pre>\n'
                          '---------------------------------------------------------------------------\n'
                          'KeyboardInterrupt                         Traceback (most recent call last)\n'
-                         'Cell In[3], line 3\n'
+                         f'Cell In[{ignored + 1}], line 3\n'
                          '      1 import time\n'
                          '      2 print(2)\n'
                          '----&gt; 3 time.sleep(60)\n'
@@ -396,11 +370,7 @@ async def test_interrupt_code_cell(app, tmp_path):
         "type": "completions_request",
         "version": taskmates.__version__,
         "markdown_chat": markdown_chat,
-        "completion_context": {
-            "request_id": "test_echo_tool",
-            "cwd": str(tmp_path),
-            "markdown_path": str(tmp_path / "test.md"),
-        },
+        "completion_context": COMPLETION_CONTEXT.get(),
         "completion_opts": {
             "model": "quote",
         },
@@ -417,7 +387,7 @@ async def test_interrupt_code_cell(app, tmp_path):
                 if "2" in message["payload"]["markdown_chunk"]:
                     break
 
-        await ws.send(json.dumps({"type": "interrupt", "completion_context": {"request_id": "test_echo_tool"}}))
+        await ws.send(json.dumps({"type": "interrupt", "completion_context": COMPLETION_CONTEXT.get()}))
 
         remaining = await collect_until_closed(ws)
         messages.extend(remaining)
@@ -458,11 +428,7 @@ async def test_kill_tool(app, tmp_path):
         "type": "completions_request",
         "version": taskmates.__version__,
         "markdown_chat": markdown_chat,
-        "completion_context": {
-            "request_id": "test_kill_tool",
-            "cwd": str(tmp_path),
-            "markdown_path": str(tmp_path / "test.md"),
-        },
+        "completion_context": COMPLETION_CONTEXT.get(),
         "completion_opts": {
             "model": "quote",
         },
@@ -479,7 +445,7 @@ async def test_kill_tool(app, tmp_path):
                 if "Starting" in message["payload"]["markdown_chunk"]:
                     break
 
-        await ws.send(json.dumps({"type": "kill", "completion_context": {"request_id": "test_kill_tool"}}))
+        await ws.send(json.dumps({"type": "kill", "completion_context": COMPLETION_CONTEXT.get()}))
 
         remaining = await collect_until_closed(ws)
         messages.extend(remaining)
@@ -512,11 +478,7 @@ async def test_kill_code_cell(app, tmp_path):
         "type": "completions_request",
         "version": taskmates.__version__,
         "markdown_chat": markdown_chat,
-        "completion_context": {
-            "request_id": "test_kill_code_cell",
-            "cwd": str(tmp_path),
-            "markdown_path": str(tmp_path / "test.md"),
-        },
+        "completion_context": COMPLETION_CONTEXT.get(),
         "completion_opts": {
             "model": "quote",
         },
@@ -533,7 +495,7 @@ async def test_kill_code_cell(app, tmp_path):
                 if "Starting" in message["payload"]["markdown_chunk"]:
                     break
 
-        await ws.send(json.dumps({"type": "kill", "completion_context": {"request_id": "test_kill_code_cell"}}))
+        await ws.send(json.dumps({"type": "kill", "completion_context": COMPLETION_CONTEXT.get()}))
 
         remaining = await collect_until_closed(ws)
         messages.extend(remaining)
@@ -596,11 +558,7 @@ async def test_client_disconnect(app, tmp_path):
         "type": "completions_request",
         "version": taskmates.__version__,
         "markdown_chat": markdown_chat,
-        "completion_context": {
-            "request_id": "test_client_disconnect",
-            "cwd": str(tmp_path),
-            "markdown_path": str(tmp_path / "test.md"),
-        },
+        "completion_context": COMPLETION_CONTEXT.get(),
         "completion_opts": {
             "model": "quote",
         },

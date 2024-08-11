@@ -2,11 +2,11 @@ import textwrap
 
 import pytest
 
+from taskmates.config.completion_context import CompletionContext, COMPLETION_CONTEXT
 from taskmates.core.code_execution.code_cells.code_cells_editor_completion import CodeCellsEditorCompletion
 from taskmates.core.code_execution.code_cells.execute_markdown_on_local_kernel import \
     execute_markdown_on_local_kernel
 from taskmates.core.completion_provider import CompletionProvider
-from taskmates.config.completion_context import CompletionContext
 from taskmates.signals.signals import SIGNALS, Signals
 from taskmates.types import Chat
 
@@ -24,6 +24,7 @@ class CodeCellExecutionCompletionProvider(CompletionProvider):
     async def perform_completion(self, context: CompletionContext, chat: Chat, signals: Signals):
         markdown_path = context["markdown_path"]
         cwd = context["cwd"]
+        env = context["env"]
 
         messages = chat.get("messages", [])
 
@@ -35,9 +36,11 @@ class CodeCellExecutionCompletionProvider(CompletionProvider):
             await editor_completion.process_code_cell_output(code_cell_chunk)
 
         with signals.response.code_cell_output.connected_to(on_code_cell_chunk):
+            # TODO pass env here
             await execute_markdown_on_local_kernel(content=messages[-1]["content"],
                                                    markdown_path=markdown_path,
-                                                   cwd=cwd)
+                                                   cwd=cwd,
+                                                   env=env)
 
         await editor_completion.process_code_cells_completed()
 
@@ -57,8 +60,10 @@ async def test_markdown_code_cells_assistance_streaming(tmp_path):
     signals.response.code_cell_output.connect(capture_code_cell_chunk)
     signals.response.response.connect(capture_completion_chunk)
 
-    chat = {
-        "metadata": {"jupyter": True},
+    chat: Chat = {
+        "metadata": {},
+        "participants": {},
+        "available_tools": [],
         "messages": [
             {
                 "content": textwrap.dedent("""\
@@ -77,10 +82,8 @@ async def test_markdown_code_cells_assistance_streaming(tmp_path):
         ]
     }
 
-    context = {"markdown_path": str(tmp_path), "cwd": str(tmp_path)}
-
     assistance = CodeCellExecutionCompletionProvider()
-    await assistance.perform_completion(context, chat, signals)
+    await assistance.perform_completion(COMPLETION_CONTEXT.get(), chat, signals)
 
     assert "".join(markdown_chunks) == ('###### Cell Output: stdout [cell_0]\n'
                                         '\n'
