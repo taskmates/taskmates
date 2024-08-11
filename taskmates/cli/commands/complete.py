@@ -5,7 +5,7 @@ import select
 import sys
 from typeguard import typechecked
 
-from taskmates.cli.lib.complete import complete
+from taskmates.cli.lib.cli_complete import cli_complete
 
 
 class CompleteCommand:
@@ -24,8 +24,8 @@ class CompleteCommand:
         #                     help='WebSocket URL for websocket method')
 
         parser.add_argument('--model', type=str, default='claude-3-5-sonnet-20240620', help='The model to use')
-        parser.add_argument('-n', '--max-interactions', type=int, default=100,
-                            help='The maximum number of interactions')
+        parser.add_argument('-n', '--max-steps', type=int, default=100,
+                            help='The maximum number of steps')
         parser.add_argument('--template-params', type=json.loads, action='append', default=[],
                             help='JSON string with system prompt template parameters (can be specified multiple times)')
         parser.add_argument('--format', type=str, default='text', choices=['full', 'completion', 'text'],
@@ -39,9 +39,9 @@ class CompleteCommand:
         if not history and not stdin_markdown and not args_markdown:
             raise ValueError("No input provided")
 
-        await complete(history,
-                       [stdin_markdown, args_markdown],
-                       args)
+        await cli_complete(history,
+                           [stdin_markdown, args_markdown],
+                           args)
 
     @staticmethod
     async def get_args_incoming_message(args):

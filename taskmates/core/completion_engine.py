@@ -1,7 +1,7 @@
 from typeguard import typechecked
 
 from taskmates.actions.parse_markdown_chat import parse_markdown_chat
-from taskmates.config.context_fork import context_fork
+from taskmates.lib.context_.context_fork import context_fork
 from taskmates.contexts import Contexts, CONTEXTS
 from taskmates.core.completion_next_completion import compute_next_completion
 from taskmates.core.compute_separator import compute_separator
@@ -28,12 +28,26 @@ class CompletionEngine:
         interruption_handler = InterruptedOrKilledHandler()
         interrupt_request_handler = InterruptRequestHandler(signals)
 
+        # TODO: This should persist across completions
+        class EnvManager(Handler):
+            async def handle_before_step(self, _sender):
+                contexts = CONTEXTS.get()
+
+            def connect(self, signals):
+                signals.lifecycle.before_step.connect(self.handle_before_step)
+
+            def disconnect(self, signals):
+                signals.lifecycle.before_step.disconnect(self.handle_before_step)
+
+        env_manager = EnvManager()
+
         with signals.connected_to(
                 [markdown_collector,
                  incoming_messages_formatting_processor,
                  interrupt_request_handler,
                  interruption_handler,
-                 return_value_processor]):
+                 return_value_processor,
+                 env_manager]):
 
             # TODO think about remote control
             # TODO think about history saving
@@ -49,7 +63,7 @@ class CompletionEngine:
             # Lifecycle: Start
             await signals.lifecycle.start.send_async({})
 
-            current_interaction = 0
+            current_step = 0
             while True:
                 with context_fork(CONTEXTS) as step_contexts:
 
@@ -68,7 +82,7 @@ class CompletionEngine:
                         contexts['completion_opts']["model"] = chat["metadata"]["model"]
 
                     if contexts['completion_opts']["model"] in ("quote", "echo"):
-                        contexts['completion_opts']["max_interactions"] = 1
+                        contexts['completion_opts']["max_steps"] = 1
 
                     logger.debug(f"Computing next completion assistance")
                     completion_assistance = compute_next_completion(chat, contexts['completion_opts'])
@@ -78,13 +92,12 @@ class CompletionEngine:
                         break
 
                     # Pre-Step
+                    current_step += 1
 
-                    current_interaction += 1
-
-                    if current_interaction > contexts['completion_opts']["max_interactions"]:
+                    if current_step > contexts['completion_opts']["max_steps"]:
                         break
 
-                    if current_interaction > 1:
+                    if current_step > 1:
                         separator = compute_separator(current_markdown)
                         if separator:
                             await signals.response.response.send_async(separator)

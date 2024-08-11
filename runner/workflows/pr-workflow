@@ -61,7 +61,7 @@ fi
 echo "Fulfilling the request..."
 
 cat "$MARKDOWN_CHAT_PATH" | taskmates complete \
-  --max-interactions=20 \
+  --max-steps=20 \
   --format full | tee "$RUNNER_TEMP/response.md"
 
 cp "$RUNNER_TEMP/response.md" "$MARKDOWN_CHAT_PATH"

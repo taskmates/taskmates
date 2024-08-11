@@ -4,7 +4,7 @@ from pathlib import Path
 from uuid import uuid4
 
 from taskmates.config.completion_opts import COMPLETION_OPTS
-from taskmates.config.context_fork import context_fork
+from taskmates.lib.context_.context_fork import context_fork
 from taskmates.contexts import CONTEXTS, Contexts
 from taskmates.types import CompletionPayload
 

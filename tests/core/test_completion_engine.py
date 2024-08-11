@@ -45,8 +45,18 @@ class SignalCaptureHandler(Handler):
         return [(signal_name, payload) for signal_name, payload in self.captured_signals if signal_name in signal_names]
 
 
+@pytest.fixture
+def contexts():
+    return {
+        "completion_context": CONTEXTS.get()["completion_context"],
+        "server_config": ServerConfig(),
+        "client_config": ClientConfig(interactive=False, endpoint="local"),
+        "completion_opts": CompletionOpts(model="quote", template_params={}, taskmates_dirs=[]),
+    }
+
+
 @pytest.mark.asyncio
-async def test_completion_engine_history(tmp_path):
+async def test_completion_engine_history(tmp_path, contexts):
     history = "Initial history\n"
     incoming_messages = ["Incoming message"]
 
@@ -56,10 +66,6 @@ async def test_completion_engine_history(tmp_path):
 
     history_sink = HistorySink(history_file)
 
-    server_config = ServerConfig()
-    client_config = ClientConfig(interactive=False, endpoint="local")
-    completion_opts = CompletionOpts(model="quote", template_params={}, taskmates_dirs=[])
-
     engine = CompletionEngine()
     signals = Signals()
 
@@ -67,12 +73,7 @@ async def test_completion_engine_history(tmp_path):
         await engine.perform_completion(
             history,
             incoming_messages,
-            {
-                "completion_context": CONTEXTS.get()["completion_context"],
-                "server_config": server_config,
-                "client_config": client_config,
-                "completion_opts": completion_opts,
-            },
+            contexts,
             signals
         )
 
@@ -93,10 +94,7 @@ async def test_completion_engine_history(tmp_path):
 
 
 @pytest.mark.asyncio
-async def test_completion_engine_stdout_streamer(tmp_path):
-    server_config = ServerConfig()
-    completion_opts = CompletionOpts(model="quote", template_params={}, taskmates_dirs=[])
-
+async def test_completion_engine_stdout_streamer(tmp_path, contexts):
     engine = CompletionEngine()
 
     text_output = io.StringIO()
@@ -112,16 +110,11 @@ async def test_completion_engine_stdout_streamer(tmp_path):
         text_signal_capture,
         StdoutCompletionStreamer('text', text_output)
     ]) as signals:
-        client_config = ClientConfig(interactive=False, format='text')
+        contexts['client_config'] = ClientConfig(interactive=False, format='text')
         await engine.perform_completion(
             history,
             incoming_messages,
-            {
-                "completion_context": CONTEXTS.get()["completion_context"],
-                "server_config": server_config,
-                "client_config": client_config,
-                "completion_opts": completion_opts,
-            },
+            contexts,
             signals
         )
 
@@ -132,15 +125,10 @@ async def test_completion_engine_stdout_streamer(tmp_path):
         full_signal_capture,
         StdoutCompletionStreamer('full', full_output)
     ]) as signals:
-        client_config = ClientConfig(interactive=False, format='full')
+        contexts['client_config'] = ClientConfig(interactive=False, format='full')
         await engine.perform_completion(
             history, incoming_messages,
-            {
-                "completion_context": CONTEXTS.get()["completion_context"],
-                "server_config": server_config,
-                "client_config": client_config,
-                "completion_opts": completion_opts,
-            }, signals
+            contexts, signals
         )
 
     text_filtered_signals = text_signal_capture.filter_signals(

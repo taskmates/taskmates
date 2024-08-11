@@ -61,6 +61,7 @@ class LifecycleSignals(BaseSignals):
     def __init__(self):
         super().__init__()
         self.start = self.namespace.signal('start')
+        self.before_step = self.namespace.signal('before_step')
         self.finish = self.namespace.signal('finish')
         self.success = self.namespace.signal('success')
         self.interrupted = self.namespace.signal('interrupted')

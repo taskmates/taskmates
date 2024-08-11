@@ -6,7 +6,7 @@ from quart import Quart
 from taskmates import env, logging
 from taskmates.server.blueprints.echo import echo_pb
 from taskmates.server.blueprints.health import health_bp
-from taskmates.server.blueprints.taskmates_completions import completions_bp as completions_v2_bp
+from taskmates.server.blueprints.completions_api import completions_bp as completions_v2_bp
 
 env.bootstrap()
 

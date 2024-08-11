@@ -3,7 +3,7 @@ from contextlib import contextmanager
 from uuid import uuid4
 
 from taskmates.cli.lib.merge_template_params import merge_template_params
-from taskmates.config.context_fork import context_fork
+from taskmates.lib.context_.context_fork import context_fork
 from taskmates.contexts import CONTEXTS, Contexts
 
 
@@ -22,7 +22,7 @@ def build_context(args) -> Contexts:
         contexts["completion_opts"].update({
             "model": args.model,
             "template_params": merge_template_params(args.template_params),
-            "max_interactions": args.max_interactions,
+            "max_steps": args.max_steps,
         })
 
         contexts["client_config"].update({
