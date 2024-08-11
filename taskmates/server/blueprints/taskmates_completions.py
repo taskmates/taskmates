@@ -50,12 +50,9 @@ async def taskmates_completions():
             await signals.output.artifact.send_async({"name": "websockets_api_payload.json", "content": payload})
 
             result = await CompletionEngine().perform_completion(
-                context['completion_context'],
                 markdown_chat,
                 [],
-                context['server_config'],
-                context['client_config'],
-                context['completion_opts'],
+                context,
                 signals
             )
 

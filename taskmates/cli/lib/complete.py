@@ -29,14 +29,11 @@ async def complete(history: str | None, incoming_messages: list[str], args, hand
         handler.connect(signals)
 
     try:
-        with build_context(args) as config:
+        with build_context(args) as contexts:
             result = await CompletionEngine().perform_completion(
-                config['completion_context'],
                 history,
                 incoming_messages,
-                config['server_config'],
-                config['client_config'],
-                config['completion_opts'],
+                contexts,
                 signals
             )
     except Exception as e:

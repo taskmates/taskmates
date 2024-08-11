@@ -1,10 +1,7 @@
 from typeguard import typechecked
 
 from taskmates.actions.parse_markdown_chat import parse_markdown_chat
-from taskmates.config.client_config import ClientConfig
-from taskmates.config.completion_context import CompletionContext
-from taskmates.config.completion_opts import CompletionOpts
-from taskmates.config.server_config import ServerConfig
+from taskmates.contexts import Contexts
 from taskmates.core.completion_next_completion import compute_next_completion
 from taskmates.core.compute_separator import compute_separator
 from taskmates.io.formatting_processor import IncomingMessagesFormattingProcessor
@@ -17,14 +14,13 @@ from taskmates.types import Chat
 class CompletionEngine:
     @typechecked
     async def perform_completion(self,
-                                 context: CompletionContext,
                                  history: str | None,
                                  incoming_messages: list[str],
-                                 server_config: ServerConfig,
-                                 client_config: ClientConfig,
-                                 completion_opts: CompletionOpts,
+                                 contexts: Contexts,
                                  signals: Signals
                                  ):
+        client_config = contexts['client_config']
+        completion_opts = contexts['completion_opts']
 
         taskmates_dirs = completion_opts.get("taskmates_dirs")
         interactive = client_config["interactive"]
@@ -62,7 +58,7 @@ class CompletionEngine:
 
                 logger.debug(f"Parsing markdown chat")
                 chat: Chat = await parse_markdown_chat(markdown_chat=current_markdown,
-                                                       markdown_path=context["markdown_path"],
+                                                       markdown_path=contexts["completion_context"]["markdown_path"],
                                                        taskmates_dirs=taskmates_dirs,
                                                        template_params=completion_opts["template_params"])
 
@@ -93,9 +89,8 @@ class CompletionEngine:
 
                 # TODO: compute env here
 
-
                 # Step
-                await completion_assistance.perform_completion(context, chat, signals)
+                await completion_assistance.perform_completion(chat, contexts, signals)
 
                 # TODO: Add lifecycle/checkpoint here
 

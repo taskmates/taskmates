@@ -36,15 +36,11 @@ async def async_complete(markdown,
 
     try:
         with context_fork(CONTEXTS) as contexts:
-            contexts["completion_opts"] = completion_opts
             await CompletionEngine().perform_completion(
-                contexts["completion_context"],
-                markdown,
-                [],
-                contexts["server_config"],
-                contexts["client_config"],
-                completion_opts,
-                signals)
+                history=markdown,
+                incoming_messages=[],
+                contexts=contexts,
+                signals=signals)
     finally:
         SIGNALS.reset(signals_token)
 

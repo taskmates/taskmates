@@ -5,6 +5,7 @@ from typeguard import typechecked
 from taskmates.config.completion_context import CompletionContext
 from taskmates.config.completion_opts import CompletionOpts
 from taskmates.config.load_model_config import load_model_config
+from taskmates.contexts import Contexts
 from taskmates.core.chat_completion.chat_completion_editor_completion import ChatCompletionEditorCompletion
 from taskmates.core.completion_provider import CompletionProvider
 from taskmates.formats.markdown.metadata.get_model_client import get_model_client
@@ -30,7 +31,7 @@ class ChatCompletionProvider(CompletionProvider):
         return recipient_role is not None and not recipient_role == "user"
 
     @typechecked
-    async def perform_completion(self, context: CompletionContext, chat: Chat, signals: Signals):
+    async def perform_completion(self, chat: Chat, contexts: Contexts, signals: Signals):
         model_alias = self.completion_opts["model"]
 
         chat_completion_editor_completion = ChatCompletionEditorCompletion(chat, signals)

@@ -3,7 +3,7 @@ import textwrap
 import pytest
 
 from taskmates.config.completion_context import CompletionContext
-from taskmates.contexts import CONTEXTS
+from taskmates.contexts import CONTEXTS, Contexts
 from taskmates.core.code_execution.code_cells.code_cells_editor_completion import CodeCellsEditorCompletion
 from taskmates.core.code_execution.code_cells.execute_markdown_on_local_kernel import \
     execute_markdown_on_local_kernel
@@ -22,10 +22,11 @@ class CodeCellExecutionCompletionProvider(CompletionProvider):
         code_cells = last_message.get("code_cells", [])
         return is_jupyter_enabled and len(code_cells) > 0
 
-    async def perform_completion(self, context: CompletionContext, chat: Chat, signals: Signals):
-        markdown_path = context["markdown_path"]
-        cwd = context["cwd"]
-        env = context["env"]
+    async def perform_completion(self, chat: Chat, contexts: Contexts, signals: Signals):
+        completion_context: CompletionContext = contexts["completion_context"]
+        markdown_path = completion_context["markdown_path"]
+        cwd = completion_context["cwd"]
+        env = completion_context["env"]
 
         messages = chat.get("messages", [])
 
@@ -84,7 +85,7 @@ async def test_markdown_code_cells_assistance_streaming(tmp_path):
     }
 
     assistance = CodeCellExecutionCompletionProvider()
-    await assistance.perform_completion(CONTEXTS.get()["completion_context"], chat, signals)
+    await assistance.perform_completion(chat, CONTEXTS.get(), signals)
 
     assert "".join(markdown_chunks) == ('###### Cell Output: stdout [cell_0]\n'
                                         '\n'

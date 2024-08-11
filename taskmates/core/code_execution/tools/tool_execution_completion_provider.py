@@ -5,6 +5,7 @@ from typeguard import typechecked
 
 from taskmates.actions.invoke_function import invoke_function
 from taskmates.config.completion_context import CompletionContext
+from taskmates.contexts import Contexts
 from taskmates.core.code_execution.tools.tool_editor_completion import ToolEditorCompletion
 from taskmates.core.completion_provider import CompletionProvider
 from taskmates.function_registry import function_registry
@@ -23,9 +24,10 @@ class ToolExecutionCompletionProvider(CompletionProvider):
         tool_calls = last_message.get("tool_calls", [])
         return len(tool_calls) > 0
 
-    async def perform_completion(self, context: CompletionContext, chat: Chat, signals: Signals):
-        cwd = context["cwd"]
-        markdown_path = context["markdown_path"]
+    async def perform_completion(self, chat: Chat, contexts: Contexts, signals: Signals):
+        completion_context = contexts["completion_context"]
+        cwd = completion_context["cwd"]
+        markdown_path = completion_context["markdown_path"]
 
         messages = chat.get("messages", [])
 
@@ -53,7 +55,7 @@ class ToolExecutionCompletionProvider(CompletionProvider):
                         os.chdir(cwd)
                     except FileNotFoundError:
                         pass
-                    return_value = await self.execute_task(context, tool_call_obj, signals)
+                    return_value = await self.execute_task(completion_context, tool_call_obj, signals)
                 finally:
                     os.chdir(original_cwd)
 

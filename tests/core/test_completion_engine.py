@@ -65,12 +65,14 @@ async def test_completion_engine_history(tmp_path):
 
     with signals.connected_to([signal_capture, history_sink]):
         await engine.perform_completion(
-            CONTEXTS.get()["completion_context"],
             history,
             incoming_messages,
-            server_config,
-            client_config,
-            completion_opts,
+            {
+                "completion_context": CONTEXTS.get()["completion_context"],
+                "server_config": server_config,
+                "client_config": client_config,
+                "completion_opts": completion_opts,
+            },
             signals
         )
 
@@ -112,8 +114,15 @@ async def test_completion_engine_stdout_streamer(tmp_path):
     ]) as signals:
         client_config = ClientConfig(interactive=False, format='text')
         await engine.perform_completion(
-            CONTEXTS.get()["completion_context"], history, incoming_messages,
-            server_config, client_config, completion_opts, signals
+            history,
+            incoming_messages,
+            {
+                "completion_context": CONTEXTS.get()["completion_context"],
+                "server_config": server_config,
+                "client_config": client_config,
+                "completion_opts": completion_opts,
+            },
+            signals
         )
 
     print("Testing 'full' format")  # Debug print
@@ -125,8 +134,13 @@ async def test_completion_engine_stdout_streamer(tmp_path):
     ]) as signals:
         client_config = ClientConfig(interactive=False, format='full')
         await engine.perform_completion(
-            CONTEXTS.get()["completion_context"], history, incoming_messages,
-            server_config, client_config, completion_opts, signals
+            history, incoming_messages,
+            {
+                "completion_context": CONTEXTS.get()["completion_context"],
+                "server_config": server_config,
+                "client_config": client_config,
+                "completion_opts": completion_opts,
+            }, signals
         )
 
     text_filtered_signals = text_signal_capture.filter_signals(
