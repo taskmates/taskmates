@@ -93,6 +93,7 @@ class CompletionEngine:
 
                 # TODO: compute env here
 
+
                 # Step
                 await completion_assistance.perform_completion(context, chat, signals)
 

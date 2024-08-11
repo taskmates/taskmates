@@ -1,54 +1,20 @@
 import asyncio
 import json
-from contextlib import contextmanager
-from pathlib import Path
 
 from quart import Blueprint, Response, websocket
 
 import taskmates
-from taskmates.config.client_config import ClientConfig
-from taskmates.config.completion_context import CompletionContext
-from taskmates.config.completion_opts import CompletionOpts
-from taskmates.config.updated_config import updated_config
 from taskmates.core.completion_engine import CompletionEngine
 from taskmates.io.file_system_artifacts_sink import FileSystemArtifactsSink
 from taskmates.io.web_socket_completion_streamer import WebSocketCompletionStreamer
 from taskmates.io.web_socket_interrupt_and_kill_controller import WebSocketInterruptAndKillController
 from taskmates.lib.json_.json_utils import snake_case
 from taskmates.logging import logger
+from taskmates.server.blueprints.build_context import build_context
 from taskmates.signals.signals import SIGNALS, Signals
 from taskmates.types import CompletionPayload
-from taskmates.contexts import Contexts
 
 completions_bp = Blueprint('completions_v2', __name__)
-
-
-@contextmanager
-def build_context(payload: CompletionPayload):
-    completion_context: CompletionContext = payload["completion_context"].copy()
-    completion_opts: CompletionOpts = payload["completion_opts"].copy()
-
-    # TODO: review this
-    completion_opts["taskmates_dirs"] = [str(Path(payload["completion_context"]["cwd"]) / ".taskmates"),
-                                         *completion_opts.get("taskmates_dirs",
-                                                              Contexts.completion_opts.get()["taskmates_dirs"])]
-
-    if "template_params" not in completion_opts:
-        completion_opts["template_params"] = {}
-
-    client_config = ClientConfig(interactive=True,
-                                 format="completion")
-
-    server_config = Contexts.server_config.get()
-
-    with updated_config(Contexts.completion_context, completion_context), \
-            updated_config(Contexts.completion_opts, completion_opts):
-        yield {
-            'context': Contexts.completion_context.get(),
-            'client_config': client_config,
-            'server_config': server_config,
-            'completion_opts': Contexts.completion_opts.get()
-        }
 
 
 @completions_bp.websocket('/v2/taskmates/completions')
@@ -84,7 +50,7 @@ async def taskmates_completions():
             await signals.output.artifact.send_async({"name": "websockets_api_payload.json", "content": payload})
 
             result = await CompletionEngine().perform_completion(
-                context['context'],
+                context['completion_context'],
                 markdown_chat,
                 [],
                 context['server_config'],

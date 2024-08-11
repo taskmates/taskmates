@@ -27,7 +27,6 @@ def cli_runner(tmp_path):
     return run_cli_command
 
 
-@pytest.mark.xdist_group(name="cli")
 def test_chat_completion(cli_runner, tmp_path):
     args = ["complete", "--model=quote", "Short answer. 1+1="]
     stdout, stderr, returncode = cli_runner(args)
@@ -38,11 +37,10 @@ def test_chat_completion(cli_runner, tmp_path):
     > """)
 
     assert returncode == 0
-    assert not stderr
+    assert stderr == ""
     assert stdout == expected_response
 
 
-@pytest.mark.xdist_group(name="cli")
 def test_chat_completion_with_mention(cli_runner, tmp_path):
     taskmates_home = tmp_path / ".taskmates"
     (taskmates_home / "taskmates").mkdir(parents=True)
@@ -61,7 +59,6 @@ def test_chat_completion_with_mention(cli_runner, tmp_path):
     assert stdout == expected_response
 
 
-@pytest.mark.xdist_group(name="cli")
 def test_tool_completion(cli_runner, tmp_path):
     markdown_chat = textwrap.dedent("""
     How much is 1 + 1?
@@ -96,7 +93,6 @@ def test_tool_completion(cli_runner, tmp_path):
     assert stdout == expected_response
 
 
-@pytest.mark.xdist_group(name="cli")
 def test_code_cell_completion(cli_runner, tmp_path):
     markdown_chat = textwrap.dedent("""
     print(1 + 1)
@@ -129,7 +125,6 @@ def test_code_cell_completion(cli_runner, tmp_path):
     assert stdout == expected_completion
 
 
-@pytest.mark.xdist_group(name="cli")
 def test_error_completion(cli_runner, tmp_path):
     args = ["complete", "--model=non-existent-model", "REQUEST"]
     stdout, stderr, returncode = cli_runner(args)
@@ -138,7 +133,6 @@ def test_error_completion(cli_runner, tmp_path):
 
 
 @pytest.mark.timeout(10)
-@pytest.mark.xdist_group(name="cli")
 def test_interrupt_tool(cli_runner, tmp_path):
     markdown_chat = textwrap.dedent("""
     How much is 1 + 1?
@@ -189,7 +183,6 @@ def test_interrupt_tool(cli_runner, tmp_path):
 
 
 @pytest.mark.timeout(10)
-@pytest.mark.xdist_group(name="cli")
 def test_kill_tool(cli_runner, tmp_path):
     markdown_chat = textwrap.dedent("""
     Run a command that ignores SIGINT
@@ -239,7 +232,6 @@ def test_kill_tool(cli_runner, tmp_path):
     assert output == expected_response
 
 
-@pytest.mark.xdist_group(name="cli")
 def test_code_cell_no_output(cli_runner, tmp_path):
     markdown_chat = textwrap.dedent("""
     print(1 + 1)
@@ -271,7 +263,6 @@ def test_code_cell_no_output(cli_runner, tmp_path):
 
 
 @pytest.mark.timeout(10)
-@pytest.mark.xdist_group(name="cli")
 def test_kill_code_cell(cli_runner, tmp_path):
     markdown_chat = textwrap.dedent("""
     Run a command that ignores SIGINT in a code cell
@@ -315,7 +306,6 @@ def test_kill_code_cell(cli_runner, tmp_path):
     assert process.returncode == -9
 
 
-@pytest.mark.xdist_group(name="cli")
 def test_chat_completion_from_stdin(tmp_path):
     taskmates_home = tmp_path / ".taskmates"
     env = os.environ.copy()

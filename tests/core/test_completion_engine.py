@@ -5,9 +5,9 @@ from typing import Any
 import pytest
 
 from taskmates.config.client_config import ClientConfig
-from taskmates.config.completion_context import CompletionContext, COMPLETION_CONTEXT
 from taskmates.config.completion_opts import CompletionOpts
 from taskmates.config.server_config import ServerConfig
+from taskmates.contexts import CONTEXTS
 from taskmates.core.completion_engine import CompletionEngine
 from taskmates.io.history_sink import HistorySink
 from taskmates.io.stdout_completion_streamer import StdoutCompletionStreamer
@@ -65,7 +65,7 @@ async def test_completion_engine_history(tmp_path):
 
     with signals.connected_to([signal_capture, history_sink]):
         await engine.perform_completion(
-            COMPLETION_CONTEXT.get(),
+            CONTEXTS.get()["completion_context"],
             history,
             incoming_messages,
             server_config,
@@ -112,7 +112,7 @@ async def test_completion_engine_stdout_streamer(tmp_path):
     ]) as signals:
         client_config = ClientConfig(interactive=False, format='text')
         await engine.perform_completion(
-            COMPLETION_CONTEXT.get(), history, incoming_messages,
+            CONTEXTS.get()["completion_context"], history, incoming_messages,
             server_config, client_config, completion_opts, signals
         )
 
@@ -125,7 +125,7 @@ async def test_completion_engine_stdout_streamer(tmp_path):
     ]) as signals:
         client_config = ClientConfig(interactive=False, format='full')
         await engine.perform_completion(
-            COMPLETION_CONTEXT.get(), history, incoming_messages,
+            CONTEXTS.get()["completion_context"], history, incoming_messages,
             server_config, client_config, completion_opts, signals
         )
 

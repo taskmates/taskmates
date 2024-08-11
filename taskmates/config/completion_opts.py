@@ -1,4 +1,3 @@
-import contextvars
 import os
 from pathlib import Path
 
@@ -16,14 +15,12 @@ class CompletionOpts(TypedDict):
     # max_hops: int
 
 
-COMPLETION_OPTS: contextvars.ContextVar[CompletionOpts] = contextvars.ContextVar(
-    "CompletionOpts",
-    default={
-        "model": 'claude-3-5-sonnet-20240620',
-        "template_params": {},
-        "max_interactions": 10000,  # Changed from float('inf') to a finite number
-        "taskmates_dirs": [
-            Path(os.environ.get("TASKMATES_HOME", str(Path.home() / ".taskmates"))),
-            root_path() / "taskmates" / "default_config",
-        ]
-    })
+COMPLETION_OPTS: CompletionOpts = {
+    "model": 'claude-3-5-sonnet-20240620',
+    "template_params": {},
+    "max_interactions": 10000,  # Changed from float('inf') to a finite number
+    "taskmates_dirs": [
+        Path(os.environ.get("TASKMATES_HOME", str(Path.home() / ".taskmates"))),
+        root_path() / "taskmates" / "default_config",
+    ]
+}

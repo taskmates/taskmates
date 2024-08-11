@@ -6,7 +6,7 @@ import websockets
 from websockets.exceptions import ConnectionClosed
 
 from taskmates.config.client_config import ClientConfig
-from taskmates.config.completion_context import COMPLETION_CONTEXT
+from taskmates.contexts import CONTEXTS
 
 
 async def on_message(message):
@@ -62,7 +62,7 @@ async def perform_websocket_completion(markdown, client_config: ClientConfig):
 
     async with websockets.connect(client_config['endpoint']) as websocket:
         try:
-            context = COMPLETION_CONTEXT.get()
+            context = CONTEXTS.get()["completion_context"]
 
             await websocket.send(json.dumps({
                 "type": "completions_request",

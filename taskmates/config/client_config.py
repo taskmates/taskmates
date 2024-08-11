@@ -1,5 +1,3 @@
-import contextvars
-
 from typing_extensions import TypedDict, NotRequired, Literal
 
 
@@ -10,11 +8,7 @@ class ClientConfig(TypedDict):
     interactive: bool
 
 
-CLIENT_CONFIG: contextvars.ContextVar[ClientConfig] = contextvars.ContextVar(
-    "ClientConfig",
-    default={
-        "endpoint": None,
-        "format": "completion",
-        "output": None,
-        "interactive": True,
-    })
+CLIENT_CONFIG: ClientConfig = {
+    "format": "completion",
+    "interactive": True,
+}
