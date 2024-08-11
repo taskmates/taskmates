@@ -39,7 +39,7 @@ async def async_complete(markdown,
             await CompletionEngine().perform_completion(
                 history=markdown,
                 incoming_messages=[],
-                contexts=contexts,
+                step_contexts=contexts,
                 signals=signals)
     finally:
         SIGNALS.reset(signals_token)

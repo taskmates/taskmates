@@ -1,7 +1,8 @@
 from typeguard import typechecked
 
 from taskmates.actions.parse_markdown_chat import parse_markdown_chat
-from taskmates.contexts import Contexts
+from taskmates.config.context_fork import context_fork
+from taskmates.contexts import Contexts, CONTEXTS
 from taskmates.core.completion_next_completion import compute_next_completion
 from taskmates.core.compute_separator import compute_separator
 from taskmates.io.formatting_processor import IncomingMessagesFormattingProcessor
@@ -19,11 +20,7 @@ class CompletionEngine:
                                  contexts: Contexts,
                                  signals: Signals
                                  ):
-        client_config = contexts['client_config']
-        completion_opts = contexts['completion_opts']
-
-        taskmates_dirs = completion_opts.get("taskmates_dirs")
-        interactive = client_config["interactive"]
+        interactive = contexts['client_config']["interactive"]
 
         markdown_collector = FullMarkdownCollector()
         incoming_messages_formatting_processor = IncomingMessagesFormattingProcessor(signals)
@@ -54,54 +51,57 @@ class CompletionEngine:
 
             current_interaction = 0
             while True:
-                current_markdown = markdown_collector.get_current_markdown()
+                with context_fork(CONTEXTS) as step_contexts:
 
-                logger.debug(f"Parsing markdown chat")
-                chat: Chat = await parse_markdown_chat(markdown_chat=current_markdown,
-                                                       markdown_path=contexts["completion_context"]["markdown_path"],
-                                                       taskmates_dirs=taskmates_dirs,
-                                                       template_params=completion_opts["template_params"])
+                    current_markdown = markdown_collector.get_current_markdown()
 
-                if "model" in chat["metadata"]:
-                    completion_opts["model"] = chat["metadata"]["model"]
+                    logger.debug(f"Parsing markdown chat")
+                    markdown_path = contexts["completion_context"]["markdown_path"]
+                    chat: Chat = await parse_markdown_chat(markdown_chat=current_markdown,
+                                                           markdown_path=markdown_path,
+                                                           taskmates_dirs=(
+                                                               contexts['completion_opts'].get("taskmates_dirs")),
+                                                           template_params=contexts['completion_opts'][
+                                                               "template_params"])
 
-                if completion_opts["model"] in ("quote", "echo"):
-                    completion_opts["max_interactions"] = 1
+                    if "model" in chat["metadata"]:
+                        contexts['completion_opts']["model"] = chat["metadata"]["model"]
 
-                logger.debug(f"Computing next completion assistance")
-                completion_assistance = compute_next_completion(chat, completion_opts)
+                    if contexts['completion_opts']["model"] in ("quote", "echo"):
+                        contexts['completion_opts']["max_interactions"] = 1
 
-                logger.debug(f"Next completion assistance: {completion_assistance}")
-                if not completion_assistance:
-                    break
+                    logger.debug(f"Computing next completion assistance")
+                    completion_assistance = compute_next_completion(chat, contexts['completion_opts'])
 
-                # Pre-Step
+                    logger.debug(f"Next completion assistance: {completion_assistance}")
+                    if not completion_assistance:
+                        break
 
-                current_interaction += 1
+                    # Pre-Step
 
-                if current_interaction > completion_opts["max_interactions"]:
-                    break
+                    current_interaction += 1
 
-                if current_interaction > 1:
-                    separator = compute_separator(current_markdown)
-                    if separator:
-                        await signals.response.response.send_async(separator)
+                    if current_interaction > contexts['completion_opts']["max_interactions"]:
+                        break
 
-                # TODO: compute env here
+                    if current_interaction > 1:
+                        separator = compute_separator(current_markdown)
+                        if separator:
+                            await signals.response.response.send_async(separator)
 
-                # Step
-                await completion_assistance.perform_completion(chat, contexts, signals)
+                    # Step
+                    await completion_assistance.perform_completion(chat, step_contexts, signals)
 
-                # TODO: Add lifecycle/checkpoint here
+                    # TODO: Add lifecycle/checkpoint here
 
-                # Post-Step
-                if return_value_processor.result is not None:
-                    logger.debug(f"Return status is not None: {return_value_processor.result}")
-                    break
+                    # Post-Step
+                    if return_value_processor.result is not None:
+                        logger.debug(f"Return status is not None: {return_value_processor.result}")
+                        break
 
-                if interruption_handler.interrupted_or_killed:
-                    logger.debug("Interrupted")
-                    break
+                    if interruption_handler.interrupted_or_killed:
+                        logger.debug("Interrupted")
+                        break
 
             logger.debug(f"Finished completion assistance")
 
