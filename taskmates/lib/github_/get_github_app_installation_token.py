@@ -1,38 +1,12 @@
-import base64
-import os
-
-import jwt
-import requests
-import time
-from cryptography.hazmat.primitives import serialization
-from dotenv import load_dotenv
-
-from taskmates.lib.root_path.root_path import root_path
+from taskmates.lib.github_.get_github_app_token import get_github_app_token
+from taskmates.lib.github_.get_github_session import get_github_session
 
 
 def get_github_app_installation_token(installation_id):
-    load_dotenv(root_path() / '.env.production.local')
-    github_app_id = os.environ['GITHUB_APP_ID']
-    github_private_key = os.environ['GITHUB_APP_PRIVATE_KEY']
-    private_key_data = base64.b64decode(github_private_key)
-    private_key = serialization.load_pem_private_key(
-        private_key_data,
-        password=None,
-    )
-    payload = {
-        'iat': int(time.time()) - 60,
-        'exp': int(time.time()) + (10 * 60),
-        'iss': github_app_id
-    }
-    encoded_jwt = jwt.encode(payload, private_key, algorithm='RS256')
+    session = get_github_session(get_github_app_token())
 
-    headers = {
-        'Authorization': f'Bearer {encoded_jwt}',
-        'Accept': 'application/vnd.github+json'
-    }
-    response = requests.post(
-        f'https://api.github.com/app/installations/{installation_id}/access_tokens',
-        headers=headers
+    response = session.post(
+        f'https://api.github.com/app/installations/{installation_id}/access_tokens'
     )
     installation_token = response.json()['token']
 

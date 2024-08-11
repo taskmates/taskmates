@@ -91,6 +91,8 @@ class CompletionEngine:
                     if separator:
                         await signals.response.response.send_async(separator)
 
+                # TODO: compute env here
+
                 # Step
                 await completion_assistance.perform_completion(context, chat, signals)
 
