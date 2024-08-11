@@ -5,7 +5,7 @@ import pytest
 from httpx import ReadError
 from typeguard import typechecked
 
-from taskmates.config.completion_opts import COMPLETION_OPTS
+from taskmates.contexts import Contexts
 from taskmates.core.chat_completion.openai_adapters.anthropic_openai_adapter.response.chat_completion_pre_processor import \
     ChatCompletionPreProcessor
 from taskmates.core.chat_completion.openai_adapters.anthropic_openai_adapter.response.chat_completion_with_username import \
@@ -110,7 +110,7 @@ async def test_api_request_happy_path():
     ]
 
     # Call the api_request function with the defined parameters
-    client = get_model_client(model_conf["model"], COMPLETION_OPTS.get()["taskmates_dirs"])
+    client = get_model_client(model_conf["model"], Contexts.completion_opts.get()["taskmates_dirs"])
     response = await api_request(client, messages, model_conf, model_params, Signals())
 
     # Assert that the response is as expected
@@ -195,7 +195,7 @@ async def test_api_request_with_complex_payload():
     # and the OpenAI API key is set in the environment or configuration
 
     # Call the api_request function with the defined parameters
-    client = get_model_client(model_conf["model"], COMPLETION_OPTS.get()["taskmates_dirs"])
+    client = get_model_client(model_conf["model"], Contexts.completion_opts.get()["taskmates_dirs"])
     response = await api_request(client, messages, model_conf, model_params, Signals())
 
     # Assert that the response is as expected

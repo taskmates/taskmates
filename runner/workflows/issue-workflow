@@ -1,0 +1,83 @@
+#!/bin/bash
+
+set -Eeuo pipefail
+
+# Function to print usage
+print_usage() {
+  echo "Usage: $0 <issue_number> <comment_user>" >&2
+  echo "   or: $0 <issue_url>" >&2
+  exit 1
+}
+
+# Check if required arguments are provided
+if [ "$#" -lt 1 ]; then
+  print_usage
+fi
+
+# Set environment variables
+export RUNNER_TEMP="/tmp"
+export MARKDOWN_CHAT_PATH="$RUNNER_TEMP/chat.md"
+export GITHUB_EVENT_NAME="issue_comment"
+
+# Determine input method and set variables accordingly
+if [ "$#" -eq 1 ]; then
+  # Issue URL input
+  ISSUE_URL=$1
+  REPO_OWNER=$(echo $ISSUE_URL | awk -F'/' '{print $4}')
+  REPO_NAME=$(echo $ISSUE_URL | awk -F'/' '{print $5}')
+  ISSUE_NUMBER=$(echo $ISSUE_URL | awk -F'/' '{print $7}')
+  export GITHUB_REPOSITORY="$REPO_OWNER/$REPO_NAME"
+  COMMENT_USER="" # We don't have this information from the URL
+elif [ "$#" -eq 2 ]; then
+  # Issue number and comment user input
+  ISSUE_NUMBER=$1
+  COMMENT_USER=$2
+  export GITHUB_REPOSITORY="${GITHUB_REPOSITORY:-}"
+else
+  print_usage
+fi
+
+# Fetch details
+ISSUE_DETAILS=$(gh api /repos/$GITHUB_REPOSITORY/issues/$ISSUE_NUMBER)
+ISSUE_TITLE=$(echo "$ISSUE_DETAILS" | jq -r '.title')
+ISSUE_BODY=$(echo "$ISSUE_DETAILS" | jq -r '.body')
+ISSUE_COMMENTS=$(gh api /repos/$GITHUB_REPOSITORY/issues/$ISSUE_NUMBER/comments | jq -r 'map(if .body | startswith("**") then .body else "**\(.user.login)>** " + .body end) | join("\n")')
+
+# Compose Chat
+cat <<EOF >"$MARKDOWN_CHAT_PATH"
+**github>**
+
+Please address the request on the Issue below.
+
+The source code of the appropriate branch is already checked out and available in the current working directory.
+
+Issue: $ISSUE_TITLE #$ISSUE_NUMBER
+
+$ISSUE_BODY
+
+$ISSUE_COMMENTS
+EOF
+
+# Source the should_handle_request function
+source runner/functions/should_handle_request.sh
+
+# Use a guard clause to exit early if the request should not be handled
+if ! should_handle_request "$RECIPIENT_ROLE" "$COMMENT_USER"; then
+  echo "Request will not be handled."
+  exit 0
+fi
+
+# Continue with request handling
+echo "Fulfilling the request..."
+
+cat "$MARKDOWN_CHAT_PATH" | taskmates complete \
+  --max-interactions=20 \
+  --format full | tee "$RUNNER_TEMP/response.md"
+
+cp "$RUNNER_TEMP/response.md" "$MARKDOWN_CHAT_PATH"
+
+# Create PR if necessary
+source runner/steps/create-pr-if-necessary
+
+# Summarize Response
+source runner/steps/summarize

@@ -5,7 +5,7 @@ from typing import Any
 import pytest
 
 from taskmates.config.client_config import ClientConfig
-from taskmates.config.completion_context import CompletionContext
+from taskmates.config.completion_context import CompletionContext, COMPLETION_CONTEXT
 from taskmates.config.completion_opts import CompletionOpts
 from taskmates.config.server_config import ServerConfig
 from taskmates.core.completion_engine import CompletionEngine
@@ -56,11 +56,6 @@ async def test_completion_engine_history(tmp_path):
 
     history_sink = HistorySink(history_file)
 
-    context: CompletionContext = {
-        "request_id": "test_request_id",
-        "cwd": str(tmp_path),
-        "markdown_path": str(tmp_path / "test.md"),
-    }
     server_config = ServerConfig()
     client_config = ClientConfig(interactive=False, endpoint="local")
     completion_opts = CompletionOpts(model="quote", template_params={}, taskmates_dirs=[])
@@ -70,7 +65,7 @@ async def test_completion_engine_history(tmp_path):
 
     with signals.connected_to([signal_capture, history_sink]):
         await engine.perform_completion(
-            context,
+            COMPLETION_CONTEXT.get(),
             history,
             incoming_messages,
             server_config,
@@ -97,11 +92,6 @@ async def test_completion_engine_history(tmp_path):
 
 @pytest.mark.asyncio
 async def test_completion_engine_stdout_streamer(tmp_path):
-    context: CompletionContext = {
-        "request_id": "test_request_id",
-        "cwd": "/tmp",
-        "markdown_path": "/tmp/test.md",
-    }
     server_config = ServerConfig()
     completion_opts = CompletionOpts(model="quote", template_params={}, taskmates_dirs=[])
 
@@ -122,7 +112,7 @@ async def test_completion_engine_stdout_streamer(tmp_path):
     ]) as signals:
         client_config = ClientConfig(interactive=False, format='text')
         await engine.perform_completion(
-            context, history, incoming_messages,
+            COMPLETION_CONTEXT.get(), history, incoming_messages,
             server_config, client_config, completion_opts, signals
         )
 
@@ -135,7 +125,7 @@ async def test_completion_engine_stdout_streamer(tmp_path):
     ]) as signals:
         client_config = ClientConfig(interactive=False, format='full')
         await engine.perform_completion(
-            context, history, incoming_messages,
+            COMPLETION_CONTEXT.get(), history, incoming_messages,
             server_config, client_config, completion_opts, signals
         )
 

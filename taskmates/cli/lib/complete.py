@@ -7,9 +7,7 @@ from typeguard import typechecked
 
 from taskmates.cli.lib.merge_template_params import merge_template_params
 from taskmates.config.client_config import ClientConfig
-from taskmates.config.completion_context import COMPLETION_CONTEXT, CompletionContext
-from taskmates.config.completion_opts import COMPLETION_OPTS
-from taskmates.config.server_config import SERVER_CONFIG
+from taskmates.config.completion_context import CompletionContext
 from taskmates.config.updated_config import updated_config
 from taskmates.core.completion_engine import CompletionEngine
 from taskmates.io.history_sink import HistorySink
@@ -17,6 +15,7 @@ from taskmates.io.sig_int_and_sig_term_controller import SigIntAndSigTermControl
 from taskmates.io.stdout_completion_streamer import StdoutCompletionStreamer
 from taskmates.signals.handler import Handler
 from taskmates.signals.signals import Signals, SIGNALS
+from taskmates.contexts import Contexts
 
 
 @contextmanager
@@ -36,13 +35,13 @@ def build_context(args):
         "max_interactions": args.max_interactions,
     }
 
-    with updated_config(COMPLETION_CONTEXT, completion_context), \
-            updated_config(COMPLETION_OPTS, completion_opts):
+    with updated_config(Contexts.completion_context, completion_context), \
+            updated_config(Contexts.completion_opts, completion_opts):
         yield {
-            'context': COMPLETION_CONTEXT.get(),
+            'context': Contexts.completion_context.get(),
             'client_config': client_config,
-            'server_config': SERVER_CONFIG.get(),
-            'completion_opts': COMPLETION_OPTS.get()
+            'server_config': Contexts.server_config.get(),
+            'completion_opts': Contexts.completion_opts.get()
         }
 
 

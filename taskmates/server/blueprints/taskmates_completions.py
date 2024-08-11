@@ -7,9 +7,8 @@ from quart import Blueprint, Response, websocket
 
 import taskmates
 from taskmates.config.client_config import ClientConfig
-from taskmates.config.completion_context import COMPLETION_CONTEXT, CompletionContext
-from taskmates.config.completion_opts import COMPLETION_OPTS, CompletionOpts
-from taskmates.config.server_config import SERVER_CONFIG
+from taskmates.config.completion_context import CompletionContext
+from taskmates.config.completion_opts import CompletionOpts
 from taskmates.config.updated_config import updated_config
 from taskmates.core.completion_engine import CompletionEngine
 from taskmates.io.file_system_artifacts_sink import FileSystemArtifactsSink
@@ -19,6 +18,7 @@ from taskmates.lib.json_.json_utils import snake_case
 from taskmates.logging import logger
 from taskmates.signals.signals import SIGNALS, Signals
 from taskmates.types import CompletionPayload
+from taskmates.contexts import Contexts
 
 completions_bp = Blueprint('completions_v2', __name__)
 
@@ -31,7 +31,7 @@ def build_context(payload: CompletionPayload):
     # TODO: review this
     completion_opts["taskmates_dirs"] = [str(Path(payload["completion_context"]["cwd"]) / ".taskmates"),
                                          *completion_opts.get("taskmates_dirs",
-                                                              COMPLETION_OPTS.get()["taskmates_dirs"])]
+                                                              Contexts.completion_opts.get()["taskmates_dirs"])]
 
     if "template_params" not in completion_opts:
         completion_opts["template_params"] = {}
@@ -39,15 +39,15 @@ def build_context(payload: CompletionPayload):
     client_config = ClientConfig(interactive=True,
                                  format="completion")
 
-    server_config = SERVER_CONFIG.get()
+    server_config = Contexts.server_config.get()
 
-    with updated_config(COMPLETION_CONTEXT, completion_context), \
-            updated_config(COMPLETION_OPTS, completion_opts):
+    with updated_config(Contexts.completion_context, completion_context), \
+            updated_config(Contexts.completion_opts, completion_opts):
         yield {
-            'context': COMPLETION_CONTEXT.get(),
+            'context': Contexts.completion_context.get(),
             'client_config': client_config,
             'server_config': server_config,
-            'completion_opts': COMPLETION_OPTS.get()
+            'completion_opts': Contexts.completion_opts.get()
         }
 
 

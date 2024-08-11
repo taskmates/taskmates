@@ -1,0 +1,73 @@
+#!/bin/bash
+
+set -Eeuo pipefail
+
+# Check if required arguments are provided
+if [ "$#" -ne 2 ]; then
+  echo "Usage: $0 <pr_number> <comment_user>" >&2
+  exit 1
+fi
+
+# Assign arguments to variables
+PR_NUMBER=$1
+COMMENT_USER=$2
+
+# Set environment variables
+export RUNNER_TEMP="/tmp"
+export MARKDOWN_CHAT_PATH="$RUNNER_TEMP/chat.md"
+export GITHUB_EVENT_NAME="issue_comment"
+
+# Fetch details
+PR_DETAILS=$(gh api /repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER)
+PR_TITLE=$(echo "$PR_DETAILS" | jq -r '.title')
+PR_BODY=$(echo "$PR_DETAILS" | jq -r '.body')
+PR_COMMENTS=$(gh api /repos/$GITHUB_REPOSITORY/issues/$PR_NUMBER/comments | jq -r 'map(if .body | startswith("**") then .body else "**\(.user.login)>** " + .body end) | join("\n")')
+PR_REF=$(echo "$PR_DETAILS" | jq -r '.head.ref')
+PR_SHA=$(echo "$PR_DETAILS" | jq -r '.head.sha')
+
+# Checkout the PR branch
+git fetch origin $PR_REF
+git checkout $PR_SHA
+
+# Compose Chat
+cat <<EOF >"$MARKDOWN_CHAT_PATH"
+**github>**
+
+Please address the request on the Pull Request below.
+
+The source code of the appropriate branch is already checked out and available in the current working directory.
+
+Pull Request: $PR_TITLE #$PR_NUMBER
+
+Description:
+
+$PR_BODY
+
+---
+
+$PR_COMMENTS
+EOF
+
+# Source the should_handle_request function
+source runner/functions/should_handle_request.sh
+
+# Use a guard clause to exit early if the request should not be handled
+if ! should_handle_request "$RECIPIENT_ROLE" "$COMMENT_USER"; then
+  echo "Request will not be handled."
+  exit 0
+fi
+
+# Continue with request handling
+echo "Fulfilling the request..."
+
+cat "$MARKDOWN_CHAT_PATH" | taskmates complete \
+  --max-interactions=20 \
+  --format full | tee "$RUNNER_TEMP/response.md"
+
+cp "$RUNNER_TEMP/response.md" "$MARKDOWN_CHAT_PATH"
+
+# Create PR if necessary
+source runner/steps/create-pr-if-necessary
+
+# Summarize Response
+source runner/steps/summarize

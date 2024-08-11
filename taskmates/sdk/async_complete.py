@@ -3,13 +3,13 @@ from typing import Unpack
 from typeguard import typechecked
 
 from taskmates.core.completion_engine import CompletionEngine
-from taskmates.config.client_config import ClientConfig, CLIENT_CONFIG
-from taskmates.config.completion_context import COMPLETION_CONTEXT
-from taskmates.config.completion_opts import COMPLETION_OPTS, CompletionOpts
-from taskmates.config.server_config import ServerConfig, SERVER_CONFIG
+from taskmates.config.client_config import ClientConfig
+from taskmates.config.completion_opts import CompletionOpts
+from taskmates.config.server_config import ServerConfig
 from taskmates.config.updated_config import updated_config
 from taskmates.lib.not_set.not_set import NOT_SET
 from taskmates.signals.signals import SIGNALS, Signals
+from taskmates.contexts import Contexts
 
 
 @typechecked
@@ -36,13 +36,13 @@ async def async_complete(markdown,
     signals.output.result.connect(process_return_value)
     signals.response.error.connect(process_error)
 
-    completion_context = COMPLETION_CONTEXT.get()
+    completion_context = Contexts.completion_context.get()
 
-    server_config: ServerConfig = SERVER_CONFIG.get()
-    client_config: ClientConfig = CLIENT_CONFIG.get()
+    server_config: ServerConfig = Contexts.server_config.get()
+    client_config: ClientConfig = Contexts.client_config.get()
 
     try:
-        with updated_config(COMPLETION_OPTS, completion_opts):
+        with updated_config(Contexts.completion_opts, completion_opts):
             await CompletionEngine().perform_completion(
                 completion_context,
                 markdown,
