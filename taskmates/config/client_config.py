@@ -5,10 +5,4 @@ class ClientConfig(TypedDict):
     endpoint: NotRequired[str]
     format: NotRequired[Literal["full", "text", "input", "completion"]]
     output: NotRequired[str]
-    interactive: bool
-
-
-CLIENT_CONFIG: ClientConfig = {
-    "format": "completion",
-    "interactive": True,
-}
+    interactive: NotRequired[bool]

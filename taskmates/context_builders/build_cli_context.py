@@ -8,7 +8,7 @@ from taskmates.contexts import CONTEXTS, Contexts
 
 
 @contextmanager
-def build_context(args) -> Contexts:
+def build_cli_context(args) -> Contexts:
     with context_fork(CONTEXTS) as contexts:
         request_id = str(uuid4())
 

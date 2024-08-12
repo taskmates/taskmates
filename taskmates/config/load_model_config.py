@@ -29,7 +29,7 @@ def temp_config_structure(tmp_path):
     (temp_dir / ".taskmates").mkdir()
     (temp_dir / "home" / ".taskmates").mkdir(parents=True)
     (temp_dir / "taskmates" / "config").mkdir(parents=True)
-    (temp_dir / "taskmates" / "default_config").mkdir(parents=True)
+    (temp_dir / "taskmates" / "defaults").mkdir(parents=True)
 
     # Create config files
     (temp_dir / ".taskmates" / "models.yaml").write_text("""
@@ -50,7 +50,7 @@ def temp_config_structure(tmp_path):
         max_tokens: 300
     """)
 
-    (temp_dir / "taskmates" / "default_config" / "models.yaml").write_text("""
+    (temp_dir / "taskmates" / "defaults" / "models.yaml").write_text("""
     model4:
         type: gpt
         max_tokens: 400
@@ -64,7 +64,7 @@ def test_load_model_config(temp_config_structure):
         str(temp_config_structure / ".taskmates"),
         str(temp_config_structure / "home" / ".taskmates"),
         str(temp_config_structure / "taskmates" / "config"),
-        str(temp_config_structure / "taskmates" / "default_config")
+        str(temp_config_structure / "taskmates" / "defaults")
     ]
 
     # Test loading model from current directory

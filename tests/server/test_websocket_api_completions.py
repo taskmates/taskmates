@@ -29,7 +29,7 @@ def contexts(tmp_path):
         contexts["completion_context"].update({
             "request_id": str(uuid4()),
             "cwd": str(tmp_path),
-            "env": os.environ.copy(),
+            "env": {},
             "markdown_path": str(tmp_path / "chat.md")
         })
         yield

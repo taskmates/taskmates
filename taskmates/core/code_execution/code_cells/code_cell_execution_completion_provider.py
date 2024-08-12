@@ -1,4 +1,6 @@
+import os
 import textwrap
+from uuid import uuid4
 
 import pytest
 
@@ -8,6 +10,7 @@ from taskmates.core.code_execution.code_cells.code_cells_editor_completion impor
 from taskmates.core.code_execution.code_cells.execute_markdown_on_local_kernel import \
     execute_markdown_on_local_kernel
 from taskmates.core.completion_provider import CompletionProvider
+from taskmates.lib.context_.context_fork import context_fork
 from taskmates.signals.signals import SIGNALS, Signals
 from taskmates.types import Chat
 
@@ -46,6 +49,17 @@ class CodeCellExecutionCompletionProvider(CompletionProvider):
 
         await editor_completion.process_code_cells_completed()
 
+
+@pytest.fixture(autouse=True)
+def contexts(tmp_path):
+    with context_fork(CONTEXTS) as contexts:
+        contexts["completion_context"].update({
+            "request_id": str(uuid4()),
+            "cwd": str(tmp_path),
+            "env": {},
+            "markdown_path": str(tmp_path / "chat.md")
+        })
+        yield
 
 @pytest.mark.asyncio
 async def test_markdown_code_cells_assistance_streaming(tmp_path):

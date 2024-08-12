@@ -1,13 +1,13 @@
 import functools
 import io
 from typing import Any
+from uuid import uuid4
 
 import pytest
 
 from taskmates.config.client_config import ClientConfig
 from taskmates.config.completion_opts import CompletionOpts
 from taskmates.config.server_config import ServerConfig
-from taskmates.contexts import CONTEXTS
 from taskmates.core.completion_engine import CompletionEngine
 from taskmates.io.history_sink import HistorySink
 from taskmates.io.stdout_completion_streamer import StdoutCompletionStreamer
@@ -46,9 +46,14 @@ class SignalCaptureHandler(Handler):
 
 
 @pytest.fixture
-def contexts():
+def contexts(tmp_path):
     return {
-        "completion_context": CONTEXTS.get()["completion_context"],
+        "completion_context": {
+            "request_id": str(uuid4()),
+            "cwd": str(tmp_path),
+            "env": {},
+            "markdown_path": str(tmp_path / "chat.md")
+        },
         "server_config": ServerConfig(),
         "client_config": ClientConfig(interactive=False, endpoint="local"),
         "completion_opts": CompletionOpts(model="quote", template_params={}, taskmates_dirs=[]),

@@ -1,7 +1,7 @@
 from loguru import logger
 from typeguard import typechecked
 
-from taskmates.cli.lib.build_context import build_context
+from taskmates.context_builders.build_cli_context import build_cli_context
 from taskmates.core.completion_engine import CompletionEngine
 from taskmates.io.history_sink import HistorySink
 from taskmates.io.sig_int_and_sig_term_controller import SigIntAndSigTermController
@@ -22,7 +22,7 @@ async def cli_complete(history: str | None,
     with temp_context(SIGNALS, Signals()) as signals, \
             signals.connected_to(handlers):
         try:
-            with build_context(args) as contexts:
+            with build_cli_context(args) as contexts:
                 result = await CompletionEngine().perform_completion(
                     history,
                     incoming_messages,

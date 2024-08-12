@@ -2,8 +2,6 @@ import os
 from datetime import datetime
 from pathlib import Path
 
-from taskmates.config.completion_context import COMPLETION_CONTEXT
-from taskmates.config.server_config import SERVER_CONFIG
 from taskmates.contexts import CONTEXTS
 from taskmates.lib.resources_.resources import dump_resource
 from taskmates.signals.handler import Handler

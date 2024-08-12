@@ -11,7 +11,7 @@ from taskmates.io.web_socket_interrupt_and_kill_controller import WebSocketInter
 from taskmates.lib.context_.temp_context import temp_context
 from taskmates.lib.json_.json_utils import snake_case
 from taskmates.logging import logger
-from taskmates.server.blueprints.build_context import build_context
+from taskmates.context_builders.build_api_context import build_api_context
 from taskmates.signals.signals import SIGNALS, Signals
 from taskmates.types import CompletionPayload
 
@@ -40,7 +40,7 @@ async def create_completion():
             if client_version != taskmates.__version__:
                 raise ValueError(f"Incompatible client version: {client_version}. Expected: {taskmates.__version__}")
 
-            with build_context(payload) as context:
+            with build_api_context(payload) as context:
                 markdown_chat = payload["markdown_chat"]
 
                 await signals.output.artifact.send_async({"name": "websockets_api_payload.json", "content": payload})

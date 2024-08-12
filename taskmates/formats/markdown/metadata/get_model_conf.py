@@ -68,7 +68,7 @@ def test_handling_wrapped_json_in_payload_role():
         ]
     }
 
-    default_config_dir = root_path() / "taskmates" / "default_config"
+    default_config_dir = root_path() / "taskmates" / "defaults"
     updated_payload = get_model_conf("gpt-4", payload["messages"], [default_config_dir])
     assert updated_payload == {'max_tokens': 4096,
                                'model': 'gpt-4',
@@ -96,7 +96,7 @@ def test_handling_wrapped_json_and_extra_text_in_payload_role():
             }
         ]
     }
-    default_config_dir = root_path() / "taskmates" / "default_config"
+    default_config_dir = root_path() / "taskmates" / "defaults"
     updated_payload = get_model_conf("gpt-4", payload["messages"], [default_config_dir])
     assert updated_payload == {'max_tokens': 4096,
                                'model': 'gpt-4',
