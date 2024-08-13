@@ -1,9 +1,9 @@
 from taskmates.core.compute_separator import compute_separator
-from taskmates.core.handlers.handler import Handler
+from taskmates.core.signal_receiver import SignalReceiver
 from taskmates.signals.signals import Signals
 
 
-class IncomingMessagesFormattingProcessor(Handler):
+class IncomingMessagesFormattingProcessor(SignalReceiver):
     def __init__(self, signals):
         self.signals = signals
 

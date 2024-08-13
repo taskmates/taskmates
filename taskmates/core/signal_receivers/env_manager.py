@@ -1,7 +1,7 @@
-from taskmates.core.handlers.handler import Handler
+from taskmates.core.signal_receiver import SignalReceiver
 from taskmates.contexts import CONTEXTS
 
-class EnvManager(Handler):
+class EnvManager(SignalReceiver):
     async def handle_before_step(self, _sender):
         contexts = CONTEXTS.get()
 

@@ -5,6 +5,7 @@ from taskmates.config.completion_opts import CompletionOpts
 
 
 class Chat(TypedDict):
+    markdown_chat: str
     metadata: 'MarkdownOpts'
     messages: list[dict]
     participants: dict

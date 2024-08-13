@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Union
 
 import pytest
+from loguru import logger
 from typeguard import typechecked
 
 from taskmates.core.code_execution.code_cells.parse_notebook import parse_notebook
@@ -22,6 +23,8 @@ async def parse_markdown_chat(markdown_chat: str,
                               markdown_path: Union[str, Path] | None,
                               taskmates_dirs: list[str | Path],
                               template_params: dict | None = None) -> Chat:
+    logger.debug(f"Parsing markdown chat")
+
     if markdown_path is None:
         markdown_path = Path(os.getcwd()) / f"{get_digest(markdown_chat)}.md"
     markdown_path = Path(markdown_path)
@@ -57,6 +60,7 @@ async def parse_markdown_chat(markdown_chat: str,
         messages[-1]["code_cells"] = code_cells
 
     return {
+        'markdown_chat': markdown_chat,
         'metadata': metadata,
         'messages': messages,
         'participants': participants_configs,

@@ -19,17 +19,18 @@ async def cli_complete(history: str | None,
         HistorySink(args.history)
     ]
 
-    with temp_context(SIGNALS, Signals()) as signals, \
-            signals.connected_to(cli_handlers):
-        try:
-            with build_cli_context(args) as contexts:
-                result = await CompletionEngine().perform_completion(
-                    history,
-                    incoming_messages,
-                    contexts,
-                    signals
-                )
-        except Exception as e:
-            logger.error(e)
+    try:
+        with temp_context(SIGNALS, Signals()) as signals, \
+                signals.connected_to(cli_handlers), \
+                build_cli_context(args) as contexts:
+            result = await CompletionEngine().perform_completion(
+                history,
+                incoming_messages,
+                contexts,
+                signals,
+                states={}
+            )
 
         return result
+    except Exception as e:
+        logger.error(e)

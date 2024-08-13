@@ -3,12 +3,12 @@ import json
 
 from loguru import logger
 
-from taskmates.core.handlers.handler import Handler
+from taskmates.core.signal_receiver import SignalReceiver
 from taskmates.lib.json_.json_utils import snake_case
 from taskmates.signals.signals import Signals
 
 
-class WebSocketInterruptAndKillController(Handler):
+class WebSocketInterruptAndKillController(SignalReceiver):
     def __init__(self, websocket):
         self.websocket = websocket
         self.task = None

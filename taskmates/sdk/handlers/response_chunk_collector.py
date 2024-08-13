@@ -1,6 +1,7 @@
-from taskmates.core.handlers.handler import Handler
+from taskmates.core.signal_receiver import SignalReceiver
 
-class ResponseChunkHandler(Handler):
+
+class ResponseChunkCollector(SignalReceiver):
     def __init__(self):
         self.completion_chunks = []
 

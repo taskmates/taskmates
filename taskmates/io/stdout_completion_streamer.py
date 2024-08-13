@@ -1,9 +1,9 @@
 import sys
 from typing import TextIO
-from taskmates.core.handlers.handler import Handler
+from taskmates.core.signal_receiver import SignalReceiver
 
 
-class StdoutCompletionStreamer(Handler):
+class StdoutCompletionStreamer(SignalReceiver):
     def __init__(self, format: str, output_stream: TextIO = sys.stdout):
         self.format = format
         self.output_stream = output_stream

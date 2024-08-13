@@ -1,9 +1,11 @@
 import functools
 from typing import Any
-from taskmates.core.handlers.handler import Handler
+
+from taskmates.core.signal_receiver import SignalReceiver
 from taskmates.signals.signals import BaseSignals
 
-class SignalCaptureHandler(Handler):
+
+class SignalsCollector(SignalReceiver):
     def __init__(self):
         self.captured_signals: list[tuple[str, Any]] = []
 

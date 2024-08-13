@@ -1,8 +1,8 @@
-from taskmates.core.handlers.handler import Handler
+from taskmates.core.signal_receiver import SignalReceiver
 from taskmates.lib.not_set.not_set import NOT_SET
 
 
-class ReturnValueProcessor(Handler):
+class ReturnValueCollector(SignalReceiver):
     def __init__(self):
         self.return_value = NOT_SET
 

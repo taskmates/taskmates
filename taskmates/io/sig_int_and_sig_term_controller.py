@@ -1,11 +1,11 @@
 import asyncio
 import signal
 
-from taskmates.core.handlers.handler import Handler
+from taskmates.core.signal_receiver import SignalReceiver
 from taskmates.signals.signals import Signals
 
 
-class SigIntAndSigTermController(Handler):
+class SigIntAndSigTermController(SignalReceiver):
     def __init__(self):
         self.received_signal = None
         self.task = None

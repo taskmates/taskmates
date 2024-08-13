@@ -1,6 +1,7 @@
-from taskmates.core.handlers.handler import Handler
+from taskmates.core.signal_receiver import SignalReceiver
 
-class ErrorHandler(Handler):
+
+class RaiseErrorCollector(SignalReceiver):
     def __init__(self):
         self.error = None
 

@@ -1,7 +1,7 @@
-from taskmates.core.handlers.handler import Handler
+from taskmates.core.signal_receiver import SignalReceiver
 
 
-class HistorySink(Handler):
+class HistorySink(SignalReceiver):
     def __init__(self, path):
         self.path = path
         self.file = None

@@ -1,6 +1,7 @@
-from taskmates.core.handlers.handler import Handler
+from taskmates.core.signal_receiver import SignalReceiver
 
-class FullMarkdownCollector(Handler):
+
+class CurrentMarkdown(SignalReceiver):
     def __init__(self):
         self.markdown_chunks = []
 
@@ -8,7 +9,7 @@ class FullMarkdownCollector(Handler):
         if markdown is not None:
             self.markdown_chunks.append(markdown)
 
-    def get_current_markdown(self):
+    def get(self):
         return "".join(self.markdown_chunks)
 
     def connect(self, signals):

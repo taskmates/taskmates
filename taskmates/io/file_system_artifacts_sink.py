@@ -4,11 +4,11 @@ from pathlib import Path
 
 from taskmates.contexts import CONTEXTS
 from taskmates.lib.resources_.resources import dump_resource
-from taskmates.core.handlers.handler import Handler
+from taskmates.core.signal_receiver import SignalReceiver
 from taskmates.signals.signals import Signals
 
 
-class FileSystemArtifactsSink(Handler):
+class FileSystemArtifactsSink(SignalReceiver):
 
     # TODO: logic for enabling/disabling handlers
 

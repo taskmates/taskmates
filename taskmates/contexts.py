@@ -7,6 +7,7 @@ from taskmates.config.client_config import ClientConfig
 from taskmates.config.completion_context import CompletionContext
 from taskmates.config.completion_opts import CompletionOpts
 from taskmates.config.server_config import ServerConfig
+from taskmates.config.step_context import StepContext
 from taskmates.lib.root_path.root_path import root_path
 
 
@@ -15,6 +16,7 @@ class Contexts(TypedDict):
     completion_context: CompletionContext
     completion_opts: CompletionOpts
     server_config: ServerConfig
+    step_context: StepContext
 
 
 bundled_taskmates_dir = root_path() / "taskmates" / "defaults"
@@ -26,12 +28,12 @@ default_taskmates_dirs = [
 ]
 
 defaults = {
-    "client_config": {
-        "format": "completion",
-        "interactive": True,
-    },
+    "client_config": {},
     "server_config": {},
     "completion_context": {},
+    "step_context": {
+        "current_step": 0,
+    },
     "completion_opts": {
         "model": 'claude-3-5-sonnet-20240620',
         "template_params": {},

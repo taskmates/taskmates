@@ -19,40 +19,39 @@ completions_bp = Blueprint('completions_v2', __name__)
 
 @completions_bp.websocket('/v2/taskmates/completions')
 async def create_completion():
+    logger.info("Waiting for websocket connection at /v2/taskmates/completions")
+    raw_payload = await websocket.receive()
+
+    payload: CompletionPayload = snake_case(json.loads(raw_payload))
+    request_id = payload['completion_context']['request_id']
+    logger.info(f"[{request_id}] CONNECT /v2/taskmates/completions")
+
+    client_version = payload.get("version", "None")
+    if client_version != taskmates.__version__:
+        raise ValueError(f"Incompatible client version: {client_version}. Expected: {taskmates.__version__}")
+
     api_handlers = [
         WebSocketInterruptAndKillController(websocket),
         WebSocketCompletionStreamer(websocket),
     ]
-    # TODO extract that
-    # FileSystemArtifactsSink(),  # TODO: this should be disabled by default
 
     with temp_context(SIGNALS, Signals()) as signals, \
-            signals.connected_to(api_handlers):
+            signals.connected_to(api_handlers), \
+            build_api_context(payload) as context:
         try:
-            logger.info("Waiting for websocket connection at /v2/taskmates/completions")
-            raw_payload = await websocket.receive()
+            markdown_chat = payload["markdown_chat"]
 
-            payload: CompletionPayload = snake_case(json.loads(raw_payload))
-            request_id = payload['completion_context']['request_id']
-            logger.info(f"[{request_id}] CONNECT /v2/taskmates/completions")
+            await signals.output.artifact.send_async({"name": "websockets_api_payload.json", "content": payload})
 
-            client_version = payload.get("version", "None")
-            if client_version != taskmates.__version__:
-                raise ValueError(f"Incompatible client version: {client_version}. Expected: {taskmates.__version__}")
+            result = await CompletionEngine().perform_completion(
+                markdown_chat,
+                [],
+                context,
+                signals,
+                states={}
+            )
 
-            with build_api_context(payload) as context:
-                markdown_chat = payload["markdown_chat"]
-
-                await signals.output.artifact.send_async({"name": "websockets_api_payload.json", "content": payload})
-
-                result = await CompletionEngine().perform_completion(
-                    markdown_chat,
-                    [],
-                    context,
-                    signals
-                )
-
-                return result
+            return result
 
         # TODO: remove after we properly tested client disconnect
         except asyncio.CancelledError:

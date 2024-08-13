@@ -2,11 +2,11 @@ import json
 
 from loguru import logger
 
-from taskmates.core.handlers.handler import Handler
+from taskmates.core.signal_receiver import SignalReceiver
 from taskmates.signals.signals import Signals
 
 
-class WebSocketCompletionStreamer(Handler):
+class WebSocketCompletionStreamer(SignalReceiver):
     def __init__(self, websocket):
         self.websocket = websocket
 

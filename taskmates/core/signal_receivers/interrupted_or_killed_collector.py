@@ -1,6 +1,7 @@
-from taskmates.core.handlers.handler import Handler
+from taskmates.core.signal_receiver import SignalReceiver
 
-class InterruptedOrKilledHandler(Handler):
+
+class InterruptedOrKilledCollector(SignalReceiver):
     def __init__(self):
         self.interrupted_or_killed = False
 

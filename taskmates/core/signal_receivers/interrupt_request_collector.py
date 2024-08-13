@@ -1,7 +1,8 @@
-from taskmates.core.handlers.handler import Handler
+from taskmates.core.signal_receiver import SignalReceiver
 from taskmates.logging import logger
 
-class InterruptRequestHandler(Handler):
+
+class InterruptRequestCollector(SignalReceiver):
     def __init__(self, signals):
         self.interrupt_requested = False
         self.signals = signals
