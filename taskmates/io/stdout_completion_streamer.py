@@ -1,6 +1,6 @@
 import sys
 from typing import TextIO
-from taskmates.signals.handler import Handler
+from taskmates.core.handlers.handler import Handler
 
 
 class StdoutCompletionStreamer(Handler):

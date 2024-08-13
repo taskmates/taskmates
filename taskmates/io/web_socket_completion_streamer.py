@@ -2,7 +2,7 @@ import json
 
 from loguru import logger
 
-from taskmates.signals.handler import Handler
+from taskmates.core.handlers.handler import Handler
 from taskmates.signals.signals import Signals
 
 

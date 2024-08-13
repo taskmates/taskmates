@@ -1,13 +1,18 @@
 from typeguard import typechecked
 
 from taskmates.actions.parse_markdown_chat import parse_markdown_chat
-from taskmates.lib.context_.context_fork import context_fork
 from taskmates.contexts import Contexts, CONTEXTS
 from taskmates.core.completion_next_completion import compute_next_completion
 from taskmates.core.compute_separator import compute_separator
+from taskmates.core.handlers.env_manager import EnvManager
+from taskmates.core.handlers.full_markdown_collector import FullMarkdownCollector
+from taskmates.core.handlers.interrupt_request_handler import InterruptRequestHandler
+from taskmates.core.handlers.interrupted_or_killed_handler import InterruptedOrKilledHandler
 from taskmates.io.formatting_processor import IncomingMessagesFormattingProcessor
+from taskmates.lib.context_.context_fork import context_fork
+from taskmates.lib.not_set.not_set import NOT_SET
 from taskmates.logging import logger
-from taskmates.signals.handler import Handler
+from taskmates.sdk.handlers.return_value_processor import ReturnValueProcessor
 from taskmates.signals.signals import Signals
 from taskmates.types import Chat
 
@@ -24,33 +29,20 @@ class CompletionEngine:
 
         markdown_collector = FullMarkdownCollector()
         incoming_messages_formatting_processor = IncomingMessagesFormattingProcessor(signals)
-        return_value_processor = ResultProcessor()
+        return_value_processor = ReturnValueProcessor()
         interruption_handler = InterruptedOrKilledHandler()
         interrupt_request_handler = InterruptRequestHandler(signals)
 
-        # TODO: This should persist across completions
-        class EnvManager(Handler):
-            async def handle_before_step(self, _sender):
-                contexts = CONTEXTS.get()
-
-            def connect(self, signals):
-                signals.lifecycle.before_step.connect(self.handle_before_step)
-
-            def disconnect(self, signals):
-                signals.lifecycle.before_step.disconnect(self.handle_before_step)
-
         env_manager = EnvManager()
 
-        with signals.connected_to(
-                [markdown_collector,
-                 incoming_messages_formatting_processor,
-                 interrupt_request_handler,
-                 interruption_handler,
-                 return_value_processor,
-                 env_manager]):
+        request_handlers = [markdown_collector,
+                            incoming_messages_formatting_processor,
+                            interrupt_request_handler,
+                            interruption_handler,
+                            return_value_processor,
+                            env_manager]
 
-            # TODO think about remote control
-            # TODO think about history saving
+        with signals.connected_to(request_handlers):
 
             # Input
             if history:
@@ -108,8 +100,8 @@ class CompletionEngine:
                     # TODO: Add lifecycle/checkpoint here
 
                     # Post-Step
-                    if return_value_processor.result is not None:
-                        logger.debug(f"Return status is not None: {return_value_processor.result}")
+                    if return_value_processor.return_value is not NOT_SET:
+                        logger.debug(f"Return value is set to: {return_value_processor.return_value}")
                         break
 
                     if interruption_handler.interrupted_or_killed:
@@ -132,90 +124,3 @@ class CompletionEngine:
 
             # Lifecycle: Success
             await signals.lifecycle.success.send_async({})
-
-
-class FullMarkdownCollector(Handler):
-    def __init__(self):
-        self.markdown_chunks = []
-
-    async def handle(self, markdown):
-        if markdown is not None:
-            self.markdown_chunks.append(markdown)
-
-    def get_current_markdown(self):
-        return "".join(self.markdown_chunks)
-
-    def connect(self, signals):
-        signals.input.history.connect(self.handle, weak=False)
-        signals.input.incoming_message.connect(self.handle, weak=False)
-        signals.input.formatting.connect(self.handle, weak=False)
-        signals.response.formatting.connect(self.handle, weak=False)
-        signals.response.response.connect(self.handle, weak=False)
-        signals.response.responder.connect(self.handle, weak=False)
-        signals.response.error.connect(self.handle, weak=False)
-
-    def disconnect(self, signals):
-        signals.input.history.disconnect(self.handle)
-        signals.input.incoming_message.disconnect(self.handle)
-        signals.input.formatting.disconnect(self.handle)
-        signals.response.formatting.disconnect(self.handle)
-        signals.response.response.disconnect(self.handle)
-        signals.response.responder.disconnect(self.handle)
-        signals.response.error.disconnect(self.handle)
-
-
-# TODO: move return logic here
-class ResultProcessor(Handler):
-    def __init__(self):
-        self.result = None
-
-    async def handle_result(self, result):
-        logger.debug(f"Result: {result}")
-        self.result = result
-
-    def connect(self, signals):
-        signals.output.result.connect(self.handle_result)
-
-    def disconnect(self, signals):
-        signals.output.result.disconnect(self.handle_result)
-
-
-# TODO: move interruption logic here
-class InterruptedOrKilledHandler(Handler):
-    def __init__(self):
-        self.interrupted_or_killed = False
-
-    async def handle_interrupted(self, _sender):
-        self.interrupted_or_killed = True
-
-    async def handle_killed(self, _sender):
-        self.interrupted_or_killed = True
-
-    def connect(self, signals):
-        signals.lifecycle.interrupted.connect(self.handle_interrupted)
-        signals.lifecycle.killed.connect(self.handle_killed)
-
-    def disconnect(self, signals):
-        signals.lifecycle.interrupted.disconnect(self.handle_interrupted)
-        signals.lifecycle.killed.disconnect(self.handle_killed)
-
-
-class InterruptRequestHandler(Handler):
-    def __init__(self, signals):
-        self.interrupt_requested = False
-        self.signals = signals
-
-    async def handle_interrupt_request(self, _sender):
-        if self.interrupt_requested:
-            logger.info("Interrupt requested again. Killing the request.")
-            await self.signals.control.kill.send_async({})
-        else:
-            logger.info("Interrupt requested")
-            await self.signals.control.interrupt.send_async({})
-            self.interrupt_requested = True
-
-    def connect(self, signals):
-        signals.control.interrupt_request.connect(self.handle_interrupt_request)
-
-    def disconnect(self, signals):
-        signals.control.interrupt_request.disconnect(self.handle_interrupt_request)

@@ -1,6 +1,4 @@
-from pathlib import Path
-
-from taskmates.signals.handler import Handler
+from taskmates.core.handlers.handler import Handler
 
 
 class HistorySink(Handler):

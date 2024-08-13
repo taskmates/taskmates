@@ -4,14 +4,13 @@ import json
 from quart import Blueprint, Response, websocket
 
 import taskmates
+from taskmates.context_builders.build_api_context import build_api_context
 from taskmates.core.completion_engine import CompletionEngine
-from taskmates.io.file_system_artifacts_sink import FileSystemArtifactsSink
 from taskmates.io.web_socket_completion_streamer import WebSocketCompletionStreamer
 from taskmates.io.web_socket_interrupt_and_kill_controller import WebSocketInterruptAndKillController
 from taskmates.lib.context_.temp_context import temp_context
 from taskmates.lib.json_.json_utils import snake_case
 from taskmates.logging import logger
-from taskmates.context_builders.build_api_context import build_api_context
 from taskmates.signals.signals import SIGNALS, Signals
 from taskmates.types import CompletionPayload
 
@@ -20,14 +19,15 @@ completions_bp = Blueprint('completions_v2', __name__)
 
 @completions_bp.websocket('/v2/taskmates/completions')
 async def create_completion():
-    handlers = [
+    api_handlers = [
         WebSocketInterruptAndKillController(websocket),
         WebSocketCompletionStreamer(websocket),
-        FileSystemArtifactsSink(),  # TODO: this should be disabled by default
     ]
+    # TODO extract that
+    # FileSystemArtifactsSink(),  # TODO: this should be disabled by default
 
     with temp_context(SIGNALS, Signals()) as signals, \
-            signals.connected_to(handlers):
+            signals.connected_to(api_handlers):
         try:
             logger.info("Waiting for websocket connection at /v2/taskmates/completions")
             raw_payload = await websocket.receive()

@@ -4,7 +4,7 @@ from pathlib import Path
 
 from taskmates.contexts import CONTEXTS
 from taskmates.lib.resources_.resources import dump_resource
-from taskmates.signals.handler import Handler
+from taskmates.core.handlers.handler import Handler
 from taskmates.signals.signals import Signals
 
 

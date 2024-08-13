@@ -13,14 +13,14 @@ from taskmates.signals.signals import Signals, SIGNALS
 @typechecked
 async def cli_complete(history: str | None,
                        incoming_messages: list[str], args):
-    handlers = [
+    cli_handlers = [
         SigIntAndSigTermController(),
         StdoutCompletionStreamer(args.format),
         HistorySink(args.history)
     ]
 
     with temp_context(SIGNALS, Signals()) as signals, \
-            signals.connected_to(handlers):
+            signals.connected_to(cli_handlers):
         try:
             with build_cli_context(args) as contexts:
                 result = await CompletionEngine().perform_completion(
