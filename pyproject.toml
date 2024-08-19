@@ -63,7 +63,7 @@ tiktoken = "^0.7.0"
 
 # fix 1.65.1
 # https://github.com/grpc/grpc/issues/37178
-grpcio = "1.65.4"
+grpcio = "1.65.5"
 
 
 # extras
