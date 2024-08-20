@@ -8,6 +8,7 @@ from .taskmates_extension import TaskmatesExtension
 from ..contexts import Contexts
 from ..extensions.taskmates_development import TaskmatesDevelopment
 from ..extensions.taskmates_dir_loader import TaskmatesDirLoader
+from ..extensions.taskmates_working_dir_env import TaskmatesWorkingDirEnv
 
 
 class ExtensionManager:
@@ -102,10 +103,11 @@ class ExtensionManager:
                    current_states)
 
 
+DEFAULT_EXTENSIONS: list = [TaskmatesDirLoader(),
+                            TaskmatesWorkingDirEnv()]
+
 if os.environ.get("TASKMATES_ENV", "production") == "development":
-    DEFAULT_EXTENSIONS: list = [TaskmatesDirLoader(), TaskmatesDevelopment()]
-else:
-    DEFAULT_EXTENSIONS: list = [TaskmatesDirLoader()]
+    DEFAULT_EXTENSIONS.append(TaskmatesDevelopment())
 
 EXTENSION_MANAGER: contextvars.ContextVar[ExtensionManager] = \
     contextvars.ContextVar("extension_manager", default=ExtensionManager(DEFAULT_EXTENSIONS))

@@ -55,4 +55,4 @@ ENV PYTHONFAULTHANDLER=1 \
 EXPOSE 55000
 
 ENV QUART_APP=app
-CMD ["taskmates", "server", "--host", "0.0.0.0", "--port", "55000"]
+CMD ["taskmates", "server", "--host", "0.0.0.0", "--port", "55000", "--working-dir", "/workspace"]
