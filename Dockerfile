@@ -22,13 +22,17 @@ RUN apt-get update && \
     && ln -s $(which fdfind) /usr/local/bin/fd \
     && ln -s $(which ack-grep) /usr/local/bin/ack
 
-WORKDIR /app
-
 # Install poetry
 RUN pip install --no-cache-dir poetry
 
+# Create directories
+RUN mkdir -p /workspace /opt/taskmates
+
+# Set up TaskMates in /opt/taskmates
+WORKDIR /opt/taskmates
+
 # Copy only requirements to cache them in docker layer
-COPY pyproject.toml poetry.lock* /app/
+COPY pyproject.toml poetry.lock* ./
 
 # Install project dependencies
 RUN poetry config virtualenvs.create false \
@@ -39,6 +43,9 @@ COPY . .
 
 # Install the project itself
 RUN poetry install --no-dev --no-interaction --no-ansi --quiet
+
+# Set the final working directory to /workspace
+WORKDIR /workspace
 
 # Set environment variables
 ENV PYTHONFAULTHANDLER=1 \
