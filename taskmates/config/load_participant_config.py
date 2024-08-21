@@ -21,25 +21,25 @@ def load_yaml_config(config_path: Path) -> dict:
 @typechecked
 async def load_participant_config(participants_configs: dict,
                                   participant_name: str,
-                                  taskmates_config_dirs: List[Union[str, Path]]) -> dict:
+                                  taskmates_dirs: List[Union[str, Path]]) -> dict:
     def get_file_mtime(file_path):
         return os.path.getmtime(file_path) if file_path and os.path.exists(file_path) else None
 
-    taskmates_dirs = []
+    taskmates_definition_dirs = []
 
-    for config_dir in taskmates_config_dirs:
+    for config_dir in taskmates_dirs:
         if isinstance(config_dir, str):
             config_dir = Path(config_dir)
-        taskmates_dirs.append(config_dir / "taskmates")
-        taskmates_dirs.append(config_dir / "private")
+        taskmates_definition_dirs.append(config_dir / "taskmates")
+        taskmates_definition_dirs.append(config_dir / "private")
 
-    participant_md_path = find_config_file(f"{participant_name}.md", taskmates_dirs)
+    participant_md_path = find_config_file(f"{participant_name}.md", taskmates_definition_dirs)
 
     current_mtimes = {
         "md": get_file_mtime(participant_md_path),
     }
 
-    cache_key = (participant_name, tuple(str(d) for d in taskmates_dirs))
+    cache_key = (participant_name, tuple(str(d) for d in taskmates_definition_dirs))
     if cache_key in load_cache:
         cached_config, cached_mtimes = load_cache[cache_key]
         if all(current_mtimes[key] == cached_mtimes[key] for key in current_mtimes):
@@ -61,9 +61,6 @@ async def load_participant_config(participants_configs: dict,
         updated_participant_config["system"] = messages[0]["content"]
         updated_participant_config.update(front_matter)
 
-    elif "system" in updated_participant_config:
-        del updated_participant_config["system"]
-
     # compute default role
     if "role" not in updated_participant_config:
         if (participant_name == "assistant" or
@@ -72,6 +69,11 @@ async def load_participant_config(participants_configs: dict,
             updated_participant_config["role"] = "assistant"
         else:
             updated_participant_config["role"] = "user"
+
+    if (participant_name not in ("user", "assistant", "cell_output") and
+            updated_participant_config["role"] != "user" and
+            "system" not in updated_participant_config):
+        raise ValueError(f"Participant @{participant_name} not found")
 
     load_cache[cache_key] = (updated_participant_config.copy(), current_mtimes)
     return updated_participant_config

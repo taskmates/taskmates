@@ -57,7 +57,8 @@ async def compute_and_assign_roles_and_recipients(messages, participants_configs
             participants_configs[recipient] = await load_participant_config(participants_configs,
                                                                             recipient,
                                                                             taskmates_dirs)
-            current_message["recipient_role"] = participants_configs[recipient].get("role", "user")
+
+            current_message["recipient_role"] = participants_configs[recipient].get("role", "assistant")
         elif recipient:
             current_message["recipient_role"] = participants_configs[recipient].get("role", "user")
         else:

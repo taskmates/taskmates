@@ -7,6 +7,10 @@ from taskmates.types import Chat
 
 
 class CompletionProvider(ABC):
+    def __init__(self, contexts: Contexts, signals: Signals):
+        self.contexts = contexts
+        self.signals = signals
+
     @abstractmethod
     def stop(self):
         pass
@@ -16,5 +20,5 @@ class CompletionProvider(ABC):
         pass
 
     @abstractmethod
-    async def perform_completion(self, chat: Chat, contexts: Contexts, signals: Signals):
+    async def perform_completion(self, chat: Chat):
         pass

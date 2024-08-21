@@ -229,11 +229,11 @@ async def test_participant_dictionary_format(markdown_path, taskmates_dir):
     ---
     participants:
       my_assistant:
-        type: assistant
         system: My custom system prompt
-        role: My custom role description
-      my_user:
-        type: user
+        role: assistant
+      my_other_assistant:
+        role: assistant
+        system: Another system prompt
     ---
 
     @my_assistant Please search for the latest news on ai
@@ -242,4 +242,4 @@ async def test_participant_dictionary_format(markdown_path, taskmates_dir):
     result = await parse_markdown_chat(textwrap.dedent(markdown_chat_content), markdown_path,
                                        [taskmates_dir])
 
-    assert list(result['participants'].keys()) == ['user', 'my_assistant', 'my_user']
+    assert list(result['participants'].keys()) == ['user', 'my_assistant', 'my_other_assistant']

@@ -120,7 +120,6 @@ def test_code_cell_completion(cli_runner, tmp_path):
     """)
 
     assert returncode == 0
-    # TODO: get rid of jupyter warnings
     # assert not stderr
     assert stdout == expected_completion
 
@@ -257,7 +256,6 @@ def test_code_cell_no_output(cli_runner, tmp_path):
     """)
 
     assert returncode == 0
-    # TODO: get rid of jupyter warnings
     # assert not stderr
     assert stdout == expected_completion
 

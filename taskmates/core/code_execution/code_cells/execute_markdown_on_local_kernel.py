@@ -4,6 +4,7 @@ import os
 import signal
 import textwrap
 from queue import Empty
+from typing import Mapping
 
 import sys
 from jupyter_client import AsyncKernelManager, AsyncKernelClient
@@ -18,7 +19,7 @@ kernel_pool: dict[tuple[str | None, str], AsyncKernelManager] = {}
 
 
 # Main execution function
-async def execute_markdown_on_local_kernel(content, markdown_path: str = None, cwd: str = None, env: dict = None):
+async def execute_markdown_on_local_kernel(content, markdown_path: str = None, cwd: str = None, env: Mapping = None):
     signals: Signals = SIGNALS.get()
 
     notebook: NotebookNode

@@ -7,6 +7,8 @@ import pytest
 from blinker import Namespace, Signal
 from ordered_set import OrderedSet
 
+from taskmates.lib.context_.temp_context import temp_context
+
 Signal.set_class = OrderedSet
 
 
@@ -20,13 +22,14 @@ class Signals:
 
     @contextmanager
     def connected_to(self, objs: List):
-        try:
-            for obj in objs:
-                obj.connect(self)
-            yield self
-        finally:
-            for obj in objs:
-                obj.disconnect(self)
+        with temp_context(SIGNALS, self):
+            try:
+                for obj in objs:
+                    obj.connect(self)
+                yield self
+            finally:
+                for obj in objs:
+                    obj.disconnect(self)
 
 
 SIGNALS: contextvars.ContextVar['Signals'] = contextvars.ContextVar('signals')
@@ -90,7 +93,7 @@ class OutputSignals(BaseSignals):
 #         self.path = self.namespace.signal('path')
 
 
-class ResponseSignals(LifecycleSignals):
+class ResponseSignals(BaseSignals):
     def __init__(self):
         super().__init__()
 

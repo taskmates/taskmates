@@ -1,18 +1,16 @@
 import asyncio
 import json
-import os
 
 from quart import Blueprint, Response, websocket
 
 import taskmates
 from taskmates.context_builders.build_api_context import build_api_context
-from taskmates.core.completion_engine import CompletionEngine
+from taskmates.core.chat_session import ChatSession
 from taskmates.io.web_socket_completion_streamer import WebSocketCompletionStreamer
 from taskmates.io.web_socket_interrupt_and_kill_controller import WebSocketInterruptAndKillController
-from taskmates.lib.context_.temp_context import temp_context
 from taskmates.lib.json_.json_utils import snake_case
 from taskmates.logging import logger
-from taskmates.signals.signals import SIGNALS, Signals
+from taskmates.signals.signals import Signals
 from taskmates.types import CompletionPayload
 
 completions_bp = Blueprint('completions_v2', __name__)
@@ -36,21 +34,20 @@ async def create_completion():
         WebSocketCompletionStreamer(websocket),
     ]
 
-    with temp_context(SIGNALS, Signals()) as signals, \
-            signals.connected_to(api_handlers), \
-            build_api_context(payload) as context:
+    contexts = build_api_context(payload)
+    with Signals().connected_to(api_handlers) as signals:
         try:
             markdown_chat = payload["markdown_chat"]
 
-            await signals.output.artifact.send_async({"name": "websockets_api_payload.json", "content": payload})
+            await signals.output.artifact.send_async(
+                {"name": "websockets_api_payload.json", "content": payload})
 
-            result = await CompletionEngine().perform_completion(
-                markdown_chat,
-                [],
-                context,
-                signals,
-                states={}
-            )
+            result = await ChatSession(
+                history=markdown_chat,
+                incoming_messages=[],
+                contexts=contexts,
+                signals=signals
+            ).resume()
 
             return result
 

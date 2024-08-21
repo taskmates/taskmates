@@ -6,7 +6,7 @@ from taskmates.contexts import default_taskmates_dirs, Contexts
 from taskmates.sdk import TaskmatesExtension
 
 
-class TaskmatesDirLoader(TaskmatesExtension):
+class TaskmatesDirsLoader(TaskmatesExtension):
     @override
     def after_build_contexts(self, contexts: Contexts):
         local_taskmates_dir = str(Path(contexts["completion_context"]["cwd"]) / ".taskmates")

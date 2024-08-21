@@ -2,35 +2,33 @@ from loguru import logger
 from typeguard import typechecked
 
 from taskmates.context_builders.build_cli_context import build_cli_context
-from taskmates.core.completion_engine import CompletionEngine
+from taskmates.core.chat_session import ChatSession
 from taskmates.io.history_sink import HistorySink
 from taskmates.io.sig_int_and_sig_term_controller import SigIntAndSigTermController
 from taskmates.io.stdout_completion_streamer import StdoutCompletionStreamer
-from taskmates.lib.context_.temp_context import temp_context
-from taskmates.signals.signals import Signals, SIGNALS
+from taskmates.signals.signals import Signals
 
 
 @typechecked
 async def cli_complete(history: str | None,
                        incoming_messages: list[str], args):
-    cli_handlers = [
+    handlers = [
         SigIntAndSigTermController(),
         StdoutCompletionStreamer(args.format),
         HistorySink(args.history)
     ]
 
     try:
-        with temp_context(SIGNALS, Signals()) as signals, \
-                signals.connected_to(cli_handlers), \
-                build_cli_context(args) as contexts:
-            result = await CompletionEngine().perform_completion(
-                history,
-                incoming_messages,
-                contexts,
-                signals,
-                states={}
-            )
+        contexts = build_cli_context(args)
+        with Signals().connected_to(handlers) as signals:
+            result = await ChatSession(
+                history=history,
+                incoming_messages=incoming_messages,
+                contexts=contexts,
+                signals=signals
+            ).resume()
 
         return result
     except Exception as e:
+        await signals.response.error.send_async(e)
         logger.error(e)

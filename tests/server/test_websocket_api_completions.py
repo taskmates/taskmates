@@ -11,8 +11,9 @@ from typeguard import typechecked
 
 import taskmates
 from taskmates.lib.context_.context_fork import context_fork
-from taskmates.contexts import CONTEXTS
-from taskmates.server.blueprints.completions_api import completions_bp as completions_v2_bp
+from taskmates.contexts import CONTEXTS, build_default_contexts
+from taskmates.lib.context_.temp_context import temp_context
+from taskmates.server.blueprints.api_completions import completions_bp as completions_v2_bp
 from taskmates.types import CompletionPayload
 
 
@@ -25,7 +26,8 @@ def app():
 
 @pytest.fixture(autouse=True)
 def contexts(tmp_path):
-    with context_fork(CONTEXTS) as contexts:
+    contexts = build_default_contexts()
+    with temp_context(CONTEXTS, contexts):
         contexts["completion_context"].update({
             "request_id": str(uuid4()),
             "cwd": str(tmp_path),

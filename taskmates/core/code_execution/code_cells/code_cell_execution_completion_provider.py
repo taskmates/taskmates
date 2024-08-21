@@ -1,17 +1,16 @@
-import os
 import textwrap
 from uuid import uuid4
 
 import pytest
 
 from taskmates.config.completion_context import CompletionContext
-from taskmates.contexts import CONTEXTS, Contexts
+from taskmates.context_builders.build_test_context import build_test_context
+from taskmates.contexts import build_default_contexts
 from taskmates.core.code_execution.code_cells.code_cells_editor_completion import CodeCellsEditorCompletion
 from taskmates.core.code_execution.code_cells.execute_markdown_on_local_kernel import \
     execute_markdown_on_local_kernel
 from taskmates.core.completion_provider import CompletionProvider
-from taskmates.lib.context_.context_fork import context_fork
-from taskmates.signals.signals import SIGNALS, Signals
+from taskmates.signals.signals import Signals
 from taskmates.types import Chat
 
 
@@ -25,8 +24,8 @@ class CodeCellExecutionCompletionProvider(CompletionProvider):
         code_cells = last_message.get("code_cells", [])
         return is_jupyter_enabled and len(code_cells) > 0
 
-    async def perform_completion(self, chat: Chat, contexts: Contexts, signals: Signals):
-        completion_context: CompletionContext = contexts["completion_context"]
+    async def perform_completion(self, chat: Chat):
+        completion_context: CompletionContext = self.contexts["completion_context"]
         markdown_path = completion_context["markdown_path"]
         cwd = completion_context["cwd"]
         env = completion_context["env"]
@@ -35,12 +34,12 @@ class CodeCellExecutionCompletionProvider(CompletionProvider):
 
         editor_completion = CodeCellsEditorCompletion(project_dir=cwd,
                                                       chat_file=markdown_path,
-                                                      signals=signals)
+                                                      signals=self.signals)
 
         async def on_code_cell_chunk(code_cell_chunk):
             await editor_completion.process_code_cell_output(code_cell_chunk)
 
-        with signals.response.code_cell_output.connected_to(on_code_cell_chunk):
+        with self.signals.response.code_cell_output.connected_to(on_code_cell_chunk):
             # TODO pass env here
             await execute_markdown_on_local_kernel(content=messages[-1]["content"],
                                                    markdown_path=markdown_path,
@@ -52,18 +51,18 @@ class CodeCellExecutionCompletionProvider(CompletionProvider):
 
 @pytest.fixture(autouse=True)
 def contexts(tmp_path):
-    with context_fork(CONTEXTS) as contexts:
-        contexts["completion_context"].update({
-            "request_id": str(uuid4()),
-            "cwd": str(tmp_path),
-            "env": {},
-            "markdown_path": str(tmp_path / "chat.md")
-        })
-        yield
+    contexts = build_default_contexts()
+    contexts["completion_context"].update({
+        "request_id": str(uuid4()),
+        "cwd": str(tmp_path),
+        "env": {},
+        "markdown_path": str(tmp_path / "chat.md")
+    })
+    yield
+
 
 @pytest.mark.asyncio
 async def test_markdown_code_cells_assistance_streaming(tmp_path):
-    signals = SIGNALS.get()
     code_cell_chunks = []
     markdown_chunks = []
 
@@ -73,8 +72,8 @@ async def test_markdown_code_cells_assistance_streaming(tmp_path):
     async def capture_completion_chunk(chunk):
         markdown_chunks.append(chunk)
 
-    signals.response.code_cell_output.connect(capture_code_cell_chunk)
-    signals.response.response.connect(capture_completion_chunk)
+    async def capture_error(error):
+        raise error
 
     chat: Chat = {
         "metadata": {},
@@ -98,19 +97,24 @@ async def test_markdown_code_cells_assistance_streaming(tmp_path):
         ]
     }
 
-    assistance = CodeCellExecutionCompletionProvider()
-    await assistance.perform_completion(chat, CONTEXTS.get(), signals)
+    contexts = build_test_context(tmp_path)
+    with Signals().connected_to([]) as signals:
+        signals.response.code_cell_output.connect(capture_code_cell_chunk)
+        signals.response.response.connect(capture_completion_chunk)
+        signals.response.error.connect(capture_error)
+        assistance = CodeCellExecutionCompletionProvider(contexts, signals)
+        await assistance.perform_completion(chat)
 
-    assert "".join(markdown_chunks) == ('###### Cell Output: stdout [cell_0]\n'
-                                        '\n'
-                                        '<pre>\n'
-                                        'Hello\n'
-                                        'Beautiful\n'
-                                        '</pre>\n'
-                                        '\n'
-                                        '###### Cell Output: stdout [cell_1]\n'
-                                        '\n'
-                                        '<pre>\n'
-                                        'World\n'
-                                        '</pre>\n'
-                                        '\n')
+        assert "".join(markdown_chunks) == ('###### Cell Output: stdout [cell_0]\n'
+                                            '\n'
+                                            '<pre>\n'
+                                            'Hello\n'
+                                            'Beautiful\n'
+                                            '</pre>\n'
+                                            '\n'
+                                            '###### Cell Output: stdout [cell_1]\n'
+                                            '\n'
+                                            '<pre>\n'
+                                            'World\n'
+                                            '</pre>\n'
+                                            '\n')

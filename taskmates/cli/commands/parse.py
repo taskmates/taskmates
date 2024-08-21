@@ -1,5 +1,6 @@
 import argparse
 import json
+import os
 from io import StringIO
 
 import pytest
@@ -7,7 +8,9 @@ import sys
 
 from taskmates.actions.parse_markdown_chat import parse_markdown_chat
 from taskmates.cli.commands.base import Command
-from taskmates.contexts import CONTEXTS
+from taskmates.contexts import build_default_contexts
+from taskmates.sdk.extension_manager import EXTENSION_MANAGER
+from taskmates.signals.signals import Signals
 
 
 class ParseCommand(Command):
@@ -15,7 +18,11 @@ class ParseCommand(Command):
         pass  # No additional arguments needed for parse command
 
     async def execute(self, args: argparse.Namespace):
-        contexts = CONTEXTS.get()
+        contexts = build_default_contexts()
+        contexts["completion_context"]["cwd"] = os.getcwd()
+
+        EXTENSION_MANAGER.get().after_build_contexts(contexts)
+
         taskmates_dirs = contexts["completion_opts"]["taskmates_dirs"]
         markdown_chat = "".join(sys.stdin.readlines())
         result = await parse_markdown_chat(markdown_chat, None, taskmates_dirs)
