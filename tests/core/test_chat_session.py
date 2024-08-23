@@ -50,7 +50,7 @@ class CaptureContext(TaskmatesExtension):
 @pytest.fixture
 def initialize_extensions():
     extension_manager = EXTENSION_MANAGER.get()
-    extension_manager.initialize(ChatSession)
+    extension_manager.initialize()
     yield
 
 

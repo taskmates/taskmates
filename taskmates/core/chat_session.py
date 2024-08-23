@@ -41,10 +41,6 @@ class ChatSession:
 
         EXTENSION_MANAGER.get().after_build_contexts(self.contexts)
 
-        # TODO: cm
-        # extension_manager = EXTENSION_MANAGER.get()
-        # extension_manager.initialize(ChatSession)
-
     async def resume(self):
         with temp_context(CONTEXTS, copy.deepcopy(self.contexts)) as run_contexts:
             interactive = run_contexts['client_config']["interactive"]

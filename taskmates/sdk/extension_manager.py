@@ -1,6 +1,5 @@
 import contextvars
 import os
-import aspectlib
 
 from .taskmates_extension import TaskmatesExtension
 from ..contexts import Contexts
@@ -12,12 +11,13 @@ from ..extensions.taskmates_working_dir_env import TaskmatesWorkingDirEnv
 class ExtensionManager:
     def __init__(self, extensions: list[TaskmatesExtension] = None):
         self.extensions: list[TaskmatesExtension] = extensions or []
+        self._initialized: bool = False
 
-    def initialize(self, target_class):
-        for extension in self.extensions:
-            extension.initialize()
-            aspectlib.weave(target_class, extension.completion_context)
-            aspectlib.weave(target_class, extension.completion_step_context)
+    def initialize(self):
+        if not self._initialized:
+            for extension in self.extensions:
+                extension.initialize()
+            self._initialized = True
 
     def after_build_contexts(self, contexts: Contexts):
         for extension in self.extensions:
@@ -30,5 +30,8 @@ DEFAULT_EXTENSIONS: list = [TaskmatesDirsLoader(),
 if os.environ.get("TASKMATES_ENV", "production") == "development":
     DEFAULT_EXTENSIONS.append(TaskmatesDevelopment())
 
-EXTENSION_MANAGER: contextvars.ContextVar[ExtensionManager] = \
-    contextvars.ContextVar("extension_manager", default=ExtensionManager(DEFAULT_EXTENSIONS))
+extension_manager = ExtensionManager(DEFAULT_EXTENSIONS)
+extension_manager.initialize()
+
+EXTENSION_MANAGER: contextvars.ContextVar[ExtensionManager] = contextvars.ContextVar("extension_manager",
+                                                                                     default=extension_manager)
