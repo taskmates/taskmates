@@ -17,7 +17,7 @@ from taskmates.lib.not_set.not_set import NOT_SET
 from taskmates.logging import logger
 from taskmates.sdk.extension_manager import EXTENSION_MANAGER
 from taskmates.sdk.handlers.return_value_collector import ReturnValueCollector
-from taskmates.signals.signals import Signals
+from taskmates.signals.signals import Signals, SIGNALS
 from taskmates.types import Chat
 
 
@@ -33,11 +33,12 @@ class ChatSession:
 
         self.history = history
         self.incoming_messages = incoming_messages
-        # TODO: not sure we need to deepcopy here
-        self.contexts = copy.deepcopy(contexts)
+        self.contexts = contexts
         self.signals = signals
         self.handlers = handlers
-        self.states = {}
+        self.states = {
+            "current_markdown": CurrentMarkdown(),
+        }
 
         EXTENSION_MANAGER.get().initialize()
         EXTENSION_MANAGER.get().after_build_contexts(self.contexts)
@@ -45,134 +46,116 @@ class ChatSession:
     async def resume(self):
         history = self.history
         incoming_messages = self.incoming_messages
+
         handlers = self.handlers
         contexts = self.contexts
         signals = self.signals
-        states = self.states
+        states = {
+            "current_step": CurrentStep(),
+            "interrupted_or_killed": InterruptedOrKilledCollector(),
+            "return_value": ReturnValueCollector(),
+            "max_steps_manager": MaxStepsManager(),
+            **self.states
+        }
 
-        with temp_context(CONTEXTS, copy.deepcopy(contexts)) as run_contexts:
-            interactive = run_contexts['client_config']["interactive"]
+        # app scoped
+        request_handlers = [*handlers,
+                            states["current_markdown"],
+                            IncomingMessagesFormattingProcessor(),
+                            InterruptRequestCollector(),
+                            states["interrupted_or_killed"],
+                            states["return_value"]]
 
-            incoming_messages_formatting_processor = IncomingMessagesFormattingProcessor(signals)
-            return_value_processor = ReturnValueCollector()
-            interruption_handler = InterruptedOrKilledCollector()
-            interrupt_request_handler = InterruptRequestCollector(signals)
+        with temp_context(CONTEXTS, copy.deepcopy(contexts)), \
+                signals.connected_to(request_handlers):
+            await self.handle_request(history, incoming_messages, states)
 
-            max_steps_manager = MaxStepsManager()
+    async def handle_request(self, history, incoming_messages, states):
+        contexts = CONTEXTS.get()
+        signals = SIGNALS.get()
+        interactive = contexts['client_config']["interactive"]
+        # Input
+        if history:
+            await signals.input.history.send_async(history)
+        for incoming_message in incoming_messages:
+            if incoming_message:
+                await signals.input.incoming_message.send_async(incoming_message)
+        # Lifecycle: Start
+        await signals.lifecycle.start.send_async({})
+        markdown_path = contexts["completion_context"]["markdown_path"]
+        taskmates_dirs = contexts['completion_opts'].get("taskmates_dirs")
+        template_params = contexts['completion_opts']["template_params"]
+        while True:
+            current_markdown = states["current_markdown"].get()
 
-            states.update({
-                "current_markdown": CurrentMarkdown(),
-                "current_step": CurrentStep(),
-            })
-
-            request_handlers = [states["current_markdown"],
-                                incoming_messages_formatting_processor,
-                                interrupt_request_handler,
-                                interruption_handler,
-                                return_value_processor]
-
-            with signals.connected_to([*handlers, *request_handlers]):
-                # Input
-                if history:
-                    await signals.input.history.send_async(history)
-
-                for incoming_message in incoming_messages:
-                    if incoming_message:
-                        await signals.input.incoming_message.send_async(incoming_message)
-
-                # Lifecycle: Start
-                await signals.lifecycle.start.send_async({})
-
-                markdown_path = run_contexts["completion_context"]["markdown_path"]
-                taskmates_dirs = run_contexts['completion_opts'].get("taskmates_dirs")
-                template_params = run_contexts['completion_opts']["template_params"]
-
-                while True:
-                    current_markdown = states["current_markdown"].get()
-
-                    chat: Chat = await parse_markdown_chat(markdown_chat=current_markdown,
-                                                           markdown_path=markdown_path,
-                                                           taskmates_dirs=taskmates_dirs,
-                                                           template_params=template_params)
-
-                    # Pre-Step
-                    states["current_step"].increment()
-
-                    should_break = await self.perform_step(
-                        chat,
-                        return_value_processor,
-                        interruption_handler,
-                        max_steps_manager
-                    )
-                    if should_break:
-                        break
-
-                logger.debug(f"Finished completion assistance")
-
-                # TODO: Add lifecycle/checkpoint here
-
-                # TODO reload from file system
-                separator = compute_separator(states["current_markdown"].get())
-                if separator:
-                    await signals.response.formatting.send_async(separator)
-
-                # Post-Completion
-                if interactive and not interruption_handler.interrupted_or_killed:
-                    recipient = chat["messages"][-1]["recipient"]
-                    if recipient:
-                        await signals.response.next_responder.send_async(f"**{recipient}>** ")
-
-                # Lifecycle: Success
-                await signals.lifecycle.success.send_async({})
-
-    async def perform_step(self,
-                           chat: Chat,
-                           return_value_processor,
-                           interruption_handler,
-                           max_steps_manager):
-        contexts = self.contexts
-        signals = self.signals
-        states = self.states
-
-        with temp_context(CONTEXTS, contexts) as step_contexts:
-
-            # Enrich context
-            step_contexts['step_context']['current_step'] = states["current_step"].get()
-
-            if "model" in chat["metadata"]:
-                step_contexts['completion_opts']["model"] = chat["metadata"]["model"]
-
-            if step_contexts['completion_opts']["model"] in ("quote", "echo"):
-                step_contexts['completion_opts']["max_steps"] = 1
-
-            # Guards
-            if max_steps_manager.should_break(step_contexts):
-                return True
-
-            if return_value_processor.return_value is not NOT_SET:
-                logger.debug(f"Return value is set to: {return_value_processor.return_value}")
-                return True
-
-            if interruption_handler.interrupted_or_killed:
-                logger.debug("Interrupted")
-                return True
-
-                # Compute Next Completion
-            logger.debug(f"Computing next completion assistance")
-            completion_assistance = compute_next_step(chat)
-            logger.debug(f"Next completion assistance: {completion_assistance}")
-            if not completion_assistance:
-                return True
+            chat: Chat = await parse_markdown_chat(markdown_chat=current_markdown,
+                                                   markdown_path=markdown_path,
+                                                   taskmates_dirs=taskmates_dirs,
+                                                   template_params=template_params)
 
             # Pre-Step
-            if step_contexts['step_context']['current_step'] > 1:
-                separator = compute_separator(chat['markdown_chat'])
-                if separator:
-                    await signals.response.response.send_async(separator)
+            states["current_step"].increment()
 
-            # Step
-            await completion_assistance.perform_completion(chat)
+            with temp_context(CONTEXTS, copy.deepcopy(contexts)):
+                should_break = await self.perform_step(chat, states)
 
-            # Post-Step
-            # TODO: Add lifecycle/checkpoint here
+                if should_break:
+                    break
+        logger.debug(f"Finished completion assistance")
+        # TODO: Add lifecycle/checkpoint here
+        # TODO reload from file system
+        separator = compute_separator(states["current_markdown"].get())
+        if separator:
+            await signals.response.formatting.send_async(separator)
+        # Post-Completion
+        if interactive and not states["interrupted_or_killed"].interrupted_or_killed:
+            recipient = chat["messages"][-1]["recipient"]
+            if recipient:
+                await signals.response.next_responder.send_async(f"**{recipient}>** ")
+        # Lifecycle: Success
+        await signals.lifecycle.success.send_async({})
+
+    async def perform_step(self, chat: Chat, states):
+        contexts = CONTEXTS.get()
+        signals = SIGNALS.get()
+
+        # Enrich context
+        contexts['step_context']['current_step'] = states["current_step"].get()
+
+        if "model" in chat["metadata"]:
+            contexts['completion_opts']["model"] = chat["metadata"]["model"]
+
+        if contexts['completion_opts']["model"] in ("quote", "echo"):
+            contexts['completion_opts']["max_steps"] = 1
+
+        # Guards
+        if states["max_steps_manager"].should_break(contexts):
+            return True
+
+        if states["return_value"].return_value is not NOT_SET:
+            logger.debug(f"Return value is set to: {states['return_value'].return_value}")
+            return True
+
+        if states["interrupted_or_killed"].interrupted_or_killed:
+            logger.debug("Interrupted")
+            return True
+
+            # Compute Next Completion
+        logger.debug(f"Computing next completion assistance")
+        completion_assistance = compute_next_step(chat)
+        logger.debug(f"Next completion assistance: {completion_assistance}")
+        if not completion_assistance:
+            return True
+
+        # Pre-Step
+        if contexts['step_context']['current_step'] > 1:
+            separator = compute_separator(chat['markdown_chat'])
+            if separator:
+                await signals.response.response.send_async(separator)
+
+        # Step
+        await completion_assistance.perform_completion(chat)
+
+        # Post-Step
+        # TODO: Add lifecycle/checkpoint here
         return False

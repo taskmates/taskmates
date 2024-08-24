@@ -1,12 +1,9 @@
 from taskmates.core.compute_separator import compute_separator
 from taskmates.core.signal_receiver import SignalReceiver
-from taskmates.signals.signals import Signals
+from taskmates.signals.signals import Signals, SIGNALS
 
 
 class IncomingMessagesFormattingProcessor(SignalReceiver):
-    def __init__(self, signals):
-        self.signals = signals
-
     def connect(self, signals: Signals):
         signals.input.history.connect(self.handle, weak=False)
         signals.input.incoming_message.connect(self.handle, weak=False)
@@ -18,4 +15,4 @@ class IncomingMessagesFormattingProcessor(SignalReceiver):
     async def handle(self, incoming_content):
         separator = compute_separator(incoming_content)
         if separator:
-            await self.signals.input.formatting.send_async(separator)
+            await SIGNALS.get().input.formatting.send_async(separator)
