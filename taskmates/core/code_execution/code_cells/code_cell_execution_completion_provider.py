@@ -5,12 +5,13 @@ import pytest
 
 from taskmates.config.completion_context import CompletionContext
 from taskmates.context_builders.build_test_context import build_test_context
-from taskmates.contexts import build_default_contexts
+from taskmates.contexts import build_default_contexts, CONTEXTS
 from taskmates.core.code_execution.code_cells.code_cells_editor_completion import CodeCellsEditorCompletion
 from taskmates.core.code_execution.code_cells.execute_markdown_on_local_kernel import \
     execute_markdown_on_local_kernel
 from taskmates.core.completion_provider import CompletionProvider
-from taskmates.signals.signals import Signals
+from taskmates.lib.context_.temp_context import temp_context
+from taskmates.signals.signals import Signals, SIGNALS
 from taskmates.types import Chat
 
 
@@ -25,7 +26,10 @@ class CodeCellExecutionCompletionProvider(CompletionProvider):
         return is_jupyter_enabled and len(code_cells) > 0
 
     async def perform_completion(self, chat: Chat):
-        completion_context: CompletionContext = self.contexts["completion_context"]
+        contexts = CONTEXTS.get()
+        signals = SIGNALS.get()
+
+        completion_context: CompletionContext = contexts["completion_context"]
         markdown_path = completion_context["markdown_path"]
         cwd = completion_context["cwd"]
         env = completion_context["env"]
@@ -34,12 +38,12 @@ class CodeCellExecutionCompletionProvider(CompletionProvider):
 
         editor_completion = CodeCellsEditorCompletion(project_dir=cwd,
                                                       chat_file=markdown_path,
-                                                      signals=self.signals)
+                                                      signals=signals)
 
         async def on_code_cell_chunk(code_cell_chunk):
             await editor_completion.process_code_cell_output(code_cell_chunk)
 
-        with self.signals.response.code_cell_output.connected_to(on_code_cell_chunk):
+        with signals.response.code_cell_output.connected_to(on_code_cell_chunk):
             # TODO pass env here
             await execute_markdown_on_local_kernel(content=messages[-1]["content"],
                                                    markdown_path=markdown_path,
@@ -98,11 +102,12 @@ async def test_markdown_code_cells_assistance_streaming(tmp_path):
     }
 
     contexts = build_test_context(tmp_path)
-    with Signals().connected_to([]) as signals:
+    with temp_context(CONTEXTS, contexts), \
+            Signals().connected_to([]) as signals:
         signals.response.code_cell_output.connect(capture_code_cell_chunk)
         signals.response.response.connect(capture_completion_chunk)
         signals.response.error.connect(capture_error)
-        assistance = CodeCellExecutionCompletionProvider(contexts, signals)
+        assistance = CodeCellExecutionCompletionProvider()
         await assistance.perform_completion(chat)
 
         assert "".join(markdown_chunks) == ('###### Cell Output: stdout [cell_0]\n'

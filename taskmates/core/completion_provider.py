@@ -1,15 +1,9 @@
 from abc import ABC, abstractmethod
 
-from taskmates.contexts import Contexts
-from taskmates.signals.signals import Signals
 from taskmates.types import Chat
 
 
 class CompletionProvider(ABC):
-    def __init__(self, contexts: Contexts, signals: Signals):
-        self.contexts = contexts
-        self.signals = signals
-
     @abstractmethod
     def stop(self):
         pass

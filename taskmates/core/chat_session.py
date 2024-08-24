@@ -43,11 +43,16 @@ class ChatSession:
         EXTENSION_MANAGER.get().after_build_contexts(self.contexts)
 
     async def resume(self):
-        with temp_context(CONTEXTS, copy.deepcopy(self.contexts)) as run_contexts:
+        history = self.history
+        incoming_messages = self.incoming_messages
+        handlers = self.handlers
+        contexts = self.contexts
+        signals = self.signals
+        states = self.states
+
+        with temp_context(CONTEXTS, copy.deepcopy(contexts)) as run_contexts:
             interactive = run_contexts['client_config']["interactive"]
 
-            signals = self.signals
-            states = self.states
             incoming_messages_formatting_processor = IncomingMessagesFormattingProcessor(signals)
             return_value_processor = ReturnValueCollector()
             interruption_handler = InterruptedOrKilledCollector()
@@ -66,12 +71,12 @@ class ChatSession:
                                 interruption_handler,
                                 return_value_processor]
 
-            with signals.connected_to([*self.handlers, *request_handlers]):
+            with signals.connected_to([*handlers, *request_handlers]):
                 # Input
-                if self.history:
-                    await signals.input.history.send_async(self.history)
+                if history:
+                    await signals.input.history.send_async(history)
 
-                for incoming_message in self.incoming_messages:
+                for incoming_message in incoming_messages:
                     if incoming_message:
                         await signals.input.incoming_message.send_async(incoming_message)
 
@@ -94,8 +99,10 @@ class ChatSession:
                     states["current_step"].increment()
 
                     should_break = await self.perform_step(
-                        chat, return_value_processor,
-                        interruption_handler, max_steps_manager
+                        chat,
+                        return_value_processor,
+                        interruption_handler,
+                        max_steps_manager
                     )
                     if should_break:
                         break
@@ -123,9 +130,11 @@ class ChatSession:
                            return_value_processor,
                            interruption_handler,
                            max_steps_manager):
-        with temp_context(CONTEXTS, self.contexts) as step_contexts:
-            signals = self.signals
-            states = self.states
+        contexts = self.contexts
+        signals = self.signals
+        states = self.states
+
+        with temp_context(CONTEXTS, contexts) as step_contexts:
 
             # Enrich context
             step_contexts['step_context']['current_step'] = states["current_step"].get()
@@ -148,9 +157,9 @@ class ChatSession:
                 logger.debug("Interrupted")
                 return True
 
-            # Compute Next Completion
+                # Compute Next Completion
             logger.debug(f"Computing next completion assistance")
-            completion_assistance = compute_next_step(chat, step_contexts, signals)
+            completion_assistance = compute_next_step(chat)
             logger.debug(f"Next completion assistance: {completion_assistance}")
             if not completion_assistance:
                 return True

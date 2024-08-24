@@ -5,12 +5,12 @@ from typeguard import typechecked
 
 from taskmates.actions.invoke_function import invoke_function
 from taskmates.config.completion_context import CompletionContext
-from taskmates.contexts import Contexts
+from taskmates.contexts import CONTEXTS
 from taskmates.core.code_execution.tools.tool_editor_completion import ToolEditorCompletion
 from taskmates.core.completion_provider import CompletionProvider
 from taskmates.function_registry import function_registry
 from taskmates.model.tool_call import ToolCall
-from taskmates.signals.signals import Signals
+from taskmates.signals.signals import SIGNALS
 from taskmates.types import Chat
 
 
@@ -25,7 +25,10 @@ class ToolExecutionCompletionProvider(CompletionProvider):
         return len(tool_calls) > 0
 
     async def perform_completion(self, chat: Chat):
-        completion_context = self.contexts["completion_context"]
+        contexts = CONTEXTS.get()
+        signals = SIGNALS.get()
+
+        completion_context = contexts["completion_context"]
         cwd = completion_context["cwd"]
         markdown_path = completion_context["markdown_path"]
 
@@ -33,7 +36,7 @@ class ToolExecutionCompletionProvider(CompletionProvider):
 
         tool_calls = messages[-1].get("tool_calls", [])
 
-        editor_completion = ToolEditorCompletion(project_dir=cwd, chat_file=markdown_path, signals=self.signals)
+        editor_completion = ToolEditorCompletion(project_dir=cwd, chat_file=markdown_path, signals=signals)
 
         for tool_call in tool_calls:
             function_title = tool_call["function"]["name"].replace("_", " ").title()
@@ -42,24 +45,24 @@ class ToolExecutionCompletionProvider(CompletionProvider):
             tool_call_obj = ToolCall.from_dict(tool_call)
 
             async def handle_interrupted(sender):
-                await self.signals.response.response.send_async("--- INTERRUPT ---\n")
+                await signals.response.response.send_async("--- INTERRUPT ---\n")
 
             async def handle_killed(sender):
-                await self.signals.response.response.send_async("--- KILL ---\n")
+                await signals.response.response.send_async("--- KILL ---\n")
 
-            with self.signals.lifecycle.interrupted.connected_to(handle_interrupted), \
-                    self.signals.lifecycle.killed.connected_to(handle_killed):
+            with signals.lifecycle.interrupted.connected_to(handle_interrupted), \
+                    signals.lifecycle.killed.connected_to(handle_killed):
                 original_cwd = os.getcwd()
                 try:
                     try:
                         os.chdir(cwd)
                     except FileNotFoundError:
                         pass
-                    return_value = await self.execute_task(completion_context, tool_call_obj, self.signals)
+                    return_value = await self.execute_task(completion_context, tool_call_obj, signals)
                 finally:
                     os.chdir(original_cwd)
 
-            await self.signals.response.response.send_async(str(return_value))
+            await signals.response.response.send_async(str(return_value))
             await editor_completion.append_tool_execution_footer(function_title)
 
     @staticmethod
