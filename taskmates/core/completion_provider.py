@@ -1,6 +1,5 @@
 from abc import ABC, abstractmethod
 
-from taskmates.config.completion_context import CompletionContext
 from taskmates.contexts import Contexts
 from taskmates.signals.signals import Signals
 from taskmates.types import Chat

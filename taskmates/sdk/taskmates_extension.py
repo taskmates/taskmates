@@ -1,7 +1,5 @@
 from abc import ABC
 
-import aspectlib
-
 from taskmates.contexts import Contexts
 
 
@@ -16,13 +14,3 @@ class TaskmatesExtension(ABC):
 
     def after_build_contexts(self, contexts: Contexts):
         pass
-
-    @aspectlib.Aspect
-    def completion_context(self, *args, **kwargs):
-        result = yield aspectlib.Proceed
-        return result
-
-    @aspectlib.Aspect
-    def completion_step_context(self, *args, **kwargs):
-        result = yield aspectlib.Proceed
-        return result

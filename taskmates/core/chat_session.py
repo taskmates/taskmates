@@ -39,6 +39,7 @@ class ChatSession:
         self.handlers = handlers
         self.states = {}
 
+        EXTENSION_MANAGER.get().initialize()
         EXTENSION_MANAGER.get().after_build_contexts(self.contexts)
 
     async def resume(self):
