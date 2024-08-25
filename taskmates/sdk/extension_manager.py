@@ -38,6 +38,8 @@ DEFAULT_EXTENSIONS: list[str] = [
 
 if os.environ.get("TASKMATES_ENV", "production") == "development":
     DEFAULT_EXTENSIONS.append('taskmates.extensions.taskmates_development.TaskmatesDevelopment')
+    DEFAULT_EXTENSIONS.append('taskmates.extensions.dotenv_injector.DotenvInjector')
+    # DEFAULT_EXTENSIONS.append('taskmates.extensions.github_token_env_injector.GithubTokenEnvInjector')
 
 extension_manager = ExtensionManager(DEFAULT_EXTENSIONS)
 
