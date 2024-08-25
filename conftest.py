@@ -7,10 +7,11 @@ from dotenv import load_dotenv
 
 from taskmates.config.load_participant_config import load_cache
 from taskmates.core.code_execution.code_cells.execute_markdown_on_local_kernel import kernel_pool
+from taskmates.sdk.extension_manager import EXTENSION_MANAGER
 from taskmates.signals.signals import Signals, SIGNALS
 
-load_dotenv('.env', override=True)
-load_dotenv('.env.local', override=True)
+load_dotenv('.env.test', override=True)
+load_dotenv('.env.test.local', override=True)
 
 
 def pytest_configure(config):
@@ -44,6 +45,12 @@ def subject(request):
 @pytest.fixture(autouse=True)
 def reset_cache():
     load_cache.clear()
+
+
+@pytest.fixture(autouse=True)
+def extension_manager():
+    EXTENSION_MANAGER.get().initialize()
+    return EXTENSION_MANAGER.get()
 
 
 @pytest.fixture(autouse=True)

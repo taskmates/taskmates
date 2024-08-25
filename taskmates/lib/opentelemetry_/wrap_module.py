@@ -6,7 +6,8 @@ from taskmates.lib.opentelemetry_.default_exclusions import global_exclude_metho
 from taskmates.lib.opentelemetry_.wrap_function import wrap_function
 
 
-def wrap_module(module, exclude_modules_regex: Optional[list] = None,
+def wrap_module(module,
+                exclude_modules_regex: Optional[list] = None,
                 exclude_methods_regex: Optional[list] = None,
                 span_name_fn: Callable[[Callable, Any, tuple[Any], dict[str, Any]], str] | None = None):
     if exclude_modules_regex is None:

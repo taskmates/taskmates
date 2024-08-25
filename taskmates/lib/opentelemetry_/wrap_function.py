@@ -2,13 +2,16 @@ import inspect
 import re
 from typing import Optional, Callable, Any
 
+from wrapt import resolve_path, wrap_function_wrapper
+
 from taskmates.lib.opentelemetry_._create_trace_wrapper import _create_trace_wrapper
 from taskmates.lib.opentelemetry_.default_exclusions import global_exclude_modules_regex
 from taskmates.lib.opentelemetry_.tracing import tracer
-from wrapt import resolve_path, wrap_function_wrapper
 
 
-def wrap_function(module, name: str, exclude_modules_regex: Optional[list] = None,
+def wrap_function(module,
+                  name: str,
+                  exclude_modules_regex: Optional[list] = None,
                   span_name_fn: Callable[[Callable, Any, tuple[Any], dict[str, Any]], str] | None = None):
     if exclude_modules_regex is None:
         exclude_modules_regex = []
@@ -21,7 +24,8 @@ def wrap_function(module, name: str, exclude_modules_regex: Optional[list] = Non
         return
 
     is_async = inspect.iscoroutinefunction(getattr(module, name))
-    function_wrapper = wrap_function_wrapper(module, name,
+    function_wrapper = wrap_function_wrapper(module,
+                                             name,
                                              _create_trace_wrapper(tracer, is_async,
                                                                    wrapper_origin=module,
                                                                    span_name_fn=span_name_fn))

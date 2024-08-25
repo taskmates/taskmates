@@ -40,7 +40,7 @@ class ChatSession:
             "current_markdown": CurrentMarkdown(),
         }
 
-        EXTENSION_MANAGER.get().initialize()
+        # TODO: this cannot be inside a constructor
         EXTENSION_MANAGER.get().after_build_contexts(self.contexts)
 
     async def resume(self):

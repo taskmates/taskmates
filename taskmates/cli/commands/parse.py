@@ -10,7 +10,6 @@ from taskmates.actions.parse_markdown_chat import parse_markdown_chat
 from taskmates.cli.commands.base import Command
 from taskmates.contexts import build_default_contexts
 from taskmates.sdk.extension_manager import EXTENSION_MANAGER
-from taskmates.signals.signals import Signals
 
 
 class ParseCommand(Command):

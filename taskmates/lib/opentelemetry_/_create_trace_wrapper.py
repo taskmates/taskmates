@@ -7,7 +7,9 @@ from opentelemetry.sdk.trace import Tracer
 from opentelemetry.semconv.trace import SpanAttributes
 
 
-def _create_trace_wrapper(tracer: Tracer, is_async: False, wrapper_origin: None,
+def _create_trace_wrapper(tracer: Tracer,
+                          is_async: False,
+                          wrapper_origin: None,
                           span_name_fn: Callable[[Callable, Any, tuple[Any],
                                                   dict[str, Any]], str] | None = None) -> Callable:
     async def async_traced_call(func, instance, args, kwargs):

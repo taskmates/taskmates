@@ -1,4 +1,4 @@
-import aspectlib
+from wrapt import wrap_function_wrapper
 
 from taskmates.core.chat_session import ChatSession
 from taskmates.sdk import TaskmatesExtension
@@ -9,14 +9,9 @@ from taskmates.sdk import TaskmatesExtension
 
 
 class TaskmatesDevelopment(TaskmatesExtension):
-    @aspectlib.Aspect
-    def aspect(self, callee, *args, **kwargs):
-        result = yield aspectlib.Proceed
-        yield aspectlib.Return(result)
+    def aspect(self, wrapped, instance, args, kwargs):
+        result = wrapped(*args, **kwargs)
+        return result
 
     def initialize(self):
-        # aspectlib.weave(CodeCellExecutionCompletionProvider.perform_completion, aspect)
-        # aspectlib.weave(ToolExecutionCompletionProvider.perform_completion, aspect)
-
-        # aspectlib.weave(ChatSession.handle_request, aspect)
-        aspectlib.weave(ChatSession.perform_step, self.aspect)
+        wrap_function_wrapper(ChatSession, 'perform_step', self.aspect)

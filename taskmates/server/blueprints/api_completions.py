@@ -10,10 +10,16 @@ from taskmates.io.web_socket_completion_streamer import WebSocketCompletionStrea
 from taskmates.io.web_socket_interrupt_and_kill_controller import WebSocketInterruptAndKillController
 from taskmates.lib.json_.json_utils import snake_case
 from taskmates.logging import logger
+from taskmates.sdk.extension_manager import EXTENSION_MANAGER
 from taskmates.signals.signals import Signals
 from taskmates.types import CompletionPayload
 
 completions_bp = Blueprint('completions_v2', __name__)
+
+
+@completions_bp.before_app_serving
+async def before_app_serving():
+    EXTENSION_MANAGER.get().initialize()
 
 
 @completions_bp.websocket('/v2/taskmates/completions')

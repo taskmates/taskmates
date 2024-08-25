@@ -1,7 +1,7 @@
 import os
 
-import aspectlib
 from dotenv import dotenv_values
+from wrapt import wrap_function_wrapper
 
 from taskmates.contexts import CONTEXTS
 from taskmates.core.code_execution.code_cells.code_cell_execution_completion_provider import \
@@ -11,8 +11,7 @@ from taskmates.sdk import TaskmatesExtension
 
 
 class DotenvInjector(TaskmatesExtension):
-    @aspectlib.Aspect
-    def aspect(self, *args, **kwargs):
+    def aspect(self, wrapped, instance, args, kwargs):
         taskmates_env = os.environ.get("TASKMATES_ENV", "production")
         contexts = CONTEXTS.get()
         interpreter_env = contexts["completion_context"]["env"]
@@ -30,8 +29,9 @@ class DotenvInjector(TaskmatesExtension):
                 dotenv_vars = dotenv_values(dotenv_path)
                 interpreter_env.update(dotenv_vars)
 
-        yield aspectlib.Proceed
+        result = wrapped(*args, **kwargs)
+        return result
 
     def initialize(self):
-        aspectlib.weave(CodeCellExecutionCompletionProvider.perform_completion, self.aspect)
-        aspectlib.weave(ToolExecutionCompletionProvider.perform_completion, self.aspect)
+        wrap_function_wrapper(CodeCellExecutionCompletionProvider, 'perform_completion', self.aspect)
+        wrap_function_wrapper(ToolExecutionCompletionProvider, 'perform_completion', self.aspect)
