@@ -33,6 +33,9 @@ class GithubAppTokenEnvInjector(TaskmatesExtension):
     def aspect(self, wrapped, instance, args, kwargs):
         interpreter_env = CONTEXTS.get()["completion_context"]["env"]
 
+        if "GITHUB_APP_INSTALLATION_ID" not in interpreter_env:
+            return wrapped(*args, **kwargs)
+
         token = self.get_token(interpreter_env)
         interpreter_env["GITHUB_TOKEN"] = token
         interpreter_env["GH_TOKEN"] = token
