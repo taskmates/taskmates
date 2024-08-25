@@ -47,7 +47,7 @@ class CodeExecution:
         return execution_footer
 
     @staticmethod
-    def escape_angle_brackets(text):
+    def escape_pre_output(text):
         return text.replace('<', '&lt;').replace('>', '&gt;')
 
     @staticmethod
@@ -55,7 +55,7 @@ class CodeExecution:
         formatted = result if isinstance(result, str) else json.dumps(result)
         formatted = strip_ansi(formatted)
         if is_preformatted:
-            formatted = CodeExecution.escape_angle_brackets(formatted)
+            formatted = CodeExecution.escape_pre_output(formatted)
         return formatted
 
     @staticmethod

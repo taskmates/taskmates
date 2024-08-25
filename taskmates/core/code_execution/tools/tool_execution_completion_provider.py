@@ -6,6 +6,7 @@ from typeguard import typechecked
 from taskmates.actions.invoke_function import invoke_function
 from taskmates.config.completion_context import CompletionContext
 from taskmates.contexts import CONTEXTS
+from taskmates.core.code_execution.code_cells.code_execution import CodeExecution
 from taskmates.core.code_execution.tools.tool_editor_completion import ToolEditorCompletion
 from taskmates.core.completion_provider import CompletionProvider
 from taskmates.function_registry import function_registry
@@ -62,7 +63,7 @@ class ToolExecutionCompletionProvider(CompletionProvider):
                 finally:
                     os.chdir(original_cwd)
 
-            await signals.response.response.send_async(str(return_value))
+            await signals.response.response.send_async(CodeExecution.escape_pre_output(str(return_value)))
             await editor_completion.append_tool_execution_footer(function_title)
 
     @staticmethod
