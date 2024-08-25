@@ -8,7 +8,8 @@ import sys
 
 from taskmates.actions.parse_markdown_chat import parse_markdown_chat
 from taskmates.cli.commands.base import Command
-from taskmates.contexts import build_default_contexts
+from taskmates.contexts import build_default_contexts, CONTEXTS
+from taskmates.lib.context_.temp_context import temp_context
 from taskmates.sdk.extension_manager import EXTENSION_MANAGER
 
 
@@ -20,12 +21,14 @@ class ParseCommand(Command):
         contexts = build_default_contexts()
         contexts["completion_context"]["cwd"] = os.getcwd()
 
+        EXTENSION_MANAGER.get().initialize()
         EXTENSION_MANAGER.get().after_build_contexts(contexts)
 
-        taskmates_dirs = contexts["client_config"]["taskmates_dirs"]
-        markdown_chat = "".join(sys.stdin.readlines())
-        result = await parse_markdown_chat(markdown_chat, None, taskmates_dirs)
-        print(json.dumps(result, ensure_ascii=False))
+        with temp_context(CONTEXTS, contexts):
+            taskmates_dirs = contexts["client_config"]["taskmates_dirs"]
+            markdown_chat = "".join(sys.stdin.readlines())
+            result = await parse_markdown_chat(markdown_chat, None, taskmates_dirs)
+            print(json.dumps(result, ensure_ascii=False))
 
 
 @pytest.mark.asyncio
