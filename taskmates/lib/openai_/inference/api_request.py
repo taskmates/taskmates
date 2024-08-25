@@ -111,7 +111,7 @@ async def test_api_request_happy_path():
 
     # Call the api_request function with the defined parameters
     contexts = CONTEXTS.get()
-    client = get_model_client(model_conf["model"], contexts["completion_opts"]["taskmates_dirs"])
+    client = get_model_client(model_conf["model"], contexts["client_config"]["taskmates_dirs"])
     response = await api_request(client, messages, model_conf, model_params, Signals())
 
     # Assert that the response is as expected
@@ -197,7 +197,7 @@ async def test_api_request_with_complex_payload():
 
     # Call the api_request function with the defined parameters
     contexts = CONTEXTS.get()
-    client = get_model_client(model_conf["model"], contexts["completion_opts"]["taskmates_dirs"])
+    client = get_model_client(model_conf["model"], contexts["client_config"]["taskmates_dirs"])
     response = await api_request(client, messages, model_conf, model_params, Signals())
 
     # Assert that the response is as expected

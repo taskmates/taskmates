@@ -9,7 +9,7 @@ from taskmates.lib.github_.get_github_app_installation_token import get_github_a
 from taskmates.sdk import TaskmatesExtension
 
 
-class GithubTokenEnvInjector(TaskmatesExtension):
+class GithubAppTokenEnvInjector(TaskmatesExtension):
     def __init__(self):
         super().__init__()
         self.token = None
@@ -36,6 +36,18 @@ class GithubTokenEnvInjector(TaskmatesExtension):
         token = self.get_token(interpreter_env)
         interpreter_env["GITHUB_TOKEN"] = token
         interpreter_env["GH_TOKEN"] = token
+
+        interpreter_env["GIT_AUTHOR_NAME"] = "Taskmates"
+        interpreter_env["GIT_AUTHOR_EMAIL"] = "taskmates@users.noreply.github.com"
+
+        # TODO
+        # https://git-scm.com/book/en/v2/Git-Internals-Environment-Variables
+        # GIT_AUTHOR_NAME is the human-readable name in the “author” field.
+        # GIT_AUTHOR_EMAIL is the email for the “author” field.
+        # GIT_AUTHOR_DATE is the timestamp used for the “author” field.
+        # GIT_COMMITTER_NAME sets the human name for the “committer” field.
+        # GIT_COMMITTER_EMAIL is the email address for the “committer” field.
+        # GIT_COMMITTER_DATE is used for the timestamp in the “committer” field.
 
         result = wrapped(*args, **kwargs)
         return result

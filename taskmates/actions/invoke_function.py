@@ -38,8 +38,8 @@ async def invoke_function(function, arguments, context: CompletionContext, signa
 
     result = await run_function()
 
-    # stdout_stream.seek(0)
-    # stderr_stream.seek(0)
+    stdout_stream.seek(0)
+    stderr_stream.seek(0)
 
     await stdout_task
     await stderr_task

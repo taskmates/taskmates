@@ -83,8 +83,8 @@ class ChatSession:
         # Lifecycle: Start
         await signals.lifecycle.start.send_async({})
         markdown_path = contexts["completion_context"]["markdown_path"]
-        taskmates_dirs = contexts['completion_opts'].get("taskmates_dirs")
-        template_params = contexts['completion_opts']["template_params"]
+        taskmates_dirs = contexts["client_config"].get("taskmates_dirs")
+        template_params = contexts["completion_opts"]["template_params"]
         while True:
             current_markdown = states["current_markdown"].get()
 
@@ -97,6 +97,7 @@ class ChatSession:
             states["current_step"].increment()
 
             with temp_context(CONTEXTS, copy.deepcopy(contexts)):
+                CONTEXTS.get()["completion_opts"].update(chat["completion_opts"])
                 should_break = await self.perform_step(chat, states)
 
                 if should_break:
@@ -122,8 +123,8 @@ class ChatSession:
         # Enrich context
         contexts['step_context']['current_step'] = states["current_step"].get()
 
-        if "model" in chat["metadata"]:
-            contexts['completion_opts']["model"] = chat["metadata"]["model"]
+        if "model" in chat["completion_opts"]:
+            contexts['completion_opts']["model"] = chat["completion_opts"]["model"]
 
         if contexts['completion_opts']["model"] in ("quote", "echo"):
             contexts['completion_opts']["max_steps"] = 1

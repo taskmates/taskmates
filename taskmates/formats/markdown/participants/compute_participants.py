@@ -5,7 +5,7 @@ from taskmates.formats.markdown.participants.process_participants import process
 from taskmates.logging import logger
 
 
-async def compute_participants(taskmates_dirs, front_matter, messages) -> tuple[str | None, dict]:
+async def compute_participants(taskmates_dirs, front_matter, messages) -> tuple[str | None, dict, dict]:
     front_matter_participants = front_matter.get("participants") or {}
 
     # Add user to participants_configs if not already present
@@ -31,12 +31,12 @@ async def compute_participants(taskmates_dirs, front_matter, messages) -> tuple[
     # TODO: Everything below this line can be moved to a separate function
     await compute_and_assign_roles_and_recipients(messages, participants_configs, taskmates_dirs)
 
-    recipient = messages[-1].get("recipient")
+    recipient_name = messages[-1].get("recipient")
     recipient_role = messages[-1].get("recipient_role")
 
-    logger.debug(f"Recipient/Role: {recipient}/{recipient_role}")
+    logger.debug(f"Recipient/Role: {recipient_name}/{recipient_role}")
 
-    return recipient, participants_configs
+    return recipient_name, participants_configs.get(recipient_name, {}), participants_configs
 
 
 async def compute_and_assign_roles_and_recipients(messages, participants_configs, taskmates_dirs):

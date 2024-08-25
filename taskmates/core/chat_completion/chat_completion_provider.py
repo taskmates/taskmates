@@ -38,7 +38,7 @@ class ChatCompletionProvider(CompletionProvider):
             await chat_completion_editor_completion.process_chat_completion_chunk(choice)
 
         with signals.response.chat_completion.connected_to(restream_completion_chunk):
-            taskmates_dirs = contexts["completion_opts"]["taskmates_dirs"]
+            taskmates_dirs = contexts["client_config"]["taskmates_dirs"]
             model_conf = get_model_conf(model_alias=model_alias, messages=chat["messages"],
                                         taskmates_dirs=taskmates_dirs)
             tools = list(map(function_registry.__getitem__, chat["available_tools"]))

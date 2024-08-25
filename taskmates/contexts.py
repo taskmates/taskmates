@@ -5,10 +5,10 @@ from typing import TypedDict
 
 from taskmates.config.client_config import ClientConfig
 from taskmates.config.completion_context import CompletionContext
-from taskmates.config.completion_opts import CompletionOpts
 from taskmates.config.server_config import ServerConfig
 from taskmates.config.step_context import StepContext
 from taskmates.lib.root_path.root_path import root_path
+from taskmates.types import CompletionOpts
 
 
 class Contexts(TypedDict):
@@ -30,7 +30,9 @@ default_taskmates_dirs = [
 
 def build_default_contexts() -> Contexts:
     return {
-        "client_config": {},
+        "client_config": {
+            "taskmates_dirs": [],
+        },
         "server_config": {},
         "completion_context": {},
         "step_context": {
@@ -40,7 +42,6 @@ def build_default_contexts() -> Contexts:
             "model": 'claude-3-5-sonnet-20240620',
             "template_params": {},
             "max_steps": 10000,
-            "taskmates_dirs": [],
         },
     }
 

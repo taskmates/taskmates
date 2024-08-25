@@ -1,23 +1,23 @@
 from typing import TypedDict, NotRequired, Dict, List, Union
 
 from taskmates.config.completion_context import CompletionContext
-from taskmates.config.completion_opts import CompletionOpts
 
 
 class Chat(TypedDict):
     markdown_chat: str
-    metadata: 'MarkdownOpts'
+    completion_opts: 'CompletionOpts'
     messages: list[dict]
     participants: dict
     available_tools: list[str]
 
 
-class MarkdownOpts(TypedDict):
+class CompletionOpts(TypedDict):
     model: NotRequired[str]
     max_steps: NotRequired[int]
     tools: NotRequired[dict]
     participants: NotRequired[dict]
     jupyter_enabled: NotRequired[bool]
+    template_params: NotRequired[dict]
 
 
 class CompletionPayload(TypedDict):

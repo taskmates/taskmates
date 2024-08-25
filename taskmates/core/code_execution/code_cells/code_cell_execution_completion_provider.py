@@ -20,7 +20,7 @@ class CodeCellExecutionCompletionProvider(CompletionProvider):
         raise NotImplementedError("Not implemented")
 
     def can_complete(self, chat):
-        is_jupyter_enabled = chat.get("metadata", {}).get("jupyter_enabled", True)
+        is_jupyter_enabled = chat.get("completion_opts", {}).get("jupyter_enabled", True)
         last_message = chat['messages'][-1]
         code_cells = last_message.get("code_cells", [])
         return is_jupyter_enabled and len(code_cells) > 0
@@ -80,7 +80,7 @@ async def test_markdown_code_cells_assistance_streaming(tmp_path):
         raise error
 
     chat: Chat = {
-        "metadata": {},
+        "completion_opts": {},
         "participants": {},
         "available_tools": [],
         "messages": [

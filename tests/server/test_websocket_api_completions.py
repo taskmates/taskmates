@@ -95,7 +95,6 @@ async def test_chat_completion_with_mention(app, tmp_path):
         "markdown_chat": markdown_chat,
         "completion_context": CONTEXTS.get()["completion_context"],
         "completion_opts": {
-            "taskmates_dirs": [str(taskmates_home)],
             "model": "quote",
         }
     }

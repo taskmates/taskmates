@@ -30,30 +30,39 @@ async def parse_markdown_chat(markdown_chat: str,
     markdown_path = Path(markdown_path)
 
     # parse
-    split_messages, front_matter = await parse_front_matter_and_messages(markdown_path,
-                                                                         markdown_chat,
-                                                                         "user")
+    split_messages, chat_front_matter = await parse_front_matter_and_messages(markdown_path,
+                                                                              markdown_chat,
+                                                                              "user")
 
     # compute
-    recipient, participants_configs = await compute_participants(taskmates_dirs, front_matter, split_messages)
-    recipient_config = participants_configs.get(recipient, {})
-    available_tools = get_available_tools(front_matter, recipient_config)
+    recipient_name, recipient_front_matter, participants_configs = await compute_participants(taskmates_dirs,
+                                                                                              chat_front_matter,
+                                                                                              split_messages)
+    available_tools = get_available_tools(chat_front_matter, recipient_front_matter)
 
     # post-process
     if template_params is None:
         template_params = {}
-    front_matter_template_params = front_matter.get("template_params", {})
+    front_matter_template_params = chat_front_matter.get("template_params", {})
 
-    if recipient:
+    if recipient_name:
         messages = prepend_recipient_system(taskmates_dirs,
                                             participants_configs,
-                                            recipient,
-                                            recipient_config,
+                                            recipient_name,
+                                            recipient_front_matter,
                                             split_messages,
                                             template_params={**front_matter_template_params, **template_params})
     else:
         messages = split_messages
-    metadata = {**front_matter, **{"tools": available_tools}}
+
+    recipient_config = recipient_front_matter.copy()
+    # TODO: review this. We should probably isolate these properties
+    recipient_config.pop("name", None)
+    recipient_config.pop("description", None)
+    recipient_config.pop("system", None)
+    recipient_config.pop("role", None)
+
+    completion_opts = {**recipient_config, **chat_front_matter}
     notebook, code_cells = parse_notebook(get_text_content(messages[-1]))
 
     if code_cells:
@@ -61,7 +70,7 @@ async def parse_markdown_chat(markdown_chat: str,
 
     return {
         'markdown_chat': markdown_chat,
-        'metadata': metadata,
+        'completion_opts': completion_opts,
         'messages': messages,
         'participants': participants_configs,
         'available_tools': (list(available_tools.keys()))

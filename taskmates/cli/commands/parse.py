@@ -22,7 +22,7 @@ class ParseCommand(Command):
 
         EXTENSION_MANAGER.get().after_build_contexts(contexts)
 
-        taskmates_dirs = contexts["completion_opts"]["taskmates_dirs"]
+        taskmates_dirs = contexts["client_config"]["taskmates_dirs"]
         markdown_chat = "".join(sys.stdin.readlines())
         result = await parse_markdown_chat(markdown_chat, None, taskmates_dirs)
         print(json.dumps(result, ensure_ascii=False))
@@ -56,7 +56,7 @@ async def test_parse_command_execute(tmp_path):
         assert "participants" in result
         assert "messages" in result
         assert "available_tools" in result
-        assert "metadata" in result
+        assert "completion_opts" in result
 
         # Check messages
         assert len(result["messages"]) == 3  # system message + user message + assistant message

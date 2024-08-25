@@ -1,7 +1,7 @@
 import os
 from uuid import uuid4
 
-from taskmates.config.completion_opts import CompletionOpts
+from taskmates.types import CompletionOpts
 from taskmates.contexts import Contexts, build_default_contexts
 
 
