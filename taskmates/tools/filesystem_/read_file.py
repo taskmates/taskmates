@@ -1,24 +1,9 @@
-import fnmatch
 from pathlib import Path
 
 import sys
 
 from taskmates.contexts import CONTEXTS
-
-
-def is_path_allowed(path, allow_pattern, deny_pattern):
-    """
-    Check if a path is allowed based on allow and deny patterns.
-
-    :param path: Path to check
-    :param allow_pattern: Pattern for allowed paths
-    :param deny_pattern: Pattern for denied paths
-    :return: True if path is allowed, False otherwise
-    """
-    path_str = str(path)
-    if deny_pattern and fnmatch.fnmatch(path_str, deny_pattern):
-        return False
-    return fnmatch.fnmatch(path_str, allow_pattern)
+from taskmates.tools.filesystem_.is_path_allowed import is_path_allowed
 
 
 def read_file(path):
@@ -30,6 +15,7 @@ def read_file(path):
     """
     contexts = CONTEXTS.get()
     completion_opts = contexts["completion_opts"]
+
     allow = completion_opts.get("tools", {}).get("read_file", {}).get("allow", "**")
     deny = completion_opts.get("tools", {}).get("read_file", {}).get("deny", None)
 
