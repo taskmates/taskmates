@@ -1,7 +1,9 @@
 import contextvars
 import importlib
 import os
+import tempfile
 
+import pytest
 import sys
 
 from .taskmates_extension import TaskmatesExtension
@@ -10,9 +12,15 @@ from ..contexts import Contexts
 
 class ExtensionManager:
     def __init__(self, extensions: list[str] = None):
-        self.extensions: list[str] = extensions or []
+        additional_extensions = self._get_additional_extensions()
+        self.extensions: list[str] = additional_extensions + (extensions or [])
         self._initialized: bool = False
         self._loaded_extensions: list[TaskmatesExtension] = []
+
+    @staticmethod
+    def _get_additional_extensions() -> list[str]:
+        additional_extensions = os.environ.get('TASKMATES_EXTENSIONS', '')
+        return [ext.strip() for ext in additional_extensions.split(',') if ext.strip()]
 
     def _add_external_directories_to_path(self):
         external_dirs = os.environ.get('TASKMATES_EXTENSIONS_DIRS')
@@ -31,8 +39,7 @@ class ExtensionManager:
                 raise TypeError(f"Extension {extension_name} does not inherit from TaskmatesExtension")
             return extension
         except (ImportError, AttributeError, TypeError) as e:
-            print(f"Failed to load extension {extension_name}: {str(e)}")
-            return None
+            raise RuntimeError(f"Failed to load extension {extension_name}: {str(e)}")
 
     def initialize(self):
         if not self._initialized:
@@ -64,9 +71,6 @@ extension_manager = ExtensionManager(DEFAULT_EXTENSIONS)
 
 EXTENSION_MANAGER: contextvars.ContextVar[ExtensionManager] = contextvars.ContextVar("extension_manager",
                                                                                      default=extension_manager)
-
-# Tests
-import tempfile
 
 
 def test_add_external_directories_to_path():
@@ -111,8 +115,8 @@ class MockExtension(TaskmatesExtension):
 
 def test_load_extension_failure():
     manager = ExtensionManager()
-    extension = manager._load_extension("non_existent_module.NonExistentExtension")
-    assert extension is None
+    with pytest.raises(RuntimeError):
+        manager._load_extension("non_existent_module.NonExistentExtension")
 
 
 def test_initialize_with_external_directory():
@@ -134,3 +138,10 @@ class TestExtension(TaskmatesExtension):
 
         assert len(manager._loaded_extensions) == 1
         assert isinstance(manager._loaded_extensions[0], TaskmatesExtension)
+
+
+def test_additional_extensions():
+    os.environ['TASKMATES_EXTENSIONS'] = 'ext1.Extension1,ext2.Extension2'
+    manager = ExtensionManager(['ext3.Extension3'])
+    assert manager.extensions == ['ext1.Extension1', 'ext2.Extension2', 'ext3.Extension3']
+    del os.environ['TASKMATES_EXTENSIONS']
