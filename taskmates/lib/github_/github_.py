@@ -194,7 +194,7 @@ def wait_for_workflow_run(repo_name: str, branch: str, event_type: str, timeout:
                     "html_url": latest_run.html_url,
                     "logs_url": latest_run.logs_url
                 }
-        time.sleep(10)  # Wait for 10 seconds before checking again
+        time.sleep(2)  # Wait before checking again
 
     raise TimeoutError(f"Workflow run did not complete within {timeout} seconds")
 

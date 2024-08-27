@@ -8,7 +8,7 @@ from taskmates.lib.github_.get_github_session import get_github_session
 from taskmates.lib.root_path.root_path import root_path
 
 if __name__ == '__main__':
-    load_dotenv(root_path() / '.env.local')
+    load_dotenv(root_path() / '.env.production.local')
 
     app_session = get_github_session(get_github_app_token(
         os.environ['GITHUB_APP_ID'],
