@@ -1,0 +1,19 @@
+**github>**
+
+Please address the request on the Issue below.
+
+The source code of the appropriate branch is already checked out and available in the current working directory.
+
+Issue: {{ issue_title }} #{{ issue_number }}
+
+{{ issue_body }}
+
+{% if comments %}
+{% for comment in comments %}
+{% if comment.body.startswith('**') %}
+{{ comment.body }}
+{% else %}
+**{{ comment.user.login }}>** {{ comment.body }}
+{% endif %}
+{% endfor %}
+{% endif %}

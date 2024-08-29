@@ -378,3 +378,85 @@ jobs:
 
     # Clean up: remove the workflow file
     commit_file(repo_name, ".github/workflows/simple_workflow.yml", "Remove simple workflow", "", branch)
+
+def get_issue_comments(repo_name: str, issue_number: int) -> List[Dict[str, Any]]:
+    """
+    Fetch comments for a GitHub issue.
+
+    Args:
+        repo_name (str): The name of the repository (e.g., "username/repo").
+        issue_number (int): The number of the issue.
+
+    Returns:
+        List[Dict[str, Any]]: A list of dictionaries containing comment details.
+    """
+    github = get_github_client()
+    repo = github.get_repo(repo_name)
+    issue = repo.get_issue(issue_number)
+    comments = issue.get_comments()
+    return [
+        {
+            "id": comment.id,
+            "body": comment.body,
+            "user": {"login": comment.user.login},
+            "created_at": comment.created_at,
+        }
+        for comment in comments
+    ]
+
+@pytest.mark.integration
+def test_get_issue_comments():
+    repo_name = "taskmates/github-integration-testbed"
+    issue = create_issue(repo_name, "Test issue for comments", "This is a test issue for fetching comments")
+
+    add_comment(repo_name, issue.number, "Test comment 1")
+    add_comment(repo_name, issue.number, "Test comment 2")
+
+    comments = get_issue_comments(repo_name, issue.number)
+    assert len(comments) == 2
+    assert comments[0]["body"] == "Test comment 1"
+    assert comments[1]["body"] == "Test comment 2"
+
+    # Clean up
+    update_issue_status(repo_name, issue.number, "closed")
+
+def get_issue_comments(repo_name: str, issue_number: int) -> List[Dict[str, Any]]:
+    """
+    Fetch comments for a GitHub issue.
+
+    Args:
+        repo_name (str): The name of the repository (e.g., "username/repo").
+        issue_number (int): The number of the issue.
+
+    Returns:
+        List[Dict[str, Any]]: A list of dictionaries containing comment details.
+    """
+    github = get_github_client()
+    repo = github.get_repo(repo_name)
+    issue = repo.get_issue(issue_number)
+    comments = issue.get_comments()
+    return [
+        {
+            "id": comment.id,
+            "body": comment.body,
+            "user": {"login": comment.user.login},
+            "created_at": comment.created_at,
+        }
+        for comment in comments
+    ]
+
+@pytest.mark.integration
+def test_get_issue_comments():
+    repo_name = "taskmates/github-integration-testbed"
+    issue = create_issue(repo_name, "Test issue for comments", "This is a test issue for fetching comments")
+    
+    add_comment(repo_name, issue.number, "Test comment 1")
+    add_comment(repo_name, issue.number, "Test comment 2")
+    
+    comments = get_issue_comments(repo_name, issue.number)
+    assert len(comments) == 2
+    assert comments[0]["body"] == "Test comment 1"
+    assert comments[1]["body"] == "Test comment 2"
+    
+    # Clean up
+    update_issue_status(repo_name, issue.number, "closed")

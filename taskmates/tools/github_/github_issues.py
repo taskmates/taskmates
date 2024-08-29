@@ -10,6 +10,7 @@ This module contains functions for interacting with GitHub.
 The corresponding unit tests are written in this file, not in a separate file.
 """
 
+
 def create_issue(repo_name: str, title: str, body: str, labels: Optional[List[str]] = None) -> str:
     """
     Create a new GitHub issue.
@@ -27,6 +28,7 @@ def create_issue(repo_name: str, title: str, body: str, labels: Optional[List[st
     repo = github.get_repo(repo_name)
     issue = repo.create_issue(title=title, body=body, labels=labels)
     return f"Created issue #{issue.number} - {issue.html_url}"
+
 
 def read_issue(repo_name: str, issue_number: int) -> str:
     """
@@ -60,6 +62,7 @@ def read_issue(repo_name: str, issue_number: int) -> str:
 
     return issue_details
 
+
 def add_comment(repo_name: str, issue_number: int, comment: str) -> str:
     """
     Add a comment to a GitHub issue.
@@ -77,6 +80,7 @@ def add_comment(repo_name: str, issue_number: int, comment: str) -> str:
     issue = repo.get_issue(issue_number)
     comment = issue.create_comment(comment)
     return f"Added comment to issue #{issue_number}: {comment.body}"
+
 
 def update_issue_status(repo_name: str, issue_number: int, state: str) -> str:
     """
@@ -101,6 +105,7 @@ def update_issue_status(repo_name: str, issue_number: int, state: str) -> str:
     issue = repo.get_issue(issue_number)
     issue.edit(state=state)
     return f"Updated status of issue #{issue_number} to {state}"
+
 
 def search_issues(repo_name: str, query: str) -> str:
     """
@@ -127,6 +132,7 @@ def search_issues(repo_name: str, query: str) -> str:
 
     return "Matching issues:\n" + "\n".join(matching_issues)
 
+
 def close_issues(repo_name: str, issue_numbers: List[int]) -> str:
     """
     Close multiple GitHub issues.
@@ -147,6 +153,7 @@ def close_issues(repo_name: str, issue_numbers: List[int]) -> str:
         closed_issues.append(str(issue_number))
     return f"Closed issues: {', '.join(closed_issues)}"
 
+
 @pytest.mark.integration
 def test_create_issue():
     repo_name = "taskmates/github-integration-testbed"
@@ -165,6 +172,7 @@ def test_create_issue():
     repo = github.get_repo(repo_name)
     issue = repo.get_issue(issue_number)
     issue.edit(state="closed")
+
 
 @pytest.mark.integration
 def test_read_issue():
@@ -190,6 +198,7 @@ def test_read_issue():
     repo = github.get_repo(repo_name)
     issue = repo.get_issue(issue_number)
     issue.edit(state="closed")
+
 
 @pytest.mark.integration
 def test_add_comment():
@@ -217,6 +226,7 @@ def test_add_comment():
     issue = repo.get_issue(issue_number)
     issue.edit(state="closed")
 
+
 @pytest.mark.integration
 def test_update_issue_status():
     repo_name = "taskmates/github-integration-testbed"
@@ -236,6 +246,7 @@ def test_update_issue_status():
     assert "State: closed" in issue_details
 
     # Clean up is not needed as the issue is already closed
+
 
 @pytest.mark.integration
 def test_search_issues():
@@ -259,6 +270,7 @@ def test_search_issues():
     repo = github.get_repo(repo_name)
     for issue in repo.get_issues(state='open', labels=['test', 'search']):
         issue.edit(state="closed")
+
 
 @pytest.mark.integration
 def test_close_issues():
