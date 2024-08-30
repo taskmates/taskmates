@@ -2,14 +2,14 @@ import argparse
 import asyncio
 
 import taskmates
-from taskmates import env
 from taskmates.cli.commands.complete import CompleteCommand
 from taskmates.cli.commands.parse import ParseCommand
 from taskmates.cli.commands.screenshot import ScreenshotCommand
 from taskmates.cli.commands.server import ServerCommand
 from taskmates.logging import logger
+from taskmates.taskmates_runtime import TaskmatesRuntime
 
-env.bootstrap()
+TaskmatesRuntime().bootstrap()
 
 
 def main():

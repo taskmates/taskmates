@@ -1,33 +1,22 @@
-import os
-
-from dotenv import dotenv_values
 from wrapt import wrap_function_wrapper
 
 from taskmates.contexts import CONTEXTS
 from taskmates.core.code_execution.code_cells.code_cell_execution_completion_provider import \
     CodeCellExecutionCompletionProvider
 from taskmates.core.code_execution.tools.tool_execution_completion_provider import ToolExecutionCompletionProvider
+from taskmates.get_dotenv_values import get_dotenv_values
 from taskmates.sdk import TaskmatesExtension
 
 
 class DotenvInjector(TaskmatesExtension):
     def wraper(self, wrapped, instance, args, kwargs):
-        taskmates_env = os.environ.get("TASKMATES_ENV", "production")
         contexts = CONTEXTS.get()
         interpreter_env = contexts["completion_context"]["env"]
         working_dir = contexts["completion_context"]["cwd"]
 
-        dotenv_pats = [
-            os.path.join(working_dir, ".env"),
-            os.path.join(working_dir, ".env.local"),
-            os.path.join(working_dir, ".env." + taskmates_env),
-            os.path.join(working_dir, ".env." + taskmates_env + ".local"),
-        ]
+        env = get_dotenv_values(working_dir)
 
-        for dotenv_path in dotenv_pats:
-            if os.path.exists(dotenv_path):
-                dotenv_vars = dotenv_values(dotenv_path)
-                interpreter_env.update(dotenv_vars)
+        interpreter_env.update(env)
 
         result = wrapped(*args, **kwargs)
         return result
