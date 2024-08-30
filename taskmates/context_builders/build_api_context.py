@@ -1,7 +1,8 @@
 import os
 from uuid import uuid4
 
-from taskmates.contexts import Contexts, build_default_contexts
+from taskmates.context_builders.build_default_context import build_default_contexts
+from taskmates.contexts import Contexts
 from taskmates.types import CompletionPayload
 
 
@@ -17,9 +18,7 @@ def build_api_context(payload: CompletionPayload) -> Contexts:
 
     contexts["completion_opts"].update(payload["completion_opts"].copy())
 
-    contexts["client_config"].update({
-        "interactive": True,
-        "format": "completion",
-    })
+    contexts["client_config"].update(dict(interactive=True,
+                                          format="completion"))
 
     return contexts

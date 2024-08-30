@@ -1,6 +1,7 @@
 from uuid import uuid4
 
-from taskmates.contexts import Contexts, build_default_contexts
+from taskmates.contexts import Contexts
+from taskmates.context_builders.build_default_context import build_default_contexts
 
 
 def build_test_context(tmp_path) -> Contexts:

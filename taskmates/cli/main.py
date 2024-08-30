@@ -7,12 +7,12 @@ from taskmates.cli.commands.parse import ParseCommand
 from taskmates.cli.commands.screenshot import ScreenshotCommand
 from taskmates.cli.commands.server import ServerCommand
 from taskmates.logging import logger
-from taskmates.taskmates_runtime import TaskmatesRuntime
-
-TaskmatesRuntime().bootstrap()
+from taskmates.taskmates_runtime import TASKMATES_RUNTIME
 
 
 def main():
+    TASKMATES_RUNTIME.get().bootstrap()
+
     parser = argparse.ArgumentParser(description='Taskmates CLI')
     parser.add_argument('--version', action='version', version=f'Taskmates {taskmates.__version__}')
     subparsers = parser.add_subparsers(dest='command')

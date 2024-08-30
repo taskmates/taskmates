@@ -7,18 +7,10 @@ from taskmates import logging
 from taskmates.server.blueprints.api_completions import completions_bp as completions_v2_bp
 from taskmates.server.blueprints.echo import echo_pb
 from taskmates.server.blueprints.health import health_bp
-from taskmates.taskmates_runtime import TaskmatesRuntime
-
-TaskmatesRuntime().bootstrap()
 
 app = Quart(__name__)
 app.asgi_app = OpenTelemetryMiddleware(app.asgi_app)
 app.logger.setLevel(logging.level)
-
-# @app.before_serving
-# async def setup_extensions():
-#     EXTENSION_MANAGER.get().initialize()
-
 
 app.register_blueprint(completions_v2_bp)
 app.register_blueprint(echo_pb)

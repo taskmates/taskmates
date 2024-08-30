@@ -2,7 +2,8 @@ import os
 from uuid import uuid4
 
 from taskmates.cli.lib.merge_template_params import merge_template_params
-from taskmates.contexts import Contexts, build_default_contexts
+from taskmates.contexts import Contexts
+from taskmates.context_builders.build_default_context import build_default_contexts
 
 
 def build_cli_context(args) -> Contexts:

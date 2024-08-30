@@ -4,14 +4,15 @@ import json
 from quart import Blueprint, Response, websocket
 
 import taskmates
+from taskmates.context_builders import ApiContextBuilder
 from taskmates.context_builders.build_api_context import build_api_context
 from taskmates.core.chat_session import ChatSession
 from taskmates.io.web_socket_completion_streamer import WebSocketCompletionStreamer
 from taskmates.io.web_socket_interrupt_and_kill_controller import WebSocketInterruptAndKillController
 from taskmates.lib.json_.json_utils import snake_case
 from taskmates.logging import logger
-from taskmates.sdk.extension_manager import EXTENSION_MANAGER
 from taskmates.signals.signals import Signals
+from taskmates.taskmates_runtime import TASKMATES_RUNTIME
 from taskmates.types import CompletionPayload
 
 completions_bp = Blueprint('completions_v2', __name__)
@@ -19,7 +20,7 @@ completions_bp = Blueprint('completions_v2', __name__)
 
 @completions_bp.before_app_serving
 async def before_app_serving():
-    EXTENSION_MANAGER.get().initialize()
+    TASKMATES_RUNTIME.get().bootstrap()
 
 
 @completions_bp.websocket('/v2/taskmates/completions')
@@ -40,7 +41,7 @@ async def create_completion():
         WebSocketCompletionStreamer(websocket),
     ]
 
-    contexts = build_api_context(payload)
+    contexts = ApiContextBuilder(payload).build()
     with Signals().connected_to(api_handlers) as signals:
         try:
             markdown_chat = payload["markdown_chat"]

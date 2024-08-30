@@ -9,7 +9,8 @@ from quart.testing.connections import WebsocketDisconnectError
 from typeguard import typechecked
 
 import taskmates
-from taskmates.contexts import CONTEXTS, build_default_contexts
+from taskmates.contexts import CONTEXTS
+from taskmates.context_builders.build_default_context import build_default_contexts
 from taskmates.lib.context_.temp_context import temp_context
 from taskmates.server.blueprints.api_completions import completions_bp as completions_v2_bp
 from taskmates.types import CompletionPayload

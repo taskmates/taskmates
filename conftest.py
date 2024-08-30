@@ -8,8 +8,8 @@ from dotenv import load_dotenv
 from taskmates.config.load_participant_config import load_cache
 from taskmates.core.code_execution.code_cells.execute_markdown_on_local_kernel import kernel_pool
 from taskmates.lib.root_path.root_path import root_path
-from taskmates.sdk.extension_manager import EXTENSION_MANAGER
 from taskmates.signals.signals import Signals, SIGNALS
+from taskmates.taskmates_runtime import TASKMATES_RUNTIME
 
 load_dotenv(root_path() / '.env.test', override=True)
 load_dotenv(root_path() / '.env.test.local', override=True)
@@ -54,9 +54,9 @@ def reset_cache():
 
 
 @pytest.fixture(autouse=True)
-def extension_manager():
-    EXTENSION_MANAGER.get().initialize()
-    return EXTENSION_MANAGER.get()
+def taskmates_runtime():
+    TASKMATES_RUNTIME.get().bootstrap()
+    return TASKMATES_RUNTIME.get()
 
 
 @pytest.fixture(autouse=True)

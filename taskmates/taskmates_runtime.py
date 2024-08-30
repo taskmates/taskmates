@@ -1,6 +1,8 @@
+import contextvars
 import os
 
 from taskmates import patches
+from taskmates.sdk.extension_manager import EXTENSION_MANAGER
 
 
 # class ColorHandler(logging.StreamHandler):
@@ -50,3 +52,11 @@ class TaskmatesRuntime:
         if os.environ.get('TASKMATES_TELEMETRY_ENABLED', '0') == '1':
             from taskmates.instrumentation import taskmates_instrumentor
             taskmates_instrumentor.instrument()
+
+        EXTENSION_MANAGER.get().initialize()
+
+
+taskmates_runtime = TaskmatesRuntime()
+
+TASKMATES_RUNTIME: contextvars.ContextVar[TaskmatesRuntime] = contextvars.ContextVar("taskmates_runtime",
+                                                                                     default=taskmates_runtime)

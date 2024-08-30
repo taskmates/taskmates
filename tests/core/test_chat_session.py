@@ -5,13 +5,12 @@ from typing import Iterator
 import pytest
 
 from taskmates.config.client_config import ClientConfig
-from taskmates.context_builders.build_test_context import build_test_context
+from taskmates.context_builders import TestContextBuilder
 from taskmates.contexts import Contexts
 from taskmates.core.chat_session import ChatSession
 from taskmates.core.signal_receivers.signals_collector import SignalsCollector
 from taskmates.io.history_sink import HistorySink
 from taskmates.io.stdout_completion_streamer import StdoutCompletionStreamer
-from taskmates.sdk.extension_manager import EXTENSION_MANAGER
 from taskmates.sdk.taskmates_extension import TaskmatesExtension
 from taskmates.signals.signals import Signals
 
@@ -48,19 +47,12 @@ class CaptureContext(TaskmatesExtension):
 
 
 @pytest.fixture
-def initialize_extensions():
-    extension_manager = EXTENSION_MANAGER.get()
-    extension_manager.initialize()
-    yield
-
-
-@pytest.fixture
 def contexts(tmp_path):
-    return build_test_context(tmp_path)
+    return TestContextBuilder(tmp_path).build()
 
 
 @pytest.mark.asyncio
-async def test_chat_session_history(tmp_path, contexts, initialize_extensions):
+async def test_chat_session_history(tmp_path, contexts):
     history = "Initial history\n"
     incoming_messages = ["Incoming message"]
 
@@ -91,7 +83,7 @@ async def test_chat_session_history(tmp_path, contexts, initialize_extensions):
 
 
 @pytest.mark.asyncio
-async def test_chat_session_stdout_streamer(tmp_path, contexts, initialize_extensions):
+async def test_chat_session_stdout_streamer(tmp_path, contexts):
     text_output = io.StringIO()
     full_output = io.StringIO()
 

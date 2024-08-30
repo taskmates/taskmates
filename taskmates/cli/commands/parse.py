@@ -8,7 +8,8 @@ import sys
 
 from taskmates.actions.parse_markdown_chat import parse_markdown_chat
 from taskmates.cli.commands.base import Command
-from taskmates.contexts import build_default_contexts, CONTEXTS
+from taskmates.contexts import CONTEXTS
+from taskmates.context_builders.build_default_context import build_default_contexts
 from taskmates.lib.context_.temp_context import temp_context
 from taskmates.sdk.extension_manager import EXTENSION_MANAGER
 
@@ -21,7 +22,6 @@ class ParseCommand(Command):
         contexts = build_default_contexts()
         contexts["completion_context"]["cwd"] = os.getcwd()
 
-        EXTENSION_MANAGER.get().initialize()
         EXTENSION_MANAGER.get().after_build_contexts(contexts)
 
         with temp_context(CONTEXTS, contexts):

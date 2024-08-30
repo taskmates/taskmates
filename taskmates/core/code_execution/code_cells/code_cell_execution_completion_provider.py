@@ -4,8 +4,9 @@ from uuid import uuid4
 import pytest
 
 from taskmates.config.completion_context import CompletionContext
-from taskmates.context_builders.build_test_context import build_test_context
-from taskmates.contexts import build_default_contexts, CONTEXTS
+from taskmates.context_builders import TestContextBuilder
+from taskmates.context_builders.build_default_context import build_default_contexts
+from taskmates.contexts import CONTEXTS
 from taskmates.core.code_execution.code_cells.code_cells_editor_completion import CodeCellsEditorCompletion
 from taskmates.core.code_execution.code_cells.execute_markdown_on_local_kernel import \
     execute_markdown_on_local_kernel
@@ -101,7 +102,7 @@ async def test_markdown_code_cells_assistance_streaming(tmp_path):
         ]
     }
 
-    contexts = build_test_context(tmp_path)
+    contexts = TestContextBuilder(tmp_path).build()
     with temp_context(CONTEXTS, contexts), \
             Signals().connected_to([]) as signals:
         signals.response.code_cell_output.connect(capture_code_cell_chunk)
