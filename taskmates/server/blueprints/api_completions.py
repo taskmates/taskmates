@@ -4,7 +4,7 @@ import json
 from quart import Blueprint, Response, websocket
 
 import taskmates
-from taskmates.context_builders import ApiContextBuilder
+from taskmates.context_builders.api_context_builder import ApiContextBuilder
 from taskmates.core.chat_session import ChatSession
 from taskmates.io.web_socket_completion_streamer import WebSocketCompletionStreamer
 from taskmates.io.web_socket_interrupt_and_kill_controller import WebSocketInterruptAndKillController

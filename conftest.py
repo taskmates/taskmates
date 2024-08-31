@@ -6,7 +6,7 @@ import tiktoken
 from dotenv import load_dotenv
 
 from taskmates.config.load_participant_config import load_cache
-from taskmates.context_builders import TestContextBuilder
+from taskmates.context_builders.test_context_builder import TestContextBuilder
 from taskmates.contexts import CONTEXTS
 from taskmates.core.code_execution.code_cells.execute_markdown_on_local_kernel import kernel_pool
 from taskmates.lib.context_.temp_context import temp_context

@@ -7,7 +7,6 @@ import pytest
 import sys
 
 from .taskmates_extension import TaskmatesExtension
-from ..contexts import Contexts
 
 
 class ExtensionManager:
@@ -51,14 +50,10 @@ class ExtensionManager:
                     self._loaded_extensions.append(extension)
             self._initialized = True
 
-    def after_build_contexts(self, contexts: Contexts):
-        for extension in self._loaded_extensions:
-            extension.after_build_contexts(contexts)
-
 
 DEFAULT_EXTENSIONS: list[str] = [
     'taskmates.extensions.taskmates_dirs_loader.TaskmatesDirsLoader',
-    'taskmates.extensions.taskmates_working_dir_env.TaskmatesWorkingDirEnv'
+    'taskmates.extensions.taskmates_working_dir_env.TaskmatesWorkingDirEnv',
 ]
 
 # Last ones are run first
@@ -96,8 +91,6 @@ from taskmates.sdk.taskmates_extension import TaskmatesExtension
 
 class MockExtension(TaskmatesExtension):
     def initialize(self):
-        pass
-    def after_build_contexts(self, contexts):
         pass
 """)
 

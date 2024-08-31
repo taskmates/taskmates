@@ -1,7 +1,5 @@
 from abc import ABC
 
-from taskmates.contexts import Contexts
-
 
 class TaskmatesExtension(ABC):
     @property
@@ -10,7 +8,4 @@ class TaskmatesExtension(ABC):
 
     def initialize(self):
         """Initialize the extension."""
-        pass
-
-    def after_build_contexts(self, contexts: Contexts):
         pass

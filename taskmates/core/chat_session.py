@@ -15,7 +15,6 @@ from taskmates.io.formatting_processor import IncomingMessagesFormattingProcesso
 from taskmates.lib.context_.temp_context import temp_context
 from taskmates.lib.not_set.not_set import NOT_SET
 from taskmates.logging import logger
-from taskmates.sdk.extension_manager import EXTENSION_MANAGER
 from taskmates.sdk.handlers.return_value_collector import ReturnValueCollector
 from taskmates.signals.signals import Signals, SIGNALS
 from taskmates.types import Chat
@@ -39,9 +38,6 @@ class ChatSession:
         self.states = {
             "current_markdown": CurrentMarkdown(),
         }
-
-        # TODO: this cannot be inside a constructor
-        EXTENSION_MANAGER.get().after_build_contexts(self.contexts)
 
     async def resume(self):
         history = self.history
@@ -83,7 +79,7 @@ class ChatSession:
         # Lifecycle: Start
         await signals.lifecycle.start.send_async({})
         markdown_path = contexts["completion_context"]["markdown_path"]
-        taskmates_dirs = contexts["client_config"].get("taskmates_dirs")
+        taskmates_dirs = contexts["client_config"]["taskmates_dirs"]
         template_params = contexts["completion_opts"]["template_params"]
         while True:
             current_markdown = states["current_markdown"].get()

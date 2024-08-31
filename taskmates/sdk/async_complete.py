@@ -2,7 +2,7 @@ from typing import Unpack
 
 from typeguard import typechecked
 
-from taskmates.context_builders import SdkContextBuilder
+from taskmates.context_builders.sdk_context_builder import SdkContextBuilder
 from taskmates.core.chat_session import ChatSession
 from taskmates.sdk.handlers.return_value_handler import ReturnValueHandler
 from taskmates.signals.signals import Signals

@@ -3,13 +3,11 @@ import textwrap
 import pytest
 
 from taskmates.config.completion_context import CompletionContext
-from taskmates.context_builders import TestContextBuilder
 from taskmates.contexts import CONTEXTS
 from taskmates.core.code_execution.code_cells.code_cells_editor_completion import CodeCellsEditorCompletion
 from taskmates.core.code_execution.code_cells.execute_markdown_on_local_kernel import \
     execute_markdown_on_local_kernel
 from taskmates.core.completion_provider import CompletionProvider
-from taskmates.lib.context_.temp_context import temp_context
 from taskmates.signals.signals import Signals, SIGNALS
 from taskmates.types import Chat
 

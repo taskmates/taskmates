@@ -1,7 +1,7 @@
 from loguru import logger
 from typeguard import typechecked
 
-from taskmates.context_builders import CliContextBuilder
+from taskmates.context_builders.cli_context_builder import CliContextBuilder
 from taskmates.core.chat_session import ChatSession
 from taskmates.io.history_sink import HistorySink
 from taskmates.io.sig_int_and_sig_term_controller import SigIntAndSigTermController

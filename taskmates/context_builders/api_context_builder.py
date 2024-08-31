@@ -1,6 +1,7 @@
 import os
 from uuid import uuid4
 
+import taskmates
 from taskmates.context_builders.context_builder import ContextBuilder
 from taskmates.context_builders.default_context_builder import DefaultContextBuilder
 from taskmates.contexts import Contexts
@@ -29,13 +30,17 @@ class ApiContextBuilder(ContextBuilder):
         return contexts
 
 
-def test_api_context_builder():
-    payload = {
-        "completion_context": {"test_key": "test_value"},
-        "completion_opts": {"model": "api-model"}
+def test_api_context_builder(tmp_path, contexts):
+    payload: CompletionPayload = {
+        "type": "completions_request",
+        "version": taskmates.__version__,
+        "markdown_chat": "hello",
+        "completion_context": contexts["completion_context"],
+        "completion_opts": {
+            "model": "quote",
+        },
     }
     builder = ApiContextBuilder(payload)
     contexts = builder.build()
-    assert contexts["completion_context"]["test_key"] == "test_value"
-    assert contexts["completion_opts"]["model"] == "api-model"
+    assert contexts["completion_opts"]["model"] == "quote"
     assert contexts["client_config"]["interactive"] == True

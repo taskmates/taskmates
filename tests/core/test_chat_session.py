@@ -4,7 +4,6 @@ from typing import Iterator
 
 import pytest
 
-from taskmates.config.client_config import ClientConfig
 from taskmates.contexts import Contexts
 from taskmates.core.chat_session import ChatSession
 from taskmates.core.signal_receivers.signals_collector import SignalsCollector
@@ -91,7 +90,7 @@ async def test_chat_session_stdout_streamer(tmp_path, contexts):
         text_signal_capture,
         StdoutCompletionStreamer('text', text_output)
     ]) as signals:
-        contexts['client_config'] = ClientConfig(interactive=False, format='text')
+        contexts['client_config'].update(dict(interactive=False, format='text'))
         engine = ChatSession(history=history, incoming_messages=incoming_messages, contexts=contexts, signals=signals)
         await engine.resume()
 
@@ -102,7 +101,7 @@ async def test_chat_session_stdout_streamer(tmp_path, contexts):
         full_signal_capture,
         StdoutCompletionStreamer('full', full_output)
     ]) as signals:
-        contexts['client_config'] = ClientConfig(interactive=False, format='full')
+        contexts['client_config'].update(dict(interactive=False, format='full'))
         engine = ChatSession(history=history, incoming_messages=incoming_messages, contexts=contexts, signals=signals)
         await engine.resume()
 

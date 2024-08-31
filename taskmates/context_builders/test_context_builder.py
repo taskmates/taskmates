@@ -17,7 +17,7 @@ class TestContextBuilder(ContextBuilder):
             "request_id": request_id,
             "cwd": str(self.tmp_path),
             "env": {},
-            "markdown_path": str(self.tmp_path / "chat.md")
+            "markdown_path": str(self.tmp_path / "chat.md"),
         })
 
         contexts["completion_opts"].update({
@@ -28,6 +28,7 @@ class TestContextBuilder(ContextBuilder):
 
         contexts["client_config"].update({
             "interactive": False,
+            "taskmates_dirs": [],
         })
 
         return contexts
