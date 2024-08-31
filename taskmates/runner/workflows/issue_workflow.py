@@ -42,7 +42,8 @@ def run_workflow(repo_name: str,
 
 
 def main():
-    # TODO: generate github app token inside get_dotenv_values
+    # TODO: check subclass wrapping
+    # TODO: generate github app token inside get_dotenv_values -> as a context builder
     # TODO: rename get_dotenv_values to get_values
     # TODO: move it into env.py
     # TODO: rename it to taskmates_runtime or something like that

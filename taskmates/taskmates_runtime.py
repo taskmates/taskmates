@@ -3,6 +3,14 @@ import os
 
 from taskmates import patches
 from taskmates.sdk.extension_manager import EXTENSION_MANAGER
+from taskmates.sdk.subclass_extension_points import SubclassExtensionPoints
+
+# Register the custom finder
+# if os.environ.get('TASKMATES_TELEMETRY_ENABLED', '0') == '1':
+#     if not any(isinstance(finder, CustomFinder) for finder in sys.meta_path):
+#         sys.meta_path.insert(0, CustomFinder())
+
+SubclassExtensionPoints.initialize()
 
 
 # class ColorHandler(logging.StreamHandler):
