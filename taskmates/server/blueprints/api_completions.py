@@ -5,7 +5,6 @@ from quart import Blueprint, Response, websocket
 
 import taskmates
 from taskmates.context_builders import ApiContextBuilder
-from taskmates.context_builders.build_api_context import build_api_context
 from taskmates.core.chat_session import ChatSession
 from taskmates.io.web_socket_completion_streamer import WebSocketCompletionStreamer
 from taskmates.io.web_socket_interrupt_and_kill_controller import WebSocketInterruptAndKillController

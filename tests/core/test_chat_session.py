@@ -5,7 +5,6 @@ from typing import Iterator
 import pytest
 
 from taskmates.config.client_config import ClientConfig
-from taskmates.context_builders import TestContextBuilder
 from taskmates.contexts import Contexts
 from taskmates.core.chat_session import ChatSession
 from taskmates.core.signal_receivers.signals_collector import SignalsCollector
@@ -44,11 +43,6 @@ class CaptureContext(TaskmatesExtension):
     def completion_step_context(self, *args):
         self.captured_args['completion_step_context'] = args
         yield args
-
-
-@pytest.fixture
-def contexts(tmp_path):
-    return TestContextBuilder(tmp_path).build()
 
 
 @pytest.mark.asyncio

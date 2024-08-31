@@ -8,8 +8,8 @@ import sys
 
 from taskmates.actions.parse_markdown_chat import parse_markdown_chat
 from taskmates.cli.commands.base import Command
+from taskmates.context_builders import DefaultContextBuilder
 from taskmates.contexts import CONTEXTS
-from taskmates.context_builders.build_default_context import build_default_contexts
 from taskmates.lib.context_.temp_context import temp_context
 from taskmates.sdk.extension_manager import EXTENSION_MANAGER
 
@@ -19,7 +19,7 @@ class ParseCommand(Command):
         pass  # No additional arguments needed for parse command
 
     async def execute(self, args: argparse.Namespace):
-        contexts = build_default_contexts()
+        contexts = DefaultContextBuilder().build()
         contexts["completion_context"]["cwd"] = os.getcwd()
 
         EXTENSION_MANAGER.get().after_build_contexts(contexts)

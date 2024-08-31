@@ -1,11 +1,9 @@
 import textwrap
-from uuid import uuid4
 
 import pytest
 
 from taskmates.config.completion_context import CompletionContext
 from taskmates.context_builders import TestContextBuilder
-from taskmates.context_builders.build_default_context import build_default_contexts
 from taskmates.contexts import CONTEXTS
 from taskmates.core.code_execution.code_cells.code_cells_editor_completion import CodeCellsEditorCompletion
 from taskmates.core.code_execution.code_cells.execute_markdown_on_local_kernel import \
@@ -54,18 +52,6 @@ class CodeCellExecutionCompletionProvider(CompletionProvider):
         await editor_completion.process_code_cells_completed()
 
 
-@pytest.fixture(autouse=True)
-def contexts(tmp_path):
-    contexts = build_default_contexts()
-    contexts["completion_context"].update({
-        "request_id": str(uuid4()),
-        "cwd": str(tmp_path),
-        "env": {},
-        "markdown_path": str(tmp_path / "chat.md")
-    })
-    yield
-
-
 @pytest.mark.asyncio
 async def test_markdown_code_cells_assistance_streaming(tmp_path):
     code_cell_chunks = []
@@ -102,9 +88,7 @@ async def test_markdown_code_cells_assistance_streaming(tmp_path):
         ]
     }
 
-    contexts = TestContextBuilder(tmp_path).build()
-    with temp_context(CONTEXTS, contexts), \
-            Signals().connected_to([]) as signals:
+    with Signals().connected_to([]) as signals:
         signals.response.code_cell_output.connect(capture_code_cell_chunk)
         signals.response.response.connect(capture_completion_chunk)
         signals.response.error.connect(capture_error)
