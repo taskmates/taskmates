@@ -1,16 +1,15 @@
 import argparse
 import json
-import os
 from io import StringIO
 
-import pytest
 import sys
 
 from taskmates.actions.parse_markdown_chat import parse_markdown_chat
 from taskmates.cli.commands.base import Command
-from taskmates.context_builders.default_context_builder import DefaultContextBuilder
+from taskmates.context_builders.cli_context_builder import CliContextBuilder
 from taskmates.contexts import CONTEXTS
 from taskmates.lib.context_.temp_context import temp_context
+from taskmates.taskmates_runtime import TASKMATES_RUNTIME
 
 
 class ParseCommand(Command):
@@ -18,18 +17,20 @@ class ParseCommand(Command):
         pass  # No additional arguments needed for parse command
 
     async def execute(self, args: argparse.Namespace):
-        contexts = DefaultContextBuilder().build()
-        contexts["completion_context"]["cwd"] = os.getcwd()
+        TASKMATES_RUNTIME.get().bootstrap()
+
+        builder = CliContextBuilder(args)
+        contexts = builder.build()
 
         with temp_context(CONTEXTS, contexts):
             taskmates_dirs = contexts["client_config"]["taskmates_dirs"]
+
             markdown_chat = "".join(sys.stdin.readlines())
             result = await parse_markdown_chat(markdown_chat, None, taskmates_dirs)
             print(json.dumps(result, ensure_ascii=False))
 
 
-@pytest.mark.asyncio
-async def test_parse_command_execute(tmp_path):
+async def test_parse(tmp_path):
     # Prepare test input
     test_input = "**user>** Hello\n\n**assistant>** Hi there!"
 

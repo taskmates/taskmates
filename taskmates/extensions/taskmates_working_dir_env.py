@@ -2,11 +2,9 @@ import os
 
 from wrapt import wrap_function_wrapper
 
-from taskmates.context_builders.api_context_builder import ApiContextBuilder
-from taskmates.context_builders.cli_context_builder import CliContextBuilder
-from taskmates.context_builders.sdk_context_builder import SdkContextBuilder
-from taskmates.context_builders.test_context_builder import TestContextBuilder
+from taskmates.context_builders.context_builder import ContextBuilder
 from taskmates.sdk import TaskmatesExtension
+from taskmates.sdk.experimental.subclass_extension_points import SubclassExtensionPoints
 
 
 class TaskmatesWorkingDirEnv(TaskmatesExtension):
@@ -22,7 +20,5 @@ class TaskmatesWorkingDirEnv(TaskmatesExtension):
         return contexts
 
     def initialize(self):
-        wrap_function_wrapper(CliContextBuilder, 'build', self.wraper)
-        wrap_function_wrapper(ApiContextBuilder, 'build', self.wraper)
-        wrap_function_wrapper(SdkContextBuilder, 'build', self.wraper)
-        wrap_function_wrapper(TestContextBuilder, 'build', self.wraper)
+        SubclassExtensionPoints.subscribe(ContextBuilder,
+                                          lambda subclass: wrap_function_wrapper(subclass, 'build', self.wraper))

@@ -2,16 +2,14 @@ import contextvars
 import os
 
 from taskmates import patches
-from taskmates.sdk.extension_manager import EXTENSION_MANAGER
-from taskmates.sdk.subclass_extension_points import SubclassExtensionPoints
+from taskmates.sdk.experimental.extension_manager import EXTENSION_MANAGER
+from taskmates.sdk.experimental.subclass_extension_points import SubclassExtensionPoints
+
 
 # Register the custom finder
 # if os.environ.get('TASKMATES_TELEMETRY_ENABLED', '0') == '1':
 #     if not any(isinstance(finder, CustomFinder) for finder in sys.meta_path):
 #         sys.meta_path.insert(0, CustomFinder())
-
-SubclassExtensionPoints.initialize()
-
 
 # class ColorHandler(logging.StreamHandler):
 #     # https://en.wikipedia.org/wiki/ANSI_escape_code#Colors
@@ -39,7 +37,7 @@ class TaskmatesRuntime:
     @staticmethod
     def bootstrap():
         # check whether already bootstrapped
-        if hasattr(TaskmatesRuntime, "_initialized"):
+        if hasattr(TaskmatesRuntime, "_initialized") and TaskmatesRuntime._initialized:
             return
 
         TaskmatesRuntime._initialized = True
@@ -61,7 +59,14 @@ class TaskmatesRuntime:
             from taskmates.instrumentation import taskmates_instrumentor
             taskmates_instrumentor.instrument()
 
+        SubclassExtensionPoints.initialize()
         EXTENSION_MANAGER.get().initialize()
+
+    @staticmethod
+    def shutdown():
+        SubclassExtensionPoints.cleanup()
+        EXTENSION_MANAGER.get().shutdown()
+        TaskmatesRuntime._initialized = False
 
 
 taskmates_runtime = TaskmatesRuntime()

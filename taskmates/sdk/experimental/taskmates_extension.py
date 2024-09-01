@@ -9,3 +9,7 @@ class TaskmatesExtension(ABC):
     def initialize(self):
         """Initialize the extension."""
         pass
+
+    def shutdown(self):
+        """Shutdown the extension."""
+        pass

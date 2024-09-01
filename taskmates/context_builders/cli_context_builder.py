@@ -4,8 +4,8 @@ from uuid import uuid4
 
 from taskmates.cli.lib.merge_template_params import merge_template_params
 from taskmates.context_builders.context_builder import ContextBuilder
-from taskmates.context_builders.default_context_builder import DefaultContextBuilder
 from taskmates.contexts import Contexts
+from taskmates.defaults.context_defaults import ContextDefaults
 
 
 class CliContextBuilder(ContextBuilder):
@@ -13,7 +13,7 @@ class CliContextBuilder(ContextBuilder):
         self.args = args
 
     def build(self) -> Contexts:
-        contexts = DefaultContextBuilder().build()
+        contexts = ContextDefaults().build()
         request_id = str(uuid4())
 
         contexts["completion_context"].update({
@@ -48,3 +48,11 @@ def test_cli_context_builder():
     assert contexts["completion_opts"]["max_steps"] == 5
     assert contexts["client_config"]["format"] == "json"
     assert contexts["client_config"]["endpoint"] == "test-endpoint"
+
+
+# TODO
+# def test_cli_context_builder_with_no_args():
+#     args = SimpleNamespace()
+#     builder = CliContextBuilder(args)
+#     contexts = builder.build()
+#     # assert contexts == ContextDefaults.build()

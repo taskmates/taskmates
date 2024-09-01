@@ -1,9 +1,9 @@
-from taskmates.context_builders.context_builder import ContextBuilder
 from taskmates.contexts import Contexts
 
 
-class DefaultContextBuilder(ContextBuilder):
-    def build(self) -> Contexts:
+class ContextDefaults:
+    @staticmethod
+    def build() -> Contexts:
         return {
             "client_config": {
                 "taskmates_dirs": [],
@@ -22,7 +22,7 @@ class DefaultContextBuilder(ContextBuilder):
 
 
 def test_default_context_builder():
-    builder = DefaultContextBuilder()
+    builder = ContextDefaults()
     contexts = builder.build()
     assert isinstance(contexts, dict)
     assert "client_config" in contexts

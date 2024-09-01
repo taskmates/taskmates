@@ -6,7 +6,7 @@ import tempfile
 import pytest
 import sys
 
-from .taskmates_extension import TaskmatesExtension
+from taskmates.sdk.experimental.taskmates_extension import TaskmatesExtension
 
 
 class ExtensionManager:
@@ -50,6 +50,10 @@ class ExtensionManager:
                     self._loaded_extensions.append(extension)
             self._initialized = True
 
+    def shutdown(self):
+        for extension in self._loaded_extensions:
+            extension.shutdown()
+
 
 DEFAULT_EXTENSIONS: list[str] = [
     'taskmates.extensions.taskmates_dirs_loader.TaskmatesDirsLoader',
@@ -87,7 +91,7 @@ def test_load_extension_success():
         os.environ['TASKMATES_EXTENSIONS_DIRS'] = temp_dir
         with open(os.path.join(temp_dir, 'mock_extension.py'), 'w') as f:
             f.write("""
-from taskmates.sdk.taskmates_extension import TaskmatesExtension
+from taskmates.sdk.experimental.taskmates_extension import TaskmatesExtension
 
 class MockExtension(TaskmatesExtension):
     def initialize(self):
@@ -116,7 +120,7 @@ def test_initialize_with_external_directory():
         os.environ['TASKMATES_EXTENSIONS_DIRS'] = temp_dir
         with open(os.path.join(temp_dir, 'test_extension.py'), 'w') as f:
             f.write("""
-from taskmates.sdk.taskmates_extension import TaskmatesExtension
+from taskmates.sdk.experimental.taskmates_extension import TaskmatesExtension
 
 class TestExtension(TaskmatesExtension):
     def initialize(self):

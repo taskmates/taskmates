@@ -9,7 +9,7 @@ from taskmates.sdk import TaskmatesExtension
 
 
 class DotenvInjector(TaskmatesExtension):
-    def wraper(self, wrapped, instance, args, kwargs):
+    def handle(self, wrapped, instance, args, kwargs):
         contexts = CONTEXTS.get()
         interpreter_env = contexts["completion_context"]["env"]
         working_dir = contexts["completion_context"]["cwd"]
@@ -22,5 +22,5 @@ class DotenvInjector(TaskmatesExtension):
         return result
 
     def initialize(self):
-        wrap_function_wrapper(CodeCellExecutionCompletionProvider, 'perform_completion', self.wraper)
-        wrap_function_wrapper(ToolExecutionCompletionProvider, 'perform_completion', self.wraper)
+        wrap_function_wrapper(CodeCellExecutionCompletionProvider, 'perform_completion', self.handle)
+        wrap_function_wrapper(ToolExecutionCompletionProvider, 'perform_completion', self.handle)

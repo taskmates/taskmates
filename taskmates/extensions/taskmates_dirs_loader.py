@@ -1,19 +1,15 @@
 from pathlib import Path
 
-from wrapt import wrap_function_wrapper
-
-from taskmates.context_builders.api_context_builder import ApiContextBuilder
-from taskmates.context_builders.cli_context_builder import CliContextBuilder
-from taskmates.context_builders.sdk_context_builder import SdkContextBuilder
-from taskmates.context_builders.test_context_builder import TestContextBuilder
+from taskmates.context_builders.context_builder import ContextBuilder
 from taskmates.contexts import default_taskmates_dirs
+from taskmates.sdk.experimental.weave_interface_method import weave_interface_method
 from taskmates.sdk import TaskmatesExtension
 
 
 class TaskmatesDirsLoader(TaskmatesExtension):
     # needs: completion_context.cwd
 
-    def wraper(self, wrapped, instance, args, kwargs):
+    def handle(self, wrapped, instance, args, kwargs):
         contexts = wrapped(*args, **kwargs)
 
         local_taskmates_dir = str(Path(contexts["completion_context"]["cwd"]) / ".taskmates")
@@ -24,7 +20,8 @@ class TaskmatesDirsLoader(TaskmatesExtension):
         return contexts
 
     def initialize(self):
-        wrap_function_wrapper(CliContextBuilder, 'build', self.wraper)
-        wrap_function_wrapper(ApiContextBuilder, 'build', self.wraper)
-        wrap_function_wrapper(SdkContextBuilder, 'build', self.wraper)
-        wrap_function_wrapper(TestContextBuilder, 'build', self.wraper)
+        cls = ContextBuilder
+        function_name = 'build'
+        handler = self.handle
+
+        weave_interface_method(cls, function_name, handler)

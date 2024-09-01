@@ -9,7 +9,7 @@ from taskmates.core.chat_session import ChatSession
 from taskmates.core.signal_receivers.signals_collector import SignalsCollector
 from taskmates.io.history_sink import HistorySink
 from taskmates.io.stdout_completion_streamer import StdoutCompletionStreamer
-from taskmates.sdk.taskmates_extension import TaskmatesExtension
+from taskmates.sdk.experimental.taskmates_extension import TaskmatesExtension
 from taskmates.signals.signals import Signals
 
 

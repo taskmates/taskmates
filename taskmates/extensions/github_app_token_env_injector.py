@@ -30,7 +30,7 @@ class GithubAppTokenEnvInjector(TaskmatesExtension):
             self.token_expiration = current_time + 3600  # GitHub tokens typically expire after 1 hour
         return self.token
 
-    def wraper(self, wrapped, instance, args, kwargs):
+    def handle(self, wrapped, instance, args, kwargs):
         interpreter_env = CONTEXTS.get()["completion_context"]["env"]
 
         if "GITHUB_APP_INSTALLATION_ID" not in interpreter_env:
@@ -56,5 +56,5 @@ class GithubAppTokenEnvInjector(TaskmatesExtension):
         return result
 
     def initialize(self):
-        wrap_function_wrapper(CodeCellExecutionCompletionProvider, 'perform_completion', self.wraper)
-        wrap_function_wrapper(ToolExecutionCompletionProvider, 'perform_completion', self.wraper)
+        wrap_function_wrapper(CodeCellExecutionCompletionProvider, 'perform_completion', self.handle)
+        wrap_function_wrapper(ToolExecutionCompletionProvider, 'perform_completion', self.handle)

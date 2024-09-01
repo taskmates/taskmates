@@ -1,7 +1,7 @@
 from uuid import uuid4
 
 from taskmates.context_builders.context_builder import ContextBuilder
-from taskmates.context_builders.default_context_builder import DefaultContextBuilder
+from taskmates.defaults.context_defaults import ContextDefaults
 from taskmates.contexts import Contexts
 
 
@@ -10,7 +10,7 @@ class TestContextBuilder(ContextBuilder):
         self.tmp_path = tmp_path
 
     def build(self) -> Contexts:
-        contexts = DefaultContextBuilder().build()
+        contexts = ContextDefaults().build()
         request_id = str(uuid4())
 
         contexts["completion_context"].update({

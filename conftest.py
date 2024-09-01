@@ -47,37 +47,35 @@ def subject(request):
 
 
 @pytest.fixture(autouse=True)
-def reset_cache():
-    load_cache.clear()
-
-
-@pytest.fixture(autouse=True)
-def reset_cache():
+def reset_cache(taskmates_runtime):
     load_cache.clear()
 
 
 @pytest.fixture(autouse=True)
 def taskmates_runtime():
-    TASKMATES_RUNTIME.get().bootstrap()
-    return TASKMATES_RUNTIME.get()
+    try:
+        TASKMATES_RUNTIME.get().bootstrap()
+        yield TASKMATES_RUNTIME.get()
+    finally:
+        TASKMATES_RUNTIME.get().shutdown()
 
 
 @pytest.fixture(autouse=True)
-def signals():
+def signals(taskmates_runtime):
     stream = Signals()
     SIGNALS.set(stream)
     return stream
 
 
 @pytest.fixture(autouse=True)
-def contexts(tmp_path):
+def contexts(taskmates_runtime, tmp_path):
     contexts = TestContextBuilder(tmp_path).build()
     with temp_context(CONTEXTS, contexts):
         yield contexts
 
 
 @pytest.fixture(scope="function", autouse=True)
-async def teardown_after_all_tests():
+async def teardown_after_all_tests(taskmates_runtime):
     yield
 
     for path, kernel in kernel_pool.items():
