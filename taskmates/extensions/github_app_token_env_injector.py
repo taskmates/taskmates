@@ -1,3 +1,6 @@
+import json
+import os
+
 from wrapt import wrap_function_wrapper
 
 from taskmates.contexts import CONTEXTS
@@ -8,22 +11,40 @@ from taskmates.extensions.actions.get_github_app_installation_token import Githu
 from taskmates.sdk import TaskmatesExtension
 
 
+# @scope("app")
 class GithubAppTokenEnvInjector(TaskmatesExtension):
-    def __init__(self):
-        super().__init__()
-        self.token_manager = GithubAppInstallationToken()
-
     def handle(self, wrapped, instance, args, kwargs):
-        interpreter_env = CONTEXTS.get()["completion_context"]["env"]
+        completion_context = CONTEXTS.get()["completion_context"]
+        interpreter_env = completion_context["env"]
 
         if "GITHUB_APP_INSTALLATION_ID" not in interpreter_env:
             return wrapped(*args, **kwargs)
 
-        token = self.token_manager.get_token(
-            interpreter_env['GITHUB_APP_ID'],
-            interpreter_env['GITHUB_APP_PRIVATE_KEY'],
-            interpreter_env['GITHUB_APP_INSTALLATION_ID']
-        )
+        # Cache dir:
+        cache_dir = completion_context["cwd"] + "/.taskmates/tmp/cache"
+        os.makedirs(cache_dir, exist_ok=True)
+        cache_key = f"{cache_dir}/github_app_installation_token.json"
+
+        if os.path.exists(cache_key):
+            with open(cache_key, 'r') as f:
+                token_response = json.load(f)
+                github_app_installation_token = GithubAppInstallationToken(
+                    interpreter_env['GITHUB_APP_ID'],
+                    interpreter_env['GITHUB_APP_PRIVATE_KEY'],
+                    interpreter_env['GITHUB_APP_INSTALLATION_ID'],
+                    token_response['token'],
+                    token_response['expiration']
+                )
+        else:
+            github_app_installation_token = GithubAppInstallationToken(
+                interpreter_env['GITHUB_APP_ID'],
+                interpreter_env['GITHUB_APP_PRIVATE_KEY'],
+                interpreter_env['GITHUB_APP_INSTALLATION_ID']
+            )
+
+        token_response = github_app_installation_token.get()
+        token = token_response['token']
+
         interpreter_env["GITHUB_TOKEN"] = token
         interpreter_env["GH_TOKEN"] = token
 
