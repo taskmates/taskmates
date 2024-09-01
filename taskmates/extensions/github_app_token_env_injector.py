@@ -43,6 +43,9 @@ class GithubAppTokenEnvInjector(TaskmatesExtension):
             )
 
         token_response = github_app_installation_token.get()
+        with open(cache_key, 'w') as f:
+            json.dump(token_response, f)
+
         token = token_response['token']
 
         interpreter_env["GITHUB_TOKEN"] = token
