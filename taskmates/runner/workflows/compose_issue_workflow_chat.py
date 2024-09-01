@@ -1,5 +1,5 @@
 import os
-from typing import List
+from typing import Dict, List
 
 from jinja2 import Environment, FileSystemLoader
 
@@ -7,26 +7,23 @@ template_dir = os.path.join(os.path.dirname(__file__), '..', '..', 'defaults')
 env = Environment(loader=FileSystemLoader(template_dir))
 
 
-def compose_issue_workflow_chat(issue_title: str, issue_number: int, issue_body: str, comments: List[dict]) -> str:
+def compose_issue_workflow_chat(template_params: Dict[str, any]) -> str:
     template = env.get_template('ISSUE_COMMENT_TEMPLATE.jinja2')
-    return template.render(
-        issue_title=issue_title,
-        issue_number=issue_number,
-        issue_body=issue_body,
-        comments=comments
-    )
+    return template.render(**template_params)
 
 
 def test_compose_issue_workflow_chat():
-    issue_title = "Test Issue"
-    issue_number = 1
-    issue_body = "Issue body"
-    comments = [
-        {"body": "Comment 1", "user": {"login": "user1"}},
-        {"body": "**user2>** Comment 2"},
-    ]
+    template_params = {
+        "issue_title": "Test Issue",
+        "issue_number": 1,
+        "issue_body": "Issue body",
+        "comments": [
+            {"body": "Comment 1", "user": {"login": "user1"}},
+            {"body": "**user2>** Comment 2"},
+        ]
+    }
 
-    chat = compose_issue_workflow_chat(issue_title, issue_number, issue_body, comments)
+    chat = compose_issue_workflow_chat(template_params)
 
     assert chat == ('**github>**\n'
                     '\n'
@@ -52,12 +49,14 @@ def test_compose_issue_workflow_chat():
 
 
 def test_compose_chat_no_comments():
-    issue_title = "Test Issue"
-    issue_number = 1
-    issue_body = "Issue body"
-    comments = []
+    template_params = {
+        "issue_title": "Test Issue",
+        "issue_number": 1,
+        "issue_body": "Issue body",
+        "comments": []
+    }
 
-    chat = compose_issue_workflow_chat(issue_title, issue_number, issue_body, comments)
+    chat = compose_issue_workflow_chat(template_params)
 
     assert chat == ('**github>**\n'
                     '\n'

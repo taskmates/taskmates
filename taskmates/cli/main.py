@@ -11,7 +11,7 @@ from taskmates.taskmates_runtime import TASKMATES_RUNTIME
 
 
 def main():
-    TASKMATES_RUNTIME.get().bootstrap()
+    TASKMATES_RUNTIME.get().initialize()
 
     parser = argparse.ArgumentParser(description='Taskmates CLI')
     parser.add_argument('--version', action='version', version=f'Taskmates {taskmates.__version__}')

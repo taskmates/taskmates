@@ -35,7 +35,7 @@ from taskmates.sdk.experimental.subclass_extension_points import SubclassExtensi
 
 class TaskmatesRuntime:
     @staticmethod
-    def bootstrap():
+    def initialize():
         # check whether already bootstrapped
         if hasattr(TaskmatesRuntime, "_initialized") and TaskmatesRuntime._initialized:
             return

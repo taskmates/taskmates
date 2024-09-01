@@ -19,7 +19,7 @@ completions_bp = Blueprint('completions_v2', __name__)
 
 @completions_bp.before_app_serving
 async def before_app_serving():
-    TASKMATES_RUNTIME.get().bootstrap()
+    TASKMATES_RUNTIME.get().initialize()
 
 
 @completions_bp.websocket('/v2/taskmates/completions')

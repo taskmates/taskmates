@@ -17,7 +17,7 @@ class ParseCommand(Command):
         pass  # No additional arguments needed for parse command
 
     async def execute(self, args: argparse.Namespace):
-        TASKMATES_RUNTIME.get().bootstrap()
+        TASKMATES_RUNTIME.get().initialize()
 
         builder = CliContextBuilder(args)
         contexts = builder.build()

@@ -13,7 +13,7 @@ from taskmates.taskmates_runtime import TASKMATES_RUNTIME
 @typechecked
 async def cli_complete(history: str | None,
                        incoming_messages: list[str], args):
-    TASKMATES_RUNTIME.get().bootstrap()
+    TASKMATES_RUNTIME.get().initialize()
 
     handlers = [
         SigIntAndSigTermController(),

@@ -1,4 +1,5 @@
 import logging
+import os
 
 import pytest
 import pytest_socket
@@ -13,9 +14,6 @@ from taskmates.lib.context_.temp_context import temp_context
 from taskmates.lib.root_path.root_path import root_path
 from taskmates.signals.signals import Signals, SIGNALS
 from taskmates.taskmates_runtime import TASKMATES_RUNTIME
-
-load_dotenv(root_path() / '.env.test', override=True)
-load_dotenv(root_path() / '.env.test.local', override=True)
 
 
 def pytest_configure(config):
@@ -36,9 +34,15 @@ def pytest_runtest_setup(item):
 
     # If the test is marked with 'integration', enable socket connections
     if "integration" in item.keywords:
+        env = "integration_test"
         pytest_socket.enable_socket()
     else:
+        env = "test"
         pytest_socket.socket_allow_hosts(['127.0.0.1', '::1', 'fe80::1'])
+
+    os.environ["TASKMATES_ENV"] = env
+    load_dotenv(root_path() / f'.env.{env}', override=True)
+    load_dotenv(root_path() / f'.env.{env}.local', override=True)
 
 
 @pytest.fixture
@@ -54,7 +58,7 @@ def reset_cache(taskmates_runtime):
 @pytest.fixture(autouse=True)
 def taskmates_runtime():
     try:
-        TASKMATES_RUNTIME.get().bootstrap()
+        TASKMATES_RUNTIME.get().initialize()
         yield TASKMATES_RUNTIME.get()
     finally:
         TASKMATES_RUNTIME.get().shutdown()
