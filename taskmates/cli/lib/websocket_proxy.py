@@ -6,7 +6,7 @@ import websockets
 from websockets.exceptions import ConnectionClosed
 
 from taskmates.config.client_config import ClientConfig
-from taskmates.contexts import CONTEXTS
+from taskmates.runner.contexts.contexts import CONTEXTS
 
 
 async def on_message(message):

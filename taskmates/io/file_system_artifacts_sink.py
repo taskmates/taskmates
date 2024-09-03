@@ -2,10 +2,10 @@ import os
 from datetime import datetime
 from pathlib import Path
 
-from taskmates.contexts import CONTEXTS
+from taskmates.runner.contexts.contexts import CONTEXTS
 from taskmates.lib.resources_.resources import dump_resource
 from taskmates.core.signal_receiver import SignalReceiver
-from taskmates.signals.signals import Signals
+from taskmates.core.signals import Signals
 
 
 class FileSystemArtifactsSink(SignalReceiver):

@@ -1,6 +1,6 @@
 from taskmates.core.compute_separator import compute_separator
 from taskmates.core.signal_receiver import SignalReceiver
-from taskmates.signals.signals import Signals, SIGNALS
+from taskmates.core.signals import Signals, SIGNALS
 
 
 class IncomingMessagesFormattingProcessor(SignalReceiver):

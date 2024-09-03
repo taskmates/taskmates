@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 
-from taskmates.contexts import Contexts
+from taskmates.runner.contexts.contexts import Contexts
 
 
 class ContextBuilder(ABC):

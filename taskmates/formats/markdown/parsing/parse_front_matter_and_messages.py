@@ -13,7 +13,7 @@ from taskmates.grammar.parsers.markdown_chat_parser import markdown_chat_parser
 from taskmates.lib.markdown_.render_transclusions import render_transclusions
 from taskmates.lib.root_path.root_path import root_path
 from taskmates.logging import logger
-from taskmates.signals.signals import SIGNALS, Signals
+from taskmates.core.signals import SIGNALS, Signals
 
 
 @typechecked

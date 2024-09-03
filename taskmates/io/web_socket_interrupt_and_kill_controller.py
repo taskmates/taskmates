@@ -5,7 +5,7 @@ from loguru import logger
 
 from taskmates.core.signal_receiver import SignalReceiver
 from taskmates.lib.json_.json_utils import snake_case
-from taskmates.signals.signals import Signals
+from taskmates.core.signals import Signals
 
 
 class WebSocketInterruptAndKillController(SignalReceiver):

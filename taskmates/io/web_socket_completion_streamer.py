@@ -3,7 +3,7 @@ import json
 from loguru import logger
 
 from taskmates.core.signal_receiver import SignalReceiver
-from taskmates.signals.signals import Signals
+from taskmates.core.signals import Signals
 
 
 class WebSocketCompletionStreamer(SignalReceiver):

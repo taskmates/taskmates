@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 
-from taskmates.signals.signals import Signals
+from taskmates.core.signals import Signals
 
 
 class SignalReceiver(ABC):

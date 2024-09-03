@@ -15,9 +15,9 @@ def prepend_recipient_system(taskmates_dirs: list[str | Path],
                              recipient: str,
                              recipient_config: dict,
                              messages: list,
-                             template_params: dict | None):
-    if template_params is None:
-        template_params = {}
+                             inputs: dict | None):
+    if inputs is None:
+        inputs = {}
     recipient_system_parts = []
     if recipient_config.get("system", None):
         recipient_system_parts.append(recipient_config.get("system").rstrip("\n") + "\n")
@@ -36,14 +36,14 @@ def prepend_recipient_system(taskmates_dirs: list[str | Path],
             messages = [{"role": "system", "content": recipient_system}, *messages]
 
     if messages[0]["role"] == "system":
-        messages[0]["content"] = render_template(messages[0]["content"], template_params)
+        messages[0]["content"] = render_template(messages[0]["content"], inputs)
 
     return messages
 
 
-def render_template(template, template_params):
+def render_template(template, inputs):
     env = create_env()
-    return env.from_string(template).render(template_params)
+    return env.from_string(template).render(inputs)
 
 
 def create_env():

@@ -14,10 +14,11 @@ class Chat(TypedDict):
 class CompletionOpts(TypedDict):
     model: NotRequired[str]
     max_steps: NotRequired[int]
+    workflow: NotRequired[str]
     tools: NotRequired[dict]
     participants: NotRequired[dict]
     jupyter_enabled: NotRequired[bool]
-    template_params: NotRequired[dict]
+    inputs: NotRequired[dict]
 
 
 class CompletionPayload(TypedDict):

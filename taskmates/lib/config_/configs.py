@@ -8,7 +8,8 @@ class Configs(FlexDict):
     def __init__(self, *args,
                  missing_fn: Callable[[dict, Any], Any] = None,
                  constructors=None,
-                 hash_fn=identity, **kwargs):
+                 hash_fn=identity,
+                 **kwargs):
         self.constructors = FlexDict(constructors or {}, hash_fn=hash_fn)
         super().__init__(*args, missing_fn=missing_fn, hash_fn=hash_fn, **kwargs)
 

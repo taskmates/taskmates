@@ -4,10 +4,10 @@ import openai as oai
 from typeguard import typechecked
 
 from taskmates.config.load_model_config import load_model_config
-from taskmates.core.chat_completion.openai_adapters.anthropic_openai_adapter.anthropic_openai_adapter import \
+from taskmates.core.actions.chat_completion.openai_adapters.anthropic_openai_adapter.anthropic_openai_adapter import \
     AsyncAnthropicOpenAIAdapter
-from taskmates.core.chat_completion.openai_adapters.echo.echo import Echo
-from taskmates.core.chat_completion.openai_adapters.echo.quote import Quote
+from taskmates.core.actions.chat_completion.openai_adapters.echo.echo import Echo
+from taskmates.core.actions.chat_completion.openai_adapters.echo.quote import Quote
 
 
 @typechecked

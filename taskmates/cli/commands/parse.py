@@ -7,7 +7,7 @@ import sys
 from taskmates.actions.parse_markdown_chat import parse_markdown_chat
 from taskmates.cli.commands.base import Command
 from taskmates.context_builders.cli_context_builder import CliContextBuilder
-from taskmates.contexts import CONTEXTS
+from taskmates.runner.contexts.contexts import CONTEXTS
 from taskmates.lib.context_.temp_context import temp_context
 from taskmates.taskmates_runtime import TASKMATES_RUNTIME
 

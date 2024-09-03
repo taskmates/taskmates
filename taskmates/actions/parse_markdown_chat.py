@@ -7,7 +7,7 @@ import pytest
 from loguru import logger
 from typeguard import typechecked
 
-from taskmates.core.code_execution.code_cells.parse_notebook import parse_notebook
+from taskmates.core.actions.code_execution.code_cells.parse_notebook import parse_notebook
 from taskmates.formats.markdown.metadata.get_available_tools import get_available_tools
 from taskmates.formats.markdown.metadata.prepend_recipient_system import prepend_recipient_system
 from taskmates.formats.markdown.parsing.parse_front_matter_and_messages import parse_front_matter_and_messages
@@ -22,7 +22,7 @@ from taskmates.types import Chat
 async def parse_markdown_chat(markdown_chat: str,
                               markdown_path: Union[str, Path] | None,
                               taskmates_dirs: list[str | Path],
-                              template_params: dict | None = None) -> Chat:
+                              inputs: dict | None = None) -> Chat:
     logger.debug(f"Parsing markdown chat")
 
     if markdown_path is None:
@@ -41,9 +41,9 @@ async def parse_markdown_chat(markdown_chat: str,
     available_tools = get_available_tools(chat_front_matter, recipient_front_matter)
 
     # post-process
-    if template_params is None:
-        template_params = {}
-    front_matter_template_params = chat_front_matter.get("template_params", {})
+    if inputs is None:
+        inputs = {}
+    front_matter_inputs = chat_front_matter.get("inputs", {})
 
     if recipient_name:
         messages = prepend_recipient_system(taskmates_dirs,
@@ -51,7 +51,7 @@ async def parse_markdown_chat(markdown_chat: str,
                                             recipient_name,
                                             recipient_front_matter,
                                             split_messages,
-                                            template_params={**front_matter_template_params, **template_params})
+                                            inputs={**front_matter_inputs, **inputs})
     else:
         messages = split_messages
 

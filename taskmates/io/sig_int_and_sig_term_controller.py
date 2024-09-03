@@ -2,7 +2,7 @@ import asyncio
 import signal
 
 from taskmates.core.signal_receiver import SignalReceiver
-from taskmates.signals.signals import Signals
+from taskmates.core.signals import Signals
 
 
 class SigIntAndSigTermController(SignalReceiver):

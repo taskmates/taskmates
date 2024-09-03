@@ -8,11 +8,11 @@ from dotenv import load_dotenv
 
 from taskmates.config.load_participant_config import load_cache
 from taskmates.context_builders.test_context_builder import TestContextBuilder
-from taskmates.contexts import CONTEXTS
-from taskmates.core.code_execution.code_cells.execute_markdown_on_local_kernel import kernel_pool
+from taskmates.core.actions.code_execution.code_cells.execute_markdown_on_local_kernel import kernel_pool
+from taskmates.core.signals import Signals
 from taskmates.lib.context_.temp_context import temp_context
 from taskmates.lib.root_path.root_path import root_path
-from taskmates.signals.signals import Signals, SIGNALS
+from taskmates.runner.contexts.contexts import CONTEXTS
 from taskmates.taskmates_runtime import TASKMATES_RUNTIME
 
 
@@ -45,6 +45,12 @@ def pytest_runtest_setup(item):
     load_dotenv(root_path() / f'.env.{env}.local', override=True)
 
 
+def pytest_collection_modifyitems(config, items):
+    run_first = [item for item in items if 'slow' not in item.keywords]
+    run_last = [item for item in items if 'slow' in item.keywords]
+    items[:] = run_first + run_last
+
+
 @pytest.fixture
 def subject(request):
     return request.getfixturevalue(request.param)
@@ -66,9 +72,8 @@ def taskmates_runtime():
 
 @pytest.fixture(autouse=True)
 def signals(taskmates_runtime):
-    stream = Signals()
-    SIGNALS.set(stream)
-    return stream
+    with Signals().connected_to([]) as signals:
+        yield signals
 
 
 @pytest.fixture(autouse=True)

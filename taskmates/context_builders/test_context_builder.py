@@ -2,7 +2,7 @@ from uuid import uuid4
 
 from taskmates.context_builders.context_builder import ContextBuilder
 from taskmates.defaults.context_defaults import ContextDefaults
-from taskmates.contexts import Contexts
+from taskmates.runner.contexts.contexts import Contexts
 
 
 class TestContextBuilder(ContextBuilder):
@@ -22,8 +22,9 @@ class TestContextBuilder(ContextBuilder):
 
         contexts["completion_opts"].update({
             "model": "quote",
-            "template_params": {},
+            "inputs": {},
             "max_steps": 1,
+            "workflow": "test_complete"
         })
 
         contexts["client_config"].update({

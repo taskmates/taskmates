@@ -5,9 +5,11 @@ from taskmates.lib.config_.identity import identity
 
 
 class FlexDict(dict):
-    def __init__(self, *args,
+    def __init__(self,
+                 *args,
                  missing_fn: Callable[[dict, Any], Any] = None,
-                 hash_fn=identity, **kwargs):
+                 hash_fn=identity,
+                 **kwargs):
         self.missing_fn = missing_fn
         self.hash_fn = hash_fn
         super().__init__(*args, **kwargs)
@@ -37,9 +39,9 @@ class FlexDict(dict):
         return super().__getitem__(self.hash_fn(key))
 
     def __missing__(self, key: Any) -> Any:
-        default_value = self.missing_fn(self, key)
-        self[key] = default_value
-        return default_value
+        produced_value = self.missing_fn(self, key)
+        self[key] = produced_value
+        return produced_value
 
 
 def test_flex_dict():

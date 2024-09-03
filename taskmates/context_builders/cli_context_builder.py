@@ -2,10 +2,9 @@ import os
 from types import SimpleNamespace
 from uuid import uuid4
 
-from taskmates.cli.lib.merge_template_params import merge_template_params
 from taskmates.context_builders.context_builder import ContextBuilder
-from taskmates.contexts import Contexts
 from taskmates.defaults.context_defaults import ContextDefaults
+from taskmates.runner.contexts.contexts import Contexts
 
 
 class CliContextBuilder(ContextBuilder):
@@ -25,8 +24,7 @@ class CliContextBuilder(ContextBuilder):
 
         contexts["completion_opts"].update({
             "model": self.args.model if hasattr(self.args, 'model') else None,
-            "template_params": merge_template_params(self.args.template_params) if hasattr(self.args,
-                                                                                           'template_params') else {},
+            "workflow": self.args.workflow if hasattr(self.args, 'workflow') else None,
             "max_steps": self.args.max_steps if hasattr(self.args, 'max_steps') else None,
         })
 
@@ -38,9 +36,8 @@ class CliContextBuilder(ContextBuilder):
 
         return contexts
 
-
 def test_cli_context_builder():
-    args = SimpleNamespace(model="test-model", template_params=[{"key1": "value1"}], max_steps=5, format="json",
+    args = SimpleNamespace(model="test-model", max_steps=5, format="json",
                            endpoint="test-endpoint")
     builder = CliContextBuilder(args)
     contexts = builder.build()
@@ -48,7 +45,6 @@ def test_cli_context_builder():
     assert contexts["completion_opts"]["max_steps"] == 5
     assert contexts["client_config"]["format"] == "json"
     assert contexts["client_config"]["endpoint"] == "test-endpoint"
-
 
 # TODO
 # def test_cli_context_builder_with_no_args():

@@ -7,6 +7,8 @@ import pytest
 from taskmates.grammar.parsers.markdown_chat_parser import markdown_chat_parser
 from taskmates.lib.openai_.count_tokens import count_tokens
 
+pytestmark = pytest.mark.slow
+
 
 @pytest.mark.timeout(5)
 @pytest.mark.xdist_group(name="performance")

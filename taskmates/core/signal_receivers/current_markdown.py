@@ -2,8 +2,10 @@ from taskmates.core.signal_receiver import SignalReceiver
 
 
 class CurrentMarkdown(SignalReceiver):
-    def __init__(self):
+    def __init__(self, current_markdown=None):
         self.markdown_chunks = []
+        if current_markdown is not None:
+            self.markdown_chunks.append(current_markdown)
 
     async def handle(self, markdown):
         if markdown is not None:

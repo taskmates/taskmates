@@ -5,12 +5,12 @@ from quart import Blueprint, Response, websocket
 
 import taskmates
 from taskmates.context_builders.api_context_builder import ApiContextBuilder
-from taskmates.core.chat_session import ChatSession
+from taskmates.core.runner import Runner
+from taskmates.core.signals import Signals
 from taskmates.io.web_socket_completion_streamer import WebSocketCompletionStreamer
 from taskmates.io.web_socket_interrupt_and_kill_controller import WebSocketInterruptAndKillController
 from taskmates.lib.json_.json_utils import snake_case
 from taskmates.logging import logger
-from taskmates.signals.signals import Signals
 from taskmates.taskmates_runtime import TASKMATES_RUNTIME
 from taskmates.types import CompletionPayload
 
@@ -48,12 +48,12 @@ async def create_completion():
             await signals.output.artifact.send_async(
                 {"name": "websockets_api_payload.json", "content": payload})
 
-            result = await ChatSession(
-                history=markdown_chat,
-                incoming_messages=[],
+            result = await Runner().run(
+                inputs=dict(
+                    current_markdown=markdown_chat,
+                ),
                 contexts=contexts,
-                signals=signals
-            ).resume()
+            )
 
             return result
 

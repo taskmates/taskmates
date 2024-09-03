@@ -4,7 +4,7 @@ from uuid import uuid4
 import taskmates
 from taskmates.context_builders.context_builder import ContextBuilder
 from taskmates.defaults.context_defaults import ContextDefaults
-from taskmates.contexts import Contexts
+from taskmates.runner.contexts.contexts import Contexts
 from taskmates.types import CompletionPayload
 
 
@@ -16,6 +16,7 @@ class ApiContextBuilder(ContextBuilder):
         contexts = ContextDefaults().build()
         request_id = str(uuid4())
 
+        contexts["completion_opts"]["workflow"] = "api_complete"
         contexts["completion_context"].update(self.payload["completion_context"].copy())
         contexts["completion_context"].update({
             "request_id": request_id,

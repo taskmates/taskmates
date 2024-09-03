@@ -1,9 +1,10 @@
 from wrapt import wrap_function_wrapper
 
-from taskmates.contexts import CONTEXTS
-from taskmates.core.code_execution.code_cells.code_cell_execution_completion_provider import \
+from taskmates.runner.contexts.contexts import CONTEXTS
+from taskmates.core.actions.code_execution.code_cells.code_cell_execution_completion_provider import \
     CodeCellExecutionCompletionProvider
-from taskmates.core.code_execution.tools.tool_execution_completion_provider import ToolExecutionCompletionProvider
+from taskmates.core.actions.code_execution.tools.tool_execution_completion_provider import \
+    ToolExecutionCompletionProvider
 from taskmates.extensions.actions.get_dotenv_values import get_dotenv_values
 from taskmates.sdk import TaskmatesExtension
 

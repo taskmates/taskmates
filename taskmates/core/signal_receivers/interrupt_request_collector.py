@@ -1,6 +1,6 @@
 from taskmates.core.signal_receiver import SignalReceiver
 from taskmates.logging import logger
-from taskmates.signals.signals import SIGNALS
+from taskmates.core.signals import SIGNALS
 
 
 class InterruptRequestCollector(SignalReceiver):

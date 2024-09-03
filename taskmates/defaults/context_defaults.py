@@ -1,4 +1,4 @@
-from taskmates.contexts import Contexts
+from taskmates.runner.contexts.contexts import Contexts
 
 
 class ContextDefaults:
@@ -10,14 +10,15 @@ class ContextDefaults:
             },
             "server_config": {},
             "completion_context": {},
+            "completion_opts": {
+                "model": 'claude-3-5-sonnet-20240620',
+                "inputs": {},
+                "max_steps": 10000,
+            },
             "step_context": {
                 "current_step": 0,
             },
-            "completion_opts": {
-                "model": 'claude-3-5-sonnet-20240620',
-                "template_params": {},
-                "max_steps": 10000,
-            },
+            "job_context": {},
         }
 
 

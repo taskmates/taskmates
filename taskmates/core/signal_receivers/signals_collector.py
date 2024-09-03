@@ -2,7 +2,7 @@ import functools
 from typing import Any
 
 from taskmates.core.signal_receiver import SignalReceiver
-from taskmates.signals.signals import BaseSignals
+from taskmates.core.signals import BaseSignals
 
 
 class SignalsCollector(SignalReceiver):
