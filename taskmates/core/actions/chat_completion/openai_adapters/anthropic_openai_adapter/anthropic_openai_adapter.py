@@ -5,26 +5,23 @@ from typing import Dict, List, Optional, Any
 import anthropic
 import pytest
 from anthropic import APIStatusError
-from anthropic.types import MessageStartEvent, ContentBlockDeltaEvent, MessageStopEvent, TextBlock, \
-    ContentBlockStartEvent, ContentBlockStopEvent, MessageDeltaEvent, TextDelta
-from anthropic.types.beta.tools import ToolsBetaMessage, ToolUseBlock, ToolsBetaContentBlockStartEvent, \
-    ToolsBetaContentBlockDeltaEvent, InputJsonDelta
+from anthropic.types import MessageStartEvent, MessageStopEvent, ContentBlockStartEvent, ContentBlockStopEvent, \
+    MessageDeltaEvent, TextDelta, ContentBlockDeltaEvent
+from anthropic.types.input_json_delta import InputJsonDelta
 from typeguard import typechecked
 
-from taskmates.core.actions.chat_completion.openai_adapters.anthropic_openai_adapter.request.convert_and_merge_messages import \
-    convert_and_merge_messages
-from taskmates.core.actions.chat_completion.openai_adapters.anthropic_openai_adapter.response.convert_anthropic_tool_call_to_openai import \
-    convert_anthropic_tool_call_to_openai
-from taskmates.core.actions.chat_completion.openai_adapters.anthropic_openai_adapter.request.convert_openai_tools_to_anthropic import \
-    convert_openai_tools_to_anthropic
 from taskmates.core.actions.chat_completion.openai_adapters.anthropic_openai_adapter.parsing.split_system_message import \
     split_system_message
+from taskmates.core.actions.chat_completion.openai_adapters.anthropic_openai_adapter.request.convert_and_merge_messages import \
+    convert_and_merge_messages
+from taskmates.core.actions.chat_completion.openai_adapters.anthropic_openai_adapter.request.convert_openai_tools_to_anthropic import \
+    convert_openai_tools_to_anthropic
+from taskmates.core.signals import SIGNALS
 from taskmates.core.tools_registry import tools_registry
 from taskmates.lib.openai_.model.chat_completion_chunk_model import ChatCompletionChunkModel
 from taskmates.lib.openai_.model.choice_model import ChoiceModel
 from taskmates.lib.openai_.model.delta_model import DeltaModel
 from taskmates.lib.tool_schemas_.tool_schema import tool_schema
-from taskmates.core.signals import SIGNALS
 
 
 class AsyncAnthropicOpenAIAdapter:
@@ -81,10 +78,7 @@ class AsyncAnthropicOpenAIAdapter:
                 **kwargs
             )
 
-            if payload['tools']:
-                resource = self.client.beta.tools.messages
-            else:
-                resource = self.client.messages
+            resource = self.client.messages
 
             if payload['tools'] is None:
                 del payload['tools']
@@ -102,77 +96,50 @@ class AsyncAnthropicOpenAIAdapter:
                 try:
                     # TODO: Add tracing
                     signals = SIGNALS.get()
-                    await signals.output.artifact.send_async({"name": "anthropic_request_payload.json", "content": payload})
+                    await signals.output.artifact.send_async(
+                        {"name": "anthropic_request_payload.json", "content": payload})
                     chat_completion = await resource.create(**payload)
                     id, created, model_name = None, None, model
                     is_tool_call = False
 
-                    if isinstance(chat_completion, ToolsBetaMessage):
-                        id = chat_completion.id
-                        choice = ChoiceModel(delta=DeltaModel(content=None, role='assistant'))
-                        yield ChatCompletionChunkModel(id=id, choices=[choice], created=None, model=model_name)
-
-                        for content in chat_completion.content:
-                            if isinstance(content, TextBlock):
-                                choice = ChoiceModel(delta=DeltaModel(content=content.text))
-                                yield ChatCompletionChunkModel(id=id, choices=[choice], created=created,
-                                                               model=model_name)
-                            elif isinstance(content, ToolUseBlock):
+                    async for event in chat_completion:
+                        if isinstance(event, MessageStartEvent):
+                            id = event.message.id
+                            choice = ChoiceModel(delta=DeltaModel(content='', role='assistant'))
+                            yield ChatCompletionChunkModel(id=id, choices=[choice], created=None,
+                                                           model=model_name)
+                        elif isinstance(event, ContentBlockStartEvent):
+                            if event.content_block.type == "tool_use":
                                 is_tool_call = True
-                                tool_call = convert_anthropic_tool_call_to_openai(content)
+                                function_name = event.content_block.name
+                                tool_call = {"index": 0, "id": event.content_block.id,
+                                             "type": "function",
+                                             "function": {"name": function_name, "arguments": ""}}
                                 choice = ChoiceModel(delta=DeltaModel(tool_calls=[tool_call]))
-                                yield ChatCompletionChunkModel(id=id, choices=[choice], created=created,
+                                yield ChatCompletionChunkModel(id=id, choices=[choice], created=None,
                                                                model=model_name)
+
+                        elif isinstance(event, ContentBlockDeltaEvent):
+                            if isinstance(event.delta, InputJsonDelta):
+                                delta: InputJsonDelta = event.delta
+                                tool_call = {"function": {"arguments": delta.partial_json}, "index": 0}
+                                choice = ChoiceModel(delta=DeltaModel(tool_calls=[tool_call]))
                             else:
-                                raise ValueError(f"Unexpected content type: {type(content)}")
+                                delta: TextDelta = event.delta
+                                choice = ChoiceModel(delta=DeltaModel(content=delta.text))
+                            yield ChatCompletionChunkModel(id=id, choices=[choice], created=None,
+                                                           model=model_name)
 
-                        finish_reason = 'tool_calls' if is_tool_call else 'stop'
-                        choice = ChoiceModel(delta=DeltaModel(content=None), finish_reason=finish_reason)
-                        yield ChatCompletionChunkModel(id=id, choices=[choice], created=None, model=model_name)
-
-                    else:
-                        async for event in chat_completion:
-                            if isinstance(event, MessageStartEvent):
-                                id = event.message.id
-                                choice = ChoiceModel(delta=DeltaModel(content='', role='assistant'))
-                                yield ChatCompletionChunkModel(id=id, choices=[choice], created=None,
-                                                               model=model_name)
-                            elif isinstance(event, ContentBlockDeltaEvent):
-                                choice = ChoiceModel(delta=DeltaModel(content=event.delta.text))
-                                yield ChatCompletionChunkModel(id=id, choices=[choice], created=None,
-                                                               model=model_name)
-                            elif isinstance(event, ToolsBetaContentBlockDeltaEvent):
-                                is_tool_call = True
-                                if isinstance(event.delta, InputJsonDelta):
-                                    delta: InputJsonDelta = event.delta
-                                    tool_call = {"function": {"arguments": delta.partial_json}, "index": 0}
-                                    choice = ChoiceModel(delta=DeltaModel(tool_calls=[tool_call]))
-                                else:
-                                    delta: TextDelta = event.delta
-                                    choice = ChoiceModel(delta=DeltaModel(content=delta.text))
-                                yield ChatCompletionChunkModel(id=id, choices=[choice], created=None,
-                                                               model=model_name)
-
-                            elif isinstance(event, MessageStopEvent):
-                                finish_reason = 'tool_calls' if is_tool_call else 'stop'
-                                choice = ChoiceModel(delta=DeltaModel(content=None), finish_reason=finish_reason)
-                                yield ChatCompletionChunkModel(id=id, choices=[choice], created=None,
-                                                               model=model_name)
-                            elif isinstance(event, ToolsBetaContentBlockStartEvent):
-                                if event.content_block.type == "tool_use":
-                                    function_name = event.content_block.name
-                                    tool_call = {"index": 0, "id": event.content_block.id,
-                                                 "type": "function",
-                                                 "function": {"name": function_name, "arguments": ""}}
-                                    choice = ChoiceModel(delta=DeltaModel(tool_calls=[tool_call]))
-                                    yield ChatCompletionChunkModel(id=id, choices=[choice], created=None,
-                                                                   model=model_name)
-                            elif isinstance(event, (MessageDeltaEvent,
-                                                    ContentBlockStartEvent,
-                                                    ContentBlockStopEvent)):
-                                pass
-                            else:
-                                raise ValueError(f"Unexpected event type: {type(event)}")
+                        elif isinstance(event, MessageStopEvent):
+                            finish_reason = 'tool_calls' if is_tool_call else 'stop'
+                            choice = ChoiceModel(delta=DeltaModel(content=None), finish_reason=finish_reason)
+                            yield ChatCompletionChunkModel(id=id, choices=[choice], created=None,
+                                                           model=model_name)
+                        elif isinstance(event, (MessageDeltaEvent,
+                                                ContentBlockStopEvent)):
+                            pass
+                        else:
+                            raise ValueError(f"Unexpected event type: {type(event)}")
 
                     break  # Successfully processed all events, exit retry loop
 
@@ -277,35 +244,33 @@ async def test_create_with_tools():
     async for resp in chat_completion:
         received += [resp]
 
-    tool_calls = None
-    for message in received:
-        if message.choices[0].delta.tool_calls:
-            tool_calls = message.choices[0].delta.tool_calls
-            break
+    arguments, function_name, tool_call_id, tool_calls = await extract_tool_call(received)
 
     assert tool_calls is not None
     assert len(tool_calls) == 1
-    assert tool_calls[0]["function"]["name"] == "get_current_weather"
-    arguments = tool_calls[0].get("function", {}).get("arguments", None)
-    assert arguments is not None
+    assert function_name == "get_current_weather"
+    assert arguments != ""
     assert "San Francisco" in json.loads(arguments).get("location", "")
 
-    for message in received:
-        if not message.choices[0].delta.tool_calls and not message.choices[0].delta.content:
-            continue
-        response = {"role": "assistant",
-                    "content": message.choices[0].delta.content,
-                    "tool_calls": message.choices[0].delta.tool_calls or []}
-        # if not response["content"]:
-        #     del response["content"]
-        if not response["tool_calls"]:
-            del response["tool_calls"]
-        messages.append(response)
+    response = {"role": "assistant",
+                "content": None,
+                "tool_calls": [
+                    # [{'function': {'arguments': '{"cmd": "pwd"}', 'name': 'run_shell_command'}, 'id': '1', 'type': 'function'}]
+                    {
+                        "function": {
+                            "name": function_name,
+                            "arguments": arguments
+                        },
+                        "id": tool_call_id,
+                        "type": "function",
+                    }
+                ]}
+    messages.append(response)
 
     tool_response = "23"
     messages.append({"role": "tool",
-                     "tool_call_id": tool_calls[0]["id"],
-                     "name": tool_calls[0]["function"]["name"],
+                     "tool_call_id": tool_call_id,
+                     "name": function_name,
                      "content": tool_response})
 
     # send the tool call return value back to anthropic
@@ -320,4 +285,24 @@ async def test_create_with_tools():
     async for resp in chat_completion:
         received += [resp]
 
-    assert "23" in received[-2].model_dump()["choices"][0]["delta"]["content"]
+    response = ""
+    for resp in received:
+        response += resp.model_dump()["choices"][0]["delta"].get("content") or ""
+
+    assert "23" in response
+
+
+async def extract_tool_call(received):
+    tool_calls = None
+    function_name = None
+    tool_call_id = None
+    arguments = ""
+    for message in received:
+        if message.choices[0].delta.tool_calls:
+            tool_calls = message.choices[0].delta.tool_calls
+            if not tool_call_id:
+                tool_call_id = tool_calls[0]["id"]
+            if not function_name:
+                function_name = tool_calls[0].get("function", {}).get("name", "")
+            arguments += tool_calls[0].get("function", {}).get("arguments", "")
+    return arguments, function_name, tool_call_id, tool_calls

@@ -1,6 +1,6 @@
 import json
 
-from anthropic.types.beta.tools import ToolUseBlock
+from anthropic.types import ToolUseBlock
 from typeguard import typechecked
 
 

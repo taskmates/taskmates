@@ -2,8 +2,8 @@ from pathlib import Path
 
 import sys
 
-from taskmates.runner.contexts.contexts import CONTEXTS
 from taskmates.defaults.tools.filesystem_.is_path_allowed import is_path_allowed
+from taskmates.runner.contexts.contexts import CONTEXTS
 
 
 def read_file(path):
@@ -16,8 +16,8 @@ def read_file(path):
     contexts = CONTEXTS.get()
     completion_opts = contexts["completion_opts"]
 
-    allow = completion_opts.get("tools", {}).get("read_file", {}).get("allow", "**")
-    deny = completion_opts.get("tools", {}).get("read_file", {}).get("deny", None)
+    allow = ((completion_opts.get("tools") or {}).get("write_file") or {}).get("allow", "**")
+    deny = ((completion_opts.get("tools") or {}).get("write_file") or {}).get("deny", None)
 
     path_obj = Path(path)
     if not path_obj.is_file():
