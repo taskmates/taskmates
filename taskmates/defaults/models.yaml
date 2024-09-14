@@ -1,10 +1,28 @@
-default:
+default-anthropic:
   client_type: anthropic
   endpoint: https://api.anthropic.com
   max_context_window: 4096
   model_name: claude-3-5-sonnet-20240620
 
+default-openai:
+  client_type: openai
+  endpoint: https://api.openai.com/v1
+  max_context_window: 128000
+  model_name: o1-preview
+
 # openai
+
+o1-preview:
+  client_type: openai
+  endpoint: https://api.openai.com/v1
+  max_context_window: 128000
+  model_name: o1-preview
+
+o1-mini:
+  client_type: openai
+  endpoint: https://api.openai.com/v1
+  max_context_window: 128000
+  model_name: o1-mini
 
 gpt-4o:
   client_type: openai
