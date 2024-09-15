@@ -1,7 +1,7 @@
 from taskmates.defaults.workflows.cli_complete import CliComplete
 from taskmates.defaults.workflows.github_issue import GithubIssue
 from taskmates.defaults.workflows.markdown_complete import MarkdownComplete
-from taskmates.defaults.workflows.taskmates_workflow import TaskmatesWorkflow
+from taskmates.core.taskmates_workflow import TaskmatesWorkflow
 
 workflow_registry: dict[str, type[TaskmatesWorkflow]] = {}
 

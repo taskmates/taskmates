@@ -2,11 +2,11 @@ import json
 
 from loguru import logger
 
-from taskmates.core.signal_receiver import SignalReceiver
-from taskmates.core.signals import Signals
+from taskmates.core.processor import Processor
+from taskmates.core.execution_environment import EXECUTION_ENVIRONMENT
 
 
-class WebSocketCompletionStreamer(SignalReceiver):
+class WebSocketCompletionStreamer(Processor):
     def __init__(self, websocket):
         self.websocket = websocket
 
@@ -23,8 +23,10 @@ class WebSocketCompletionStreamer(SignalReceiver):
         dump = dump.replace("\r", "")
         await self.websocket.send(dump)
 
-    def connect(self, signals: Signals):
-        signals.response.completion.connect(self.handle_completion, weak=False)
+    def __enter__(self):
+        signals = EXECUTION_ENVIRONMENT.get().signals
+        signals.response.stdout.connect(self.handle_completion, weak=False)
 
-    def disconnect(self, signals: Signals):
-        signals.response.completion.disconnect(self.handle_completion)
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        signals = EXECUTION_ENVIRONMENT.get().signals
+        signals.response.stdout.disconnect(self.handle_completion)

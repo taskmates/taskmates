@@ -4,15 +4,13 @@ from typing import Dict
 from typeguard import typechecked
 
 from taskmates.actions.invoke_function import invoke_function
-from taskmates.config.completion_context import CompletionContext
-from taskmates.runner.contexts.contexts import CONTEXTS
 from taskmates.core.actions.code_execution.code_cells.code_execution import CodeExecution
 from taskmates.core.actions.code_execution.tools.tool_editor_completion import ToolEditorCompletion
 from taskmates.core.completion_provider import CompletionProvider
 from taskmates.core.tools_registry import tools_registry
 from taskmates.model.tool_call import ToolCall
-from taskmates.core.signals import SIGNALS
-from taskmates.types import Chat
+from taskmates.core.execution_environment import EXECUTION_ENVIRONMENT
+from taskmates.types import Chat, CompletionContext
 
 
 class ToolExecutionCompletionProvider(CompletionProvider):
@@ -26,8 +24,8 @@ class ToolExecutionCompletionProvider(CompletionProvider):
         return len(tool_calls) > 0
 
     async def perform_completion(self, chat: Chat):
-        contexts = CONTEXTS.get()
-        signals = SIGNALS.get()
+        contexts = EXECUTION_ENVIRONMENT.get().contexts
+        signals = EXECUTION_ENVIRONMENT.get().signals
 
         completion_context = contexts["completion_context"]
         cwd = completion_context["cwd"]

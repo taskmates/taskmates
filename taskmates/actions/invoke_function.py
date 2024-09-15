@@ -2,15 +2,15 @@ import asyncio
 from contextlib import redirect_stdout, redirect_stderr
 from io import StringIO
 
-from taskmates.config.completion_context import CompletionContext
+from taskmates.types import CompletionContext
 from taskmates.lib.context_.temp_cwd import temp_cwd
 from taskmates.lib.context_.temp_environ import temp_environ
 from taskmates.lib.restore_stdout_and_stderr import restore_stdout_and_stderr
-from taskmates.core.signals import Signals
+from taskmates.core.signals.signals_context import SignalsContext
 
 
 # TODO: review this and the duplication with run_shell_command
-async def stream_output(stream_name, stream, signals: Signals):
+async def stream_output(stream_name, stream, signals: SignalsContext):
     while True:
         line = stream.readline()
         if not line:
@@ -19,7 +19,7 @@ async def stream_output(stream_name, stream, signals: Signals):
             await signals.response.response.send_async(line)
 
 
-async def invoke_function(function, arguments, context: CompletionContext, signals: Signals):
+async def invoke_function(function, arguments, context: CompletionContext, signals: SignalsContext):
     stdout_stream = StringIO()
     stderr_stream = StringIO()
 

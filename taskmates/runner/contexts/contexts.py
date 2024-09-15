@@ -2,22 +2,10 @@ import contextvars
 import os
 from pathlib import Path
 
-from typing_extensions import TypedDict, NotRequired
+from typing_extensions import TypedDict
 
-from taskmates.config.client_config import ClientConfig
-from taskmates.config.completion_context import CompletionContext
-from taskmates.config.server_config import ServerConfig
 from taskmates.lib.root_path.root_path import root_path
-from taskmates.types import CompletionOpts
-
-
-class StepContext(TypedDict):
-    current_markdown: NotRequired[str]
-    current_step: NotRequired[int]
-
-
-class JobContext(TypedDict):
-    current_markdown: NotRequired[str]
+from taskmates.types import CompletionOpts, CompletionContext, ClientConfig, ServerConfig, StepContext, JobContext
 
 
 class Contexts(TypedDict):
@@ -37,4 +25,3 @@ default_taskmates_dirs = [
     bundled_taskmates_dir,
 ]
 
-CONTEXTS: contextvars.ContextVar['Contexts'] = contextvars.ContextVar('contexts')

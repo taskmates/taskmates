@@ -1,6 +1,6 @@
 from typing import Optional
 
-from taskmates.core.signals import SIGNALS
+from taskmates.core.execution_environment import EXECUTION_ENVIRONMENT
 
 
 async def report_evaluation(summary: Optional[str], result: bool):
@@ -11,6 +11,6 @@ async def report_evaluation(summary: Optional[str], result: bool):
     :param result: the result of the evaluation
     :return: success
     """
-    signals = SIGNALS.get()
-    await signals.output.result.send_async({"result": result, "summary": summary})
+    signals = EXECUTION_ENVIRONMENT.get().signals
+    await signals.response.result.send_async({"result": result, "summary": summary})
     return result

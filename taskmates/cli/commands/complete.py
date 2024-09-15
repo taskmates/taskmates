@@ -7,7 +7,8 @@ from typeguard import typechecked
 
 from taskmates.cli.lib.merge_inputs import merge_inputs
 from taskmates.context_builders.cli_context_builder import CliContextBuilder
-from taskmates.core.runner import Runner
+from taskmates.core.workflow_registry import workflow_registry
+from taskmates.defaults.workflows.cli_complete import CliComplete
 
 
 class CompleteCommand:
@@ -51,8 +52,10 @@ class CompleteCommand:
         if not args.history and not stdin_markdown and not args_markdown and not inputs:
             raise ValueError("No input provided")
 
-        await Runner().run(inputs=inputs,
-                           contexts=contexts)
+        # workflow_name = contexts["completion_opts"]["workflow"]
+        # workflow = workflow_registry[workflow_name](contexts)
+        # await workflow.run(**inputs)
+        await CliComplete(contexts).run(**inputs)
 
     @staticmethod
     async def get_args_incoming_message(args):

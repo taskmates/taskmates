@@ -1,10 +1,11 @@
 from typing import Any
 
-from taskmates.core.signal_receiver import SignalReceiver
+from taskmates.core.processor import Processor
+from taskmates.core.execution_environment import EXECUTION_ENVIRONMENT
 from taskmates.lib.not_set.not_set import NOT_SET
 
 
-class ReturnValueHandler(SignalReceiver):
+class ReturnValueHandler(Processor):
     def __init__(self):
         self.completion_chunks = []
         self.return_value = NOT_SET
@@ -19,14 +20,16 @@ class ReturnValueHandler(SignalReceiver):
     async def handle_error(self, payload):
         self.error = payload["error"]
 
-    def connect(self, signals):
+    def __enter__(self):
+        signals = EXECUTION_ENVIRONMENT.get().signals
         signals.response.response.connect(self.handle_response_chunk)
-        signals.output.result.connect(self.handle_return_value)
+        signals.response.result.connect(self.handle_return_value)
         signals.response.error.connect(self.handle_error)
 
-    def disconnect(self, signals):
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        signals = EXECUTION_ENVIRONMENT.get().signals
         signals.response.response.disconnect(self.handle_response_chunk)
-        signals.output.result.disconnect(self.handle_return_value)
+        signals.response.result.disconnect(self.handle_return_value)
         signals.response.error.disconnect(self.handle_error)
 
     def should_raise_error(self) -> bool:

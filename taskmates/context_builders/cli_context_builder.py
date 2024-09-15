@@ -8,7 +8,7 @@ from taskmates.runner.contexts.contexts import Contexts
 
 
 class CliContextBuilder(ContextBuilder):
-    def __init__(self, args):
+    def __init__(self, args=None):
         self.args = args
 
     def build(self) -> Contexts:
@@ -22,17 +22,18 @@ class CliContextBuilder(ContextBuilder):
             "env": os.environ.copy(),
         })
 
-        contexts["completion_opts"].update({
-            "model": self.args.model if hasattr(self.args, 'model') else None,
-            "workflow": self.args.workflow if hasattr(self.args, 'workflow') else None,
-            "max_steps": self.args.max_steps if hasattr(self.args, 'max_steps') else None,
-        })
+        if hasattr(self.args, 'model') and self.args.model is not None:
+            contexts["completion_opts"]["model"] = self.args.model
+        if hasattr(self.args, 'workflow') and self.args.workflow is not None:
+            contexts["completion_opts"]["workflow"] = self.args.workflow
+        if hasattr(self.args, 'max_steps') and self.args.max_steps is not None:
+            contexts["completion_opts"]["max_steps"] = self.args.max_steps
 
-        contexts["client_config"].update({
-            "interactive": False,
-            "format": self.args.format if hasattr(self.args, 'format') else None,
-            "endpoint": self.args.endpoint if hasattr(self.args, 'endpoint') else None
-        })
+        contexts["client_config"]["interactive"] = False
+        if hasattr(self.args, 'format') and self.args.format is not None:
+            contexts["client_config"]["format"] = self.args.format
+        if hasattr(self.args, 'endpoint') and self.args.endpoint is not None:
+            contexts["client_config"]["endpoint"] = self.args.endpoint
 
         return contexts
 

@@ -16,7 +16,7 @@ from taskmates.core.actions.chat_completion.openai_adapters.anthropic_openai_ada
     convert_and_merge_messages
 from taskmates.core.actions.chat_completion.openai_adapters.anthropic_openai_adapter.request.convert_openai_tools_to_anthropic import \
     convert_openai_tools_to_anthropic
-from taskmates.core.signals import SIGNALS
+from taskmates.core.execution_environment import EXECUTION_ENVIRONMENT
 from taskmates.core.tools_registry import tools_registry
 from taskmates.lib.openai_.model.chat_completion_chunk_model import ChatCompletionChunkModel
 from taskmates.lib.openai_.model.choice_model import ChoiceModel
@@ -95,8 +95,8 @@ class AsyncAnthropicOpenAIAdapter:
             for attempt in range(1, max_attempts + 1):
                 try:
                     # TODO: Add tracing
-                    signals = SIGNALS.get()
-                    await signals.output.artifact.send_async(
+                    signals = EXECUTION_ENVIRONMENT.get().signals
+                    await signals.artifact.artifact.send_async(
                         {"name": "anthropic_request_payload.json", "content": payload})
                     chat_completion = await resource.create(**payload)
                     id, created, model_name = None, None, model

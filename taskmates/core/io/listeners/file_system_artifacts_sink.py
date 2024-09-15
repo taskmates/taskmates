@@ -2,13 +2,12 @@ import os
 from datetime import datetime
 from pathlib import Path
 
-from taskmates.runner.contexts.contexts import CONTEXTS
+from taskmates.core.execution_environment import EXECUTION_ENVIRONMENT
 from taskmates.lib.resources_.resources import dump_resource
-from taskmates.core.signal_receiver import SignalReceiver
-from taskmates.core.signals import Signals
+from taskmates.core.processor import Processor
 
 
-class FileSystemArtifactsSink(SignalReceiver):
+class FileSystemArtifactsSink(Processor):
 
     # TODO: logic for enabling/disabling handlers
 
@@ -18,7 +17,7 @@ class FileSystemArtifactsSink(SignalReceiver):
         # Maybe we should get an artifacts_dir instead
 
         taskmates_home = Path(os.environ.get("TASKMATES_HOME", str(Path.home() / ".taskmates")))
-        request_id = CONTEXTS.get()["completion_context"]["request_id"]
+        request_id = EXECUTION_ENVIRONMENT.get().contexts["completion_context"]["request_id"]
 
         # The problem seems to be that we're mixing artifacts and logs
 
@@ -26,8 +25,10 @@ class FileSystemArtifactsSink(SignalReceiver):
         full_path = Path(taskmates_home) / "logs" / f"[{request_id}][{timestamp}] {sender.get('name')}"
         dump_resource(full_path, sender.get('content'))
 
-    def connect(self, signals: Signals):
-        signals.output.artifact.connect(self.handle_artifact, weak=False)
+    def __enter__(self):
+        signals = EXECUTION_ENVIRONMENT.get().signals
+        signals.artifact.artifact.connect(self.handle_artifact, weak=False)
 
-    def disconnect(self, signals: Signals):
-        signals.output.artifact.disconnect(self.handle_artifact)
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        signals = EXECUTION_ENVIRONMENT.get().signals
+        signals.artifact.artifact.disconnect(self.handle_artifact)

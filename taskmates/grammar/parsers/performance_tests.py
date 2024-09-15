@@ -16,9 +16,9 @@ def test_performance():
     pp.enable_all_warnings()
 
     partial = textwrap.dedent("""\
-        **user>** This is a messag with multiple lines.
-        This is a messag with multiple lines.
-        This is a messag with multiple lines.
+        **user>** This is a message with multiple lines.
+        This is a message with multiple lines.
+        This is a message with multiple lines.
         
         **assistant>** This is a response.
         

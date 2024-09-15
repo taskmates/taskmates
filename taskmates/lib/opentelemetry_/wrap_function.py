@@ -24,15 +24,16 @@ def wrap_function(module,
         return
 
     is_async = inspect.iscoroutinefunction(getattr(module, name))
-    function_wrapper = wrap_function_wrapper(module,
-                                             name,
-                                             _create_trace_wrapper(tracer, is_async,
-                                                                   wrapper_origin=module,
-                                                                   span_name_fn=span_name_fn))
+    function_wrapper = wrap_function_wrapper(module=module,
+                                             name=name,
+                                             wrapper=_create_trace_wrapper(tracer(),
+                                                                           is_async,
+                                                                           wrapped_module=module,
+                                                                           span_name_fn=span_name_fn))
     function_wrapper._wrapped_with_tracer = True
 
-    if hasattr(module, "__subclasses__"):
-        for subclass in module.__subclasses__():
-            # TODO
-            # register_superclass_callback(module, lambda subclass: print("Detected subclass", subclass))
-            wrap_function(subclass, name, exclude_modules_regex=exclude_modules_regex, span_name_fn=span_name_fn)
+    # if hasattr(module, "__subclasses__"):
+    #     for subclass in module.__subclasses__():
+    #         # TODO
+    #         # register_superclass_callback(module, lambda subclass: print("Detected subclass", subclass))
+    #         wrap_function(subclass, name, exclude_modules_regex=exclude_modules_regex, span_name_fn=span_name_fn)

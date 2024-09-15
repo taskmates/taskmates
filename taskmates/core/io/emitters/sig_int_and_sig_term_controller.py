@@ -1,21 +1,21 @@
 import asyncio
 import signal
 
-from taskmates.core.signal_receiver import SignalReceiver
-from taskmates.core.signals import Signals
+from taskmates.core.processor import Processor
+from taskmates.core.execution_environment import EXECUTION_ENVIRONMENT
 
 
-class SigIntAndSigTermController(SignalReceiver):
+class SigIntAndSigTermController(Processor):
     def __init__(self):
         self.received_signal = None
         self.task = None
 
-    def connect(self, signals: Signals):
+    def __enter__(self):
         signal.signal(signal.SIGINT, self.handle)
         signal.signal(signal.SIGTERM, self.handle)
-        self.task = asyncio.create_task(self.emit_signals(signals))
+        self.task = asyncio.create_task(self.run_loop())
 
-    def disconnect(self, signals: Signals):
+    def __exit__(self, exc_type, exc_val, exc_tb):
         signal.signal(signal.SIGINT, signal.SIG_DFL)
         signal.signal(signal.SIGTERM, signal.SIG_DFL)
         self.task.cancel()
@@ -23,7 +23,8 @@ class SigIntAndSigTermController(SignalReceiver):
     def handle(self, sig, frame):
         self.received_signal = sig
 
-    async def emit_signals(self, signals: Signals):
+    async def run_loop(self):
+        signals = EXECUTION_ENVIRONMENT.get().signals
         while True:
             if self.received_signal == signal.SIGINT:
                 print(flush=True)

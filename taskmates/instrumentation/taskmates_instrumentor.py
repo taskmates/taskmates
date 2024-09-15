@@ -1,4 +1,10 @@
+from taskmates.core.processor import Processor
+from taskmates.lib.opentelemetry_.wrap_module import wrap_module
+from taskmates.sdk.experimental.subclass_extension_points import SubclassExtensionPoints
+
+
+# Usage:
+
+
 def instrument():
-    pass
-    # wrap_module(Link)
-    # wrap_function(Reference, "resolve")
+    SubclassExtensionPoints.subscribe(Processor, wrap_module)

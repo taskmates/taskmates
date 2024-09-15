@@ -64,7 +64,7 @@ def advanced_google_search(
 
 
 if __name__ == '__main__':
-    results = google_search(q='Python', cr='countryBR', lr='lang_pt')
+    results = advanced_google_search(q='Python', cr='countryBR', lr='lang_pt')
     for result in results.get('items', []):
         print(result.get('htmlTitle'))
         print(result.get('link'))

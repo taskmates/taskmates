@@ -1,17 +1,20 @@
-from taskmates.core.signal_receiver import SignalReceiver
+from taskmates.core.processor import Processor
+from taskmates.core.execution_environment import EXECUTION_ENVIRONMENT
 
 
-class RaiseErrorCollector(SignalReceiver):
+class RaiseErrorCollector(Processor):
     def __init__(self):
         self.error = None
 
     async def handle_error(self, payload):
         self.error = payload["error"]
 
-    def connect(self, signals):
+    def __enter__(self):
+        signals = EXECUTION_ENVIRONMENT.get().signals
         signals.response.error.connect(self.handle_error)
 
-    def disconnect(self, signals):
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        signals = EXECUTION_ENVIRONMENT.get().signals
         signals.response.error.disconnect(self.handle_error)
 
     def get_error(self):

@@ -3,12 +3,13 @@ import os
 import platform
 import signal
 import subprocess
-import sys
 
 import pytest
+import sys
 
+from taskmates.core.signals.signals_context import SignalsContext
+from taskmates.core.execution_environment import EXECUTION_ENVIRONMENT
 from taskmates.lib.restore_stdout_and_stderr import restore_stdout_and_stderr
-from taskmates.core.signals import Signals, SIGNALS
 
 
 # TODO: review this and the duplication with invoke_function
@@ -29,7 +30,7 @@ async def run_shell_command(cmd: str) -> str:
     :return: the output of the command
     """
 
-    signals: Signals = SIGNALS.get()
+    signals: SignalsContext = EXECUTION_ENVIRONMENT.get().signals
 
     if platform.system() == "Windows":
         process = subprocess.Popen(
@@ -77,7 +78,7 @@ async def run_shell_command(cmd: str) -> str:
 
 @pytest.mark.asyncio
 async def test_run_shell_command(capsys):
-    signals = SIGNALS.get()
+    signals = EXECUTION_ENVIRONMENT.get().signals
     chunks = []
 
     async def capture_chunk(chunk):
@@ -98,7 +99,7 @@ async def test_run_shell_command(capsys):
 
 @pytest.mark.asyncio
 async def test_run_shell_command_interrupt(capsys):
-    signals = SIGNALS.get()
+    signals = EXECUTION_ENVIRONMENT.get().signals
     chunks = []
 
     async def capture_chunk(chunk):
@@ -131,7 +132,7 @@ async def test_run_shell_command_interrupt(capsys):
 
 @pytest.mark.asyncio
 async def test_run_shell_command_kill(capsys):
-    signals = SIGNALS.get()
+    signals = EXECUTION_ENVIRONMENT.get().signals
     chunks = []
 
     async def capture_chunk(chunk):
@@ -151,13 +152,13 @@ async def test_run_shell_command_kill(capsys):
     else:
         cmd = "seq 5; sleep 1; seq 6 10"
 
-    returncode = await run_shell_command(cmd)
+    return_code = await run_shell_command(cmd)
 
     await kill_task
 
     if platform.system() == "Windows":
-        assert returncode == '\nExit Code: 1'
+        assert return_code == '\nExit Code: 1'
     else:
-        assert returncode == f'\nExit Code: {-signal.SIGKILL.value}'
+        assert return_code == f'\nExit Code: {-signal.SIGKILL.value}'
 
     assert "".join(chunks).strip() == "1\n2\n3\n4\n5"

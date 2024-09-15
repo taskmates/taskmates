@@ -7,9 +7,7 @@ import sys
 from taskmates.actions.parse_markdown_chat import parse_markdown_chat
 from taskmates.cli.commands.base import Command
 from taskmates.context_builders.cli_context_builder import CliContextBuilder
-from taskmates.runner.contexts.contexts import CONTEXTS
-from taskmates.lib.context_.temp_context import temp_context
-from taskmates.taskmates_runtime import TASKMATES_RUNTIME
+from taskmates.core.execution_environment import ExecutionEnvironment
 
 
 class ParseCommand(Command):
@@ -17,12 +15,10 @@ class ParseCommand(Command):
         pass  # No additional arguments needed for parse command
 
     async def execute(self, args: argparse.Namespace):
-        TASKMATES_RUNTIME.get().initialize()
-
         builder = CliContextBuilder(args)
         contexts = builder.build()
 
-        with temp_context(CONTEXTS, contexts):
+        with ExecutionEnvironment(contexts).context():
             taskmates_dirs = contexts["client_config"]["taskmates_dirs"]
 
             markdown_chat = "".join(sys.stdin.readlines())

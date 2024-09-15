@@ -1,14 +1,12 @@
-import asyncio
 import json
 
 from quart import Blueprint, Response, websocket
 
 import taskmates
 from taskmates.context_builders.api_context_builder import ApiContextBuilder
-from taskmates.core.runner import Runner
-from taskmates.core.signals import Signals
-from taskmates.io.web_socket_completion_streamer import WebSocketCompletionStreamer
-from taskmates.io.web_socket_interrupt_and_kill_controller import WebSocketInterruptAndKillController
+from taskmates.core.io.emitters.web_socket_interrupt_and_kill_controller import WebSocketInterruptAndKillController
+from taskmates.core.io.listeners.web_socket_completion_streamer import WebSocketCompletionStreamer
+from taskmates.defaults.workflows.api_complete import ApiComplete
 from taskmates.lib.json_.json_utils import snake_case
 from taskmates.logging import logger
 from taskmates.taskmates_runtime import TASKMATES_RUNTIME
@@ -41,30 +39,7 @@ async def create_completion():
     ]
 
     contexts = ApiContextBuilder(payload).build()
-    with Signals().connected_to(api_handlers) as signals:
-        try:
-            markdown_chat = payload["markdown_chat"]
-
-            await signals.output.artifact.send_async(
-                {"name": "websockets_api_payload.json", "content": payload})
-
-            result = await Runner().run(
-                inputs=dict(
-                    current_markdown=markdown_chat,
-                ),
-                contexts=contexts,
-            )
-
-            return result
-
-        # TODO: remove after we properly tested client disconnect
-        except asyncio.CancelledError:
-            logger.info(f"REQUEST CANCELLED Request cancelled due to client disconnection")
-            await signals.control.kill.send_async({})
-        except Exception as e:
-            await signals.response.error.send_async(e)
-        finally:
-            logger.info("DONE Closing websocket connection")
+    return await ApiComplete(contexts, api_handlers).run(payload=payload)
 
 
 @completions_bp.after_websocket

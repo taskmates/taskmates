@@ -38,8 +38,8 @@ def test_chat_completion(cli_runner, tmp_path):
     > 
     > """)
 
-    assert returncode == 0
     assert stderr == ""
+    assert returncode == 0
     assert stdout == expected_response
 
 
@@ -56,8 +56,8 @@ def test_chat_completion_with_mention(cli_runner, tmp_path):
     > 
     > """)
 
+    assert stderr == ""
     assert returncode == 0
-    assert not stderr
     assert stdout == expected_response
 
 
@@ -90,8 +90,8 @@ def test_tool_completion(cli_runner, tmp_path):
 
     """)
 
+    assert stderr == ""
     assert returncode == 0
-    assert not stderr
     assert stdout == expected_response
 
 
@@ -122,7 +122,7 @@ def test_code_cell_completion(cli_runner, tmp_path):
     """)
 
     assert returncode == 0
-    # assert not stderr
+    # assert stderr == "
     assert stdout == expected_completion
 
 
@@ -258,7 +258,7 @@ def test_code_cell_no_output(cli_runner, tmp_path):
     """)
 
     assert returncode == 0
-    # assert not stderr
+    # assert stderr == "
     assert stdout == expected_completion
 
 
@@ -331,5 +331,5 @@ def test_chat_completion_from_stdin(tmp_path):
     > """)
 
     assert process.returncode == 0
-    assert not stderr
+    assert stderr == ""
     assert stdout == expected_response

@@ -80,7 +80,7 @@ def format_output(code_cells):
         for output in outputs:
             output.pop("execution_count", None)
             output.pop("metadata", None)
-            if output.artifact_type == "error":
+            if output.output_type == "error":
                 output["traceback"] = list(map(strip_ansi, output["traceback"]))
             if output.get("text") is not None:
                 output["text"] = strip_ansi(output['text'])

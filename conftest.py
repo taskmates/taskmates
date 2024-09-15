@@ -9,10 +9,8 @@ from dotenv import load_dotenv
 from taskmates.config.load_participant_config import load_cache
 from taskmates.context_builders.test_context_builder import TestContextBuilder
 from taskmates.core.actions.code_execution.code_cells.execute_markdown_on_local_kernel import kernel_pool
-from taskmates.core.signals import Signals
-from taskmates.lib.context_.temp_context import temp_context
+from taskmates.core.execution_environment import ExecutionEnvironment
 from taskmates.lib.root_path.root_path import root_path
-from taskmates.runner.contexts.contexts import CONTEXTS
 from taskmates.taskmates_runtime import TASKMATES_RUNTIME
 
 
@@ -71,16 +69,14 @@ def taskmates_runtime():
 
 
 @pytest.fixture(autouse=True)
-def signals(taskmates_runtime):
-    with Signals().connected_to([]) as signals:
-        yield signals
+def contexts(taskmates_runtime, tmp_path):
+    return TestContextBuilder(tmp_path).build()
 
 
 @pytest.fixture(autouse=True)
-def contexts(taskmates_runtime, tmp_path):
-    contexts = TestContextBuilder(tmp_path).build()
-    with temp_context(CONTEXTS, contexts):
-        yield contexts
+def execution_environment(taskmates_runtime, contexts):
+    with ExecutionEnvironment(contexts).context() as execution_environment:
+        yield execution_environment
 
 
 @pytest.fixture(scope="function", autouse=True)

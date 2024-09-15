@@ -3,7 +3,7 @@ import os
 
 from wrapt import wrap_function_wrapper
 
-from taskmates.runner.contexts.contexts import CONTEXTS
+from taskmates.core.execution_environment import EXECUTION_ENVIRONMENT
 from taskmates.core.actions.code_execution.code_cells.code_cell_execution_completion_provider import \
     CodeCellExecutionCompletionProvider
 from taskmates.core.actions.code_execution.tools.tool_execution_completion_provider import \
@@ -15,7 +15,7 @@ from taskmates.sdk import TaskmatesExtension
 # @scope("app")
 class GithubAppTokenEnvInjector(TaskmatesExtension):
     def handle(self, wrapped, instance, args, kwargs):
-        completion_context = CONTEXTS.get()["completion_context"]
+        completion_context = EXECUTION_ENVIRONMENT.get().contexts["completion_context"]
         interpreter_env = completion_context["env"]
 
         if "GITHUB_APP_INSTALLATION_ID" not in interpreter_env:

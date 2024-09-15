@@ -1,9 +1,10 @@
 import sys
 from typing import TextIO
-from taskmates.core.signal_receiver import SignalReceiver
+from taskmates.core.processor import Processor
+from taskmates.core.execution_environment import EXECUTION_ENVIRONMENT
 
 
-class StdoutCompletionStreamer(SignalReceiver):
+class StdoutCompletionStreamer(Processor):
     def __init__(self, format: str, output_stream: TextIO = sys.stdout):
         self.format = format
         self.output_stream = output_stream
@@ -12,11 +13,12 @@ class StdoutCompletionStreamer(SignalReceiver):
         if isinstance(chunk, str):
             print(chunk, end="", flush=True, file=self.output_stream)
 
-    def connect(self, signals):
+    def __enter__(self):
+        signals = EXECUTION_ENVIRONMENT.get().signals
         if self.format == 'full':
-            signals.input.history.connect(self.process_chunk, weak=False)
-            signals.input.incoming_message.connect(self.process_chunk, weak=False)
-            signals.input.formatting.connect(self.process_chunk, weak=False)
+            signals.cli_input.history.connect(self.process_chunk, weak=False)
+            signals.cli_input.incoming_message.connect(self.process_chunk, weak=False)
+            signals.cli_input.formatting.connect(self.process_chunk, weak=False)
             signals.response.formatting.connect(self.process_chunk, weak=False)
             signals.response.response.connect(self.process_chunk, weak=False)
             signals.response.responder.connect(self.process_chunk, weak=False)
@@ -30,11 +32,12 @@ class StdoutCompletionStreamer(SignalReceiver):
         else:
             raise ValueError(f"Invalid format: {self.format}")
 
-    def disconnect(self, signals):
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        signals = EXECUTION_ENVIRONMENT.get().signals
         if self.format == 'full':
-            signals.input.history.disconnect(self.process_chunk)
-            signals.input.incoming_message.disconnect(self.process_chunk)
-            signals.input.formatting.disconnect(self.process_chunk)
+            signals.cli_input.history.disconnect(self.process_chunk)
+            signals.cli_input.incoming_message.disconnect(self.process_chunk)
+            signals.cli_input.formatting.disconnect(self.process_chunk)
             signals.response.formatting.disconnect(self.process_chunk)
             signals.response.response.disconnect(self.process_chunk)
             signals.response.responder.disconnect(self.process_chunk)

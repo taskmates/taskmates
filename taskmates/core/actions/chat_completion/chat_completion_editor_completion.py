@@ -1,7 +1,7 @@
 import re
 from typing import Dict
 
-from taskmates.core.signals import Signals
+from taskmates.core.signals.signals_context import SignalsContext
 
 
 def snake_case_to_title_case(text: str) -> str:
@@ -9,7 +9,7 @@ def snake_case_to_title_case(text: str) -> str:
 
 
 class ChatCompletionEditorCompletion:
-    def __init__(self, chat, signals: Signals):
+    def __init__(self, chat, signals: SignalsContext):
         self.chat = chat
         self.signals = signals
         self.recipient = None

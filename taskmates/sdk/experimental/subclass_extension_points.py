@@ -1,73 +1,72 @@
-from typing import Dict, Type, Callable, List, TypedDict, is_typeddict, Set
+from typing import Dict, Type, Callable, List, TypedDict, is_typeddict, Tuple
 
 import builtins
-import pytest
 from loguru import logger
 from pydantic_core import SchemaValidator
 from wrapt import ObjectProxy
 
 
+def is_taskmates_code(class_to_check):
+    return "taskmates" in class_to_check.__module__
+
+
 class SubclassExtensionPoints:
-    # Registry to hold superclasses and their list of callbacks
-    superclass_registry: Dict[type, List[Callable[[Type], None]]] = {}
-
-    # Whitelist for classes that should be instrumented
-    class_whitelist: Set[Type] = set()
+    # Registry to hold superclasses, their list of callbacks, and criteria
+    selectors: Dict[type, List[Tuple[Callable[[Type], None], Callable[[Type], bool]]]] = {}
 
     @classmethod
-    def custom_build_class(cls, func, name, *bases, **kwargs):
+    def _custom_build_class(cls, func, name, *bases, **kwargs):
         new_class = cls.original_build_class(func, name, *bases, **kwargs)
-        return cls.class_created_hook(new_class)
+        return cls._class_created_hook(new_class)
 
     @classmethod
-    def class_created_hook(cls, new_class):
-        for superclass in cls.superclass_registry:
-            if issubclass(new_class, superclass):
+    def _class_created_hook(cls, new_class):
+        for superclass, callbacks_and_criteria in cls.selectors.items():
+            if is_typeddict(superclass) and is_typeddict(new_class):
+                # Special handling for TypedDict
+                if issubclass(new_class, dict) and issubclass(superclass, dict):
+                    logger.debug(f"Detected TypedDict subclass {new_class.__name__} of {superclass.__name__}")
+                    for callback, criteria in callbacks_and_criteria:
+                        if criteria(new_class):
+                            callback(new_class)
+            elif issubclass(new_class, superclass):
                 logger.debug(f"Detected subclass {new_class.__name__} of {superclass.__name__}")
-                for callback in cls.superclass_registry[superclass]:
-                    callback(new_class)
+                for callback, criteria in callbacks_and_criteria:
+                    if criteria(new_class):
+                        callback(new_class)
         return new_class
 
     @classmethod
-    def subscribe(cls, superclass: Type, handler: Callable[[Type], None]):
+    def subscribe(cls, superclass: Type,
+                  handler: Callable[[Type], None],
+                  filter_fn: Callable[[Type], bool] = is_taskmates_code):
         """Register a callback to be called when a subclass of the given superclass is created."""
-        if not cls.should_instrument_class(superclass):
+
+        if not isinstance(superclass, type):
             raise TypeError(f"Cannot register callbacks for {superclass.__name__} classes")
 
-        if superclass not in cls.superclass_registry:
-            cls.superclass_registry[superclass] = []
+        if superclass not in cls.selectors:
+            cls.selectors[superclass] = []
 
         logger.debug(f"Registering callback for {superclass.__name__}")
-        cls.superclass_registry[superclass].append(handler)
+        cls.selectors[superclass].append((handler, filter_fn))
+
+        if filter_fn(superclass):
+            handler(superclass)
+        for subclass in superclass.__subclasses__():
+            if filter_fn(subclass):
+                handler(subclass)
+
         return superclass
-
-    @classmethod
-    def add_to_whitelist(cls, class_to_add: Type):
-        """Add a class to the whitelist for instrumentation."""
-        cls.class_whitelist.add(class_to_add)
-
-    @classmethod
-    def should_instrument_class(cls, class_to_check):
-        if not isinstance(class_to_check, type):
-            return False
-
-        if class_to_check in cls.class_whitelist:
-            return True
-
-        if "taskmates" not in class_to_check.__module__:
-            return False
-
-        return isinstance(class_to_check, type) and type(class_to_check).__name__ in ('type', 'ABCMeta')
 
     @classmethod
     def initialize(cls):
         logger.debug("Initializing SubclassExtensionPoints")
         if hasattr(cls, "original_build_class") and cls.original_build_class:
             return
-        cls.superclass_registry.clear()
-        cls.class_whitelist.clear()
+        cls.selectors.clear()
         cls.original_build_class = builtins.__build_class__
-        builtins.__build_class__ = cls.custom_build_class
+        builtins.__build_class__ = cls._custom_build_class
 
     @classmethod
     def cleanup(cls):
@@ -78,21 +77,9 @@ class SubclassExtensionPoints:
 
 
 # Tests
-# TODO: this is already done by the taskmates_runtime fixture. Figure out a way to remove this duplication
-# @pytest.fixture(autouse=True)
-# def setup_extension_points():
-#     try:
-#         SubclassExtensionPoints.initialize()
-#         yield
-#     finally:
-#         SubclassExtensionPoints.cleanup()
-
-
 def test_register_superclass_callback():
     class TestSuperClass:
         pass
-
-    SubclassExtensionPoints.add_to_whitelist(TestSuperClass)
 
     callback_called = False
 
@@ -100,10 +87,10 @@ def test_register_superclass_callback():
         nonlocal callback_called
         callback_called = True
 
-    SubclassExtensionPoints.subscribe(TestSuperClass, callback)
+    SubclassExtensionPoints.subscribe(TestSuperClass, callback, filter_fn=lambda cls: True)
 
-    assert TestSuperClass in SubclassExtensionPoints.superclass_registry
-    assert callback in SubclassExtensionPoints.superclass_registry[TestSuperClass]
+    assert TestSuperClass in SubclassExtensionPoints.selectors
+    assert callback in [cb for cb, _ in SubclassExtensionPoints.selectors[TestSuperClass]]
 
     class TestSubClass(TestSuperClass):
         pass
@@ -122,8 +109,7 @@ def test_typed_dict_handling():
         nonlocal callback_called
         callback_called = True
 
-    with pytest.raises(TypeError, match="Cannot register callbacks for MyTypedDict classes"):
-        SubclassExtensionPoints.subscribe(MyTypedDict, callback)
+    SubclassExtensionPoints.subscribe(MyTypedDict, callback, filter_fn=lambda cls: True)
 
     assert is_typeddict(MyTypedDict), "MyTypedDict should remain a TypedDict"
 
@@ -131,10 +117,45 @@ def test_typed_dict_handling():
         extra: bool
 
     assert is_typeddict(ExtendedTypedDict), "ExtendedTypedDict should remain a TypedDict"
-
-    assert not callback_called, "Callback should not have been called for TypedDict subclassing"
+    assert callback_called, "Callback should have been called for TypedDict subclassing"
 
 
 def test_skips_special_classes():
-    SubclassExtensionPoints.class_created_hook(ObjectProxy)
-    SubclassExtensionPoints.class_created_hook(SchemaValidator)
+    callback_called = False
+
+    def callback(cls):
+        nonlocal callback_called
+        callback_called = True
+
+    SubclassExtensionPoints.subscribe(object, callback, filter_fn=lambda cls: False)
+
+    SubclassExtensionPoints._class_created_hook(ObjectProxy)
+    SubclassExtensionPoints._class_created_hook(SchemaValidator)
+
+    assert not callback_called, "Callback should not have been called for special classes"
+
+
+def test_default_criteria():
+    class TestSuperClass:
+        pass
+
+    class TestSubClass(TestSuperClass):
+        pass
+
+    TestSubClass.__module__ = "some_module"
+    TestSuperClass.__module__ = "some_module"
+
+    callback_called = False
+
+    def callback(cls):
+        nonlocal callback_called
+        callback_called = True
+
+    SubclassExtensionPoints.subscribe(TestSuperClass, callback)
+
+    assert not callback_called, "Callback should not have been called when default criteria is not met"
+
+    TestSubClass.__module__ = "taskmates.some_module"
+    SubclassExtensionPoints._class_created_hook(TestSubClass)
+
+    assert callback_called, "Callback should have been called when default criteria is met"

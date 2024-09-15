@@ -5,7 +5,7 @@ import pytest
 from httpx import ReadError
 from typeguard import typechecked
 
-from taskmates.runner.contexts.contexts import CONTEXTS
+from taskmates.core.execution_environment import EXECUTION_ENVIRONMENT
 from taskmates.core.actions.chat_completion.openai_adapters.anthropic_openai_adapter.response.chat_completion_pre_processor import \
     ChatCompletionPreProcessor
 from taskmates.core.actions.chat_completion.openai_adapters.anthropic_openai_adapter.response.chat_completion_with_username import \
@@ -14,11 +14,11 @@ from taskmates.formats.markdown.metadata.get_model_client import get_model_clien
 from taskmates.lib.not_set.not_set import NOT_SET
 from taskmates.lib.opentelemetry_.tracing import tracer
 from taskmates.server.streamed_response import StreamedResponse
-from taskmates.core.signals import Signals
+from taskmates.core.signals.signals_context import SignalsContext
 
 
 @typechecked
-async def api_request(client, messages: list, model_conf: dict, model_params: dict, signals: Signals) -> dict:
+async def api_request(client, messages: list, model_conf: dict, model_params: dict, signals: SignalsContext) -> dict:
     streamed_response = StreamedResponse()
     signals.response.chat_completion.connect(streamed_response.accept, weak=False)
 
@@ -27,8 +27,8 @@ async def api_request(client, messages: list, model_conf: dict, model_params: di
 
     llm_client_args = get_llm_client_args(messages, model_conf, model_params)
 
-    with tracer.start_as_current_span(name="chat-completion"):
-        await signals.output.artifact.send_async({"name": "openai_request_payload.json", "content": llm_client_args})
+    with tracer().start_as_current_span(name="chat-completion"):
+        await signals.artifact.artifact.send_async({"name": "openai_request_payload.json", "content": llm_client_args})
 
         interrupted_or_killed = False
 
@@ -62,17 +62,17 @@ async def api_request(client, messages: list, model_conf: dict, model_params: di
                         await signals.response.chat_completion.send_async(chat_completion_chunk)
 
                 except asyncio.CancelledError:
-                    await signals.output.artifact.send_async({"name": "response_cancelled.json", "content": str(True)})
+                    await signals.artifact.artifact.send_async({"name": "response_cancelled.json", "content": str(True)})
                     await chat_completion.response.aclose()
                     raise
                 except ReadError as e:
-                    await signals.output.artifact.send_async({"name": "response_read_error.json", "content": str(e)})
+                    await signals.artifact.artifact.send_async({"name": "response_read_error.json", "content": str(e)})
 
                 response = streamed_response.payload
             else:
                 response = chat_completion.model_dump()
 
-    await signals.output.artifact.send_async({"name": "response.json", "content": response})
+    await signals.artifact.artifact.send_async({"name": "response.json", "content": response})
 
     if not response['choices']:
         # NOTE: this seems to happen when the request is cancelled before any response is received
@@ -110,9 +110,9 @@ async def test_api_request_happy_path():
     ]
 
     # Call the api_request function with the defined parameters
-    contexts = CONTEXTS.get()
+    contexts = EXECUTION_ENVIRONMENT.get().contexts
     client = get_model_client(model_conf["model"], contexts["client_config"]["taskmates_dirs"])
-    response = await api_request(client, messages, model_conf, model_params, Signals())
+    response = await api_request(client, messages, model_conf, model_params, SignalsContext())
 
     # Assert that the response is as expected
     assert 'choices' in response
@@ -196,9 +196,9 @@ async def test_api_request_with_complex_payload():
     # and the OpenAI API key is set in the environment or configuration
 
     # Call the api_request function with the defined parameters
-    contexts = CONTEXTS.get()
+    contexts = EXECUTION_ENVIRONMENT.get().contexts
     client = get_model_client(model_conf["model"], contexts["client_config"]["taskmates_dirs"])
-    response = await api_request(client, messages, model_conf, model_params, Signals())
+    response = await api_request(client, messages, model_conf, model_params, SignalsContext())
 
     # Assert that the response is as expected
     assert 'choices' in response

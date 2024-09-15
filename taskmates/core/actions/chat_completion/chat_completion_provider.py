@@ -2,7 +2,6 @@ import json
 
 from typeguard import typechecked
 
-from taskmates.runner.contexts.contexts import CONTEXTS
 from taskmates.core.actions.chat_completion.chat_completion_editor_completion import ChatCompletionEditorCompletion
 from taskmates.core.completion_provider import CompletionProvider
 from taskmates.formats.markdown.metadata.get_model_client import get_model_client
@@ -11,7 +10,7 @@ from taskmates.core.tools_registry import tools_registry
 from taskmates.lib.not_set.not_set import NOT_SET
 from taskmates.lib.openai_.inference.api_request import api_request
 from taskmates.lib.tool_schemas_.tool_schema import tool_schema
-from taskmates.core.signals import SIGNALS
+from taskmates.core.execution_environment import EXECUTION_ENVIRONMENT
 from taskmates.types import Chat
 
 
@@ -26,8 +25,8 @@ class ChatCompletionProvider(CompletionProvider):
 
     @typechecked
     async def perform_completion(self, chat: Chat):
-        contexts = CONTEXTS.get()
-        signals = SIGNALS.get()
+        contexts = EXECUTION_ENVIRONMENT.get().contexts
+        signals = EXECUTION_ENVIRONMENT.get().signals
 
         chat_completion_editor_completion = ChatCompletionEditorCompletion(chat, signals)
 
@@ -77,6 +76,6 @@ class ChatCompletionProvider(CompletionProvider):
                 **({"tool_choice": tool_choice} if tool_choice is not None else {})
             )
 
-            await signals.output.artifact.send_async({"name": "parsed_chat.json", "content": chat})
+            await signals.artifact.artifact.send_async({"name": "parsed_chat.json", "content": chat})
 
             return await api_request(client, messages, model_conf, model_params, signals)

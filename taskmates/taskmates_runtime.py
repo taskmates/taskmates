@@ -55,11 +55,12 @@ class TaskmatesRuntime:
 
         patches.install()
 
+        SubclassExtensionPoints.initialize()
+
         if os.environ.get('TASKMATES_TELEMETRY_ENABLED', '0') == '1':
             from taskmates.instrumentation import taskmates_instrumentor
             taskmates_instrumentor.instrument()
 
-        SubclassExtensionPoints.initialize()
         EXTENSION_MANAGER.get().initialize()
 
     @staticmethod
