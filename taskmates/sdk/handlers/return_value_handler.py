@@ -1,7 +1,7 @@
 from typing import Any
 
 from taskmates.core.processor import Processor
-from taskmates.core.execution_environment import EXECUTION_ENVIRONMENT
+from taskmates.core.execution_context import EXECUTION_CONTEXT
 from taskmates.lib.not_set.not_set import NOT_SET
 
 
@@ -21,13 +21,13 @@ class ReturnValueHandler(Processor):
         self.error = payload["error"]
 
     def __enter__(self):
-        signals = EXECUTION_ENVIRONMENT.get().signals
+        signals = EXECUTION_CONTEXT.get().signals
         signals.response.response.connect(self.handle_response_chunk)
         signals.response.result.connect(self.handle_return_value)
         signals.response.error.connect(self.handle_error)
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        signals = EXECUTION_ENVIRONMENT.get().signals
+        signals = EXECUTION_CONTEXT.get().signals
         signals.response.response.disconnect(self.handle_response_chunk)
         signals.response.result.disconnect(self.handle_return_value)
         signals.response.error.disconnect(self.handle_error)

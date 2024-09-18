@@ -1,5 +1,5 @@
 from taskmates.core.processor import Processor
-from taskmates.core.execution_environment import EXECUTION_ENVIRONMENT
+from taskmates.core.execution_context import EXECUTION_CONTEXT
 
 
 class CurrentMarkdown(Processor):
@@ -16,7 +16,7 @@ class CurrentMarkdown(Processor):
         return "".join(self.markdown_chunks)
 
     def __enter__(self):
-        signals = EXECUTION_ENVIRONMENT.get().signals
+        signals = EXECUTION_CONTEXT.get().signals
         signals.cli_input.history.connect(self.handle, weak=False)
         signals.cli_input.incoming_message.connect(self.handle, weak=False)
         signals.cli_input.formatting.connect(self.handle, weak=False)
@@ -26,7 +26,7 @@ class CurrentMarkdown(Processor):
         signals.response.error.connect(self.handle, weak=False)
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        signals = EXECUTION_ENVIRONMENT.get().signals
+        signals = EXECUTION_CONTEXT.get().signals
         signals.cli_input.history.disconnect(self.handle)
         signals.cli_input.incoming_message.disconnect(self.handle)
         signals.cli_input.formatting.disconnect(self.handle)

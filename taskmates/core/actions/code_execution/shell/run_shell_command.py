@@ -8,7 +8,7 @@ import pytest
 import sys
 
 from taskmates.core.signals.signals_context import SignalsContext
-from taskmates.core.execution_environment import EXECUTION_ENVIRONMENT
+from taskmates.core.execution_context import EXECUTION_CONTEXT
 from taskmates.lib.restore_stdout_and_stderr import restore_stdout_and_stderr
 
 
@@ -30,7 +30,7 @@ async def run_shell_command(cmd: str) -> str:
     :return: the output of the command
     """
 
-    signals: SignalsContext = EXECUTION_ENVIRONMENT.get().signals
+    signals: SignalsContext = EXECUTION_CONTEXT.get().signals
 
     if platform.system() == "Windows":
         process = subprocess.Popen(
@@ -78,7 +78,7 @@ async def run_shell_command(cmd: str) -> str:
 
 @pytest.mark.asyncio
 async def test_run_shell_command(capsys):
-    signals = EXECUTION_ENVIRONMENT.get().signals
+    signals = EXECUTION_CONTEXT.get().signals
     chunks = []
 
     async def capture_chunk(chunk):
@@ -99,7 +99,7 @@ async def test_run_shell_command(capsys):
 
 @pytest.mark.asyncio
 async def test_run_shell_command_interrupt(capsys):
-    signals = EXECUTION_ENVIRONMENT.get().signals
+    signals = EXECUTION_CONTEXT.get().signals
     chunks = []
 
     async def capture_chunk(chunk):
@@ -132,7 +132,7 @@ async def test_run_shell_command_interrupt(capsys):
 
 @pytest.mark.asyncio
 async def test_run_shell_command_kill(capsys):
-    signals = EXECUTION_ENVIRONMENT.get().signals
+    signals = EXECUTION_CONTEXT.get().signals
     chunks = []
 
     async def capture_chunk(chunk):

@@ -10,23 +10,27 @@ from taskmates.runner.contexts.contexts import Contexts
 from taskmates.taskmates_runtime import TASKMATES_RUNTIME
 
 
-class ExecutionEnvironment:
+class ExecutionContext:
     def __init__(self,
-                 contexts: Contexts,
+                 contexts: Contexts = None,
+                 signals: SignalsContext = None,
                  processors: list[Processor] = None
                  ):
-        self.parent: ExecutionEnvironment = EXECUTION_ENVIRONMENT.get(None)
-        self.contexts: Contexts = copy.deepcopy(contexts)
-        self.signals: SignalsContext = self.parent.signals if self.parent else SignalsContext()
+        self.parent: ExecutionContext = EXECUTION_CONTEXT.get(None)
+
+        self.contexts: Contexts = contexts or (copy.deepcopy(self.parent.contexts) if self.parent else {})
+        if self.contexts == {}:
+            raise ValueError("Contexts must be provided")
+        self.signals: SignalsContext = signals or (self.parent.signals if self.parent else SignalsContext())
         self.processors = processors or []
 
     @contextlib.contextmanager
     def context(self):
         TASKMATES_RUNTIME.get().initialize()
-        with (temp_context(EXECUTION_ENVIRONMENT, self),
+        with (temp_context(EXECUTION_CONTEXT, self),
               stacked_contexts(self.processors)
               ):
             yield self
 
 
-EXECUTION_ENVIRONMENT: contextvars.ContextVar[ExecutionEnvironment] = contextvars.ContextVar("execution_environment")
+EXECUTION_CONTEXT: contextvars.ContextVar[ExecutionContext] = contextvars.ContextVar("execution_context")

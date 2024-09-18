@@ -24,8 +24,9 @@ async def test_cli_workflow(tmp_path, contexts):
     history_file.write_text(history)
 
     signal_capturer = SignalsCapturer()
-    await CliComplete(contexts, [signal_capturer]).run(history_path=str(history_file),
-                                                       incoming_messages=incoming_messages)
+    processors = [signal_capturer]
+    await CliComplete(contexts=contexts, processors=processors).run(history_path=str(history_file),
+                                                                    incoming_messages=incoming_messages)
 
     interesting_signals = ['history', 'incoming_message', 'input_formatting', 'error']
     filtered_signals = signal_capturer.filter_signals(interesting_signals)
@@ -66,8 +67,8 @@ async def test_format_text(tmp_path, contexts):
         StdoutCompletionStreamer('text', text_output)
     ]
     contexts['client_config'].update(dict(interactive=False, format='text'))
-    await CliComplete(contexts, processors).run(history_path=str(history_file),
-                                                incoming_messages=incoming_messages)
+    await CliComplete(contexts=contexts, processors=processors).run(history_path=str(history_file),
+                                                                    incoming_messages=incoming_messages)
 
     text_filtered_signals = signal_capturer.filter_signals(
         ['history', 'incoming_message', 'input_formatting', 'error'])
@@ -101,7 +102,8 @@ async def test_format_full(tmp_path, contexts):
         StdoutCompletionStreamer('full', full_output)
     ]
     contexts['client_config'].update(dict(interactive=False, format='full'))
-    await CliComplete(contexts, processors).run(history_path=str(history_file), incoming_messages=incoming_messages)
+    await CliComplete(contexts=contexts, processors=processors).run(history_path=str(history_file),
+                                                                    incoming_messages=incoming_messages)
 
     full_filtered_signals = signal_capturer.filter_signals(
         ['history', 'incoming_message', 'input_formatting', 'error'])

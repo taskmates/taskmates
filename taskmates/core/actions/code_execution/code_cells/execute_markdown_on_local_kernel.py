@@ -13,7 +13,7 @@ from nbformat import NotebookNode
 
 from taskmates.core.actions.code_execution.code_cells.parse_notebook import parse_notebook
 from taskmates.core.signals.signals_context import SignalsContext
-from taskmates.core.execution_environment import EXECUTION_ENVIRONMENT
+from taskmates.core.execution_context import EXECUTION_CONTEXT
 from taskmates.lib.root_path.root_path import root_path
 from taskmates.logging import logger
 
@@ -24,7 +24,7 @@ pytestmark = pytest.mark.slow
 
 # Main execution function
 async def execute_markdown_on_local_kernel(content, markdown_path: str = None, cwd: str = None, env: Mapping = None):
-    signals: SignalsContext = EXECUTION_ENVIRONMENT.get().signals
+    signals: SignalsContext = EXECUTION_CONTEXT.get().signals
 
     notebook: NotebookNode
     code_cells: list[NotebookNode]
@@ -191,7 +191,7 @@ async def main(argv=None):
 
 
 async def test_code_cells_no_code():
-    signals = EXECUTION_ENVIRONMENT.get().signals
+    signals = EXECUTION_CONTEXT.get().signals
     chunks = []
 
     async def capture_chunk(chunk):
@@ -209,7 +209,7 @@ async def test_code_cells_no_code():
 
 
 async def test_single_cell():
-    signals = EXECUTION_ENVIRONMENT.get().signals
+    signals = EXECUTION_CONTEXT.get().signals
     chunks = []
 
     async def capture_chunk(chunk):
@@ -231,7 +231,7 @@ async def test_single_cell():
 
 
 async def test_multiple_cells(tmp_path):
-    signals = EXECUTION_ENVIRONMENT.get().signals
+    signals = EXECUTION_CONTEXT.get().signals
     chunks = []
 
     async def capture_chunk(chunk):
@@ -259,7 +259,7 @@ async def test_multiple_cells(tmp_path):
 
 
 async def test_cell_error():
-    signals = EXECUTION_ENVIRONMENT.get().signals
+    signals = EXECUTION_CONTEXT.get().signals
     chunks = []
 
     async def capture_chunk(chunk):
@@ -283,7 +283,7 @@ async def test_cell_error():
 
 
 async def test_cwd(tmp_path):
-    signals = EXECUTION_ENVIRONMENT.get().signals
+    signals = EXECUTION_CONTEXT.get().signals
     chunks = []
 
     async def capture_chunk(chunk):
@@ -353,7 +353,7 @@ async def test_cwd(tmp_path):
 
 
 async def test_interrupt(capsys):
-    signals = EXECUTION_ENVIRONMENT.get().signals
+    signals = EXECUTION_CONTEXT.get().signals
     chunks = []
 
     async def capture_chunk(chunk):
@@ -396,7 +396,7 @@ async def test_interrupt(capsys):
 
 
 async def test_kill(capsys):
-    signals = EXECUTION_ENVIRONMENT.get().signals
+    signals = EXECUTION_CONTEXT.get().signals
     chunks = []
 
     async def capture_chunk(chunk):
@@ -441,7 +441,7 @@ async def test_kill(capsys):
 
 
 async def test_custom_env():
-    signals = EXECUTION_ENVIRONMENT.get().signals
+    signals = EXECUTION_CONTEXT.get().signals
     chunks = []
 
     async def capture_chunk(chunk):

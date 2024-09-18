@@ -2,7 +2,7 @@ import textwrap
 
 import pytest
 
-from taskmates.core.execution_environment import EXECUTION_ENVIRONMENT
+from taskmates.core.execution_context import EXECUTION_CONTEXT
 from taskmates.core.actions.code_execution.code_cells.code_cells_editor_completion import CodeCellsEditorCompletion
 from taskmates.core.actions.code_execution.code_cells.execute_markdown_on_local_kernel import \
     execute_markdown_on_local_kernel
@@ -21,8 +21,8 @@ class CodeCellExecutionCompletionProvider(CompletionProvider):
         return is_jupyter_enabled and len(code_cells) > 0
 
     async def perform_completion(self, chat: Chat):
-        contexts = EXECUTION_ENVIRONMENT.get().contexts
-        signals = EXECUTION_ENVIRONMENT.get().signals
+        contexts = EXECUTION_CONTEXT.get().contexts
+        signals = EXECUTION_CONTEXT.get().signals
 
         completion_context: CompletionContext = contexts["completion_context"]
         markdown_path = completion_context["markdown_path"]
@@ -85,7 +85,7 @@ async def test_markdown_code_cells_assistance_streaming(tmp_path):
         ]
     }
 
-    signals = EXECUTION_ENVIRONMENT.get().signals
+    signals = EXECUTION_CONTEXT.get().signals
     signals.response.code_cell_output.connect(capture_code_cell_chunk)
     signals.response.response.connect(capture_completion_chunk)
     signals.response.error.connect(capture_error)

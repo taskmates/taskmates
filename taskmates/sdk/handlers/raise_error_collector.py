@@ -1,5 +1,5 @@
 from taskmates.core.processor import Processor
-from taskmates.core.execution_environment import EXECUTION_ENVIRONMENT
+from taskmates.core.execution_context import EXECUTION_CONTEXT
 
 
 class RaiseErrorCollector(Processor):
@@ -10,11 +10,11 @@ class RaiseErrorCollector(Processor):
         self.error = payload["error"]
 
     def __enter__(self):
-        signals = EXECUTION_ENVIRONMENT.get().signals
+        signals = EXECUTION_CONTEXT.get().signals
         signals.response.error.connect(self.handle_error)
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        signals = EXECUTION_ENVIRONMENT.get().signals
+        signals = EXECUTION_CONTEXT.get().signals
         signals.response.error.disconnect(self.handle_error)
 
     def get_error(self):

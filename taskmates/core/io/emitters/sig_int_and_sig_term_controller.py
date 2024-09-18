@@ -2,7 +2,7 @@ import asyncio
 import signal
 
 from taskmates.core.processor import Processor
-from taskmates.core.execution_environment import EXECUTION_ENVIRONMENT
+from taskmates.core.execution_context import EXECUTION_CONTEXT
 
 
 class SigIntAndSigTermController(Processor):
@@ -24,7 +24,7 @@ class SigIntAndSigTermController(Processor):
         self.received_signal = sig
 
     async def run_loop(self):
-        signals = EXECUTION_ENVIRONMENT.get().signals
+        signals = EXECUTION_CONTEXT.get().signals
         while True:
             if self.received_signal == signal.SIGINT:
                 print(flush=True)

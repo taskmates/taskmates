@@ -1,12 +1,12 @@
 from taskmates.core.compute_separator import compute_separator
-from taskmates.core.execution_environment import EXECUTION_ENVIRONMENT
+from taskmates.core.execution_context import EXECUTION_CONTEXT
 from taskmates.runner.actions.taskmates_action import TaskmatesAction
 from taskmates.types import Chat
 
 
 class MarkdownCompletionAction(TaskmatesAction):
     async def perform(self, chat: Chat, completion_assistance):
-        signals = EXECUTION_ENVIRONMENT.get().signals
+        signals = EXECUTION_CONTEXT.get().signals
 
         await completion_assistance.perform_completion(chat)
 

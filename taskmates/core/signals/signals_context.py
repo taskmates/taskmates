@@ -3,7 +3,7 @@ from ordered_set import OrderedSet
 
 from taskmates.core.signals.artifact_signals import ArtifactSignals
 from taskmates.core.signals.control_signals import ControlSignals
-from taskmates.core.signals.input_signals import CliInputSignals
+from taskmates.core.signals.cli_input_signals import CliInputSignals
 from taskmates.core.signals.lifecycle_signals import LifecycleSignals
 from taskmates.core.signals.response_signals import ResponseSignals
 

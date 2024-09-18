@@ -1,3 +1,4 @@
+from loguru import logger
 from typeguard import typechecked
 
 from taskmates.formats.markdown.participants.parse_mention import parse_mention
@@ -59,6 +60,7 @@ def compute_recipient(messages, participants_configs) -> str | None:
                 recipient = message["name"]
                 break
 
+    logger.debug(f"Computed recipient: {recipient}")
     return recipient
 
 

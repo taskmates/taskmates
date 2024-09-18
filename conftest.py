@@ -9,21 +9,21 @@ from dotenv import load_dotenv
 from taskmates.config.load_participant_config import load_cache
 from taskmates.context_builders.test_context_builder import TestContextBuilder
 from taskmates.core.actions.code_execution.code_cells.execute_markdown_on_local_kernel import kernel_pool
-from taskmates.core.execution_environment import ExecutionEnvironment
+from taskmates.core.execution_context import ExecutionContext
 from taskmates.lib.root_path.root_path import root_path
 from taskmates.taskmates_runtime import TASKMATES_RUNTIME
 
 
-def pytest_configure(config):
-    # Set up logging
-    logger = logging.getLogger()
-    logger.setLevel(logging.INFO)
-
-    # Ensure the logger has at least one handler.
-    if not logger.hasHandlers():
-        handler = logging.StreamHandler()
-        handler.setLevel(logging.INFO)
-        logger.addHandler(handler)
+# def pytest_configure(config):
+#     # Set up logging
+#     logger = logging.getLogger()
+#     logger.setLevel(logging.INFO)
+#
+#     # Ensure the logger has at least one handler.
+#     if not logger.hasHandlers():
+#         handler = logging.StreamHandler()
+#         handler.setLevel(logging.INFO)
+#         logger.addHandler(handler)
 
 
 def pytest_runtest_setup(item):
@@ -74,9 +74,9 @@ def contexts(taskmates_runtime, tmp_path):
 
 
 @pytest.fixture(autouse=True)
-def execution_environment(taskmates_runtime, contexts):
-    with ExecutionEnvironment(contexts).context() as execution_environment:
-        yield execution_environment
+def execution_context(taskmates_runtime, contexts):
+    with ExecutionContext(contexts=contexts).context() as execution_context:
+        yield execution_context
 
 
 @pytest.fixture(scope="function", autouse=True)

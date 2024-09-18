@@ -3,7 +3,7 @@ from pathlib import Path
 import sys
 
 from taskmates.defaults.tools.filesystem_.is_path_allowed import is_path_allowed
-from taskmates.core.execution_environment import EXECUTION_ENVIRONMENT
+from taskmates.core.execution_context import EXECUTION_CONTEXT
 
 
 def read_file(path):
@@ -13,7 +13,7 @@ def read_file(path):
     :param path: the path
     :return: the content of the file or None if not allowed
     """
-    contexts = EXECUTION_ENVIRONMENT.get().contexts
+    contexts = EXECUTION_CONTEXT.get().contexts
     completion_opts = contexts["completion_opts"]
 
     allow = ((completion_opts.get("tools") or {}).get("write_file") or {}).get("allow", "**")

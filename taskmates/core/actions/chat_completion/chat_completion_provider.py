@@ -10,7 +10,7 @@ from taskmates.core.tools_registry import tools_registry
 from taskmates.lib.not_set.not_set import NOT_SET
 from taskmates.lib.openai_.inference.api_request import api_request
 from taskmates.lib.tool_schemas_.tool_schema import tool_schema
-from taskmates.core.execution_environment import EXECUTION_ENVIRONMENT
+from taskmates.core.execution_context import EXECUTION_CONTEXT
 from taskmates.types import Chat
 
 
@@ -25,8 +25,8 @@ class ChatCompletionProvider(CompletionProvider):
 
     @typechecked
     async def perform_completion(self, chat: Chat):
-        contexts = EXECUTION_ENVIRONMENT.get().contexts
-        signals = EXECUTION_ENVIRONMENT.get().signals
+        contexts = EXECUTION_CONTEXT.get().contexts
+        signals = EXECUTION_CONTEXT.get().signals
 
         chat_completion_editor_completion = ChatCompletionEditorCompletion(chat, signals)
 

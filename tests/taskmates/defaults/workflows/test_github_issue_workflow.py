@@ -19,7 +19,7 @@ async def test_github_issue_workflow(tmp_path, contexts):
     signal_capture = SignalsCapturer()
 
     processors = [signal_capture]
-    await GithubIssue(contexts, processors).run(**inputs)
+    await GithubIssue(contexts=contexts, processors=processors).run(**inputs)
 
     interesting_signals = ['incoming_message', 'input_formatting', 'error']
     filtered_signals = signal_capture.filter_signals(interesting_signals)

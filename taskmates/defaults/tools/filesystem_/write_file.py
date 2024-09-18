@@ -2,7 +2,7 @@ import sys
 from pathlib import Path
 
 from taskmates.defaults.tools.filesystem_.is_path_allowed import is_path_allowed
-from taskmates.core.execution_environment import EXECUTION_ENVIRONMENT
+from taskmates.core.execution_context import EXECUTION_CONTEXT
 
 
 def write_file(path, content):
@@ -13,7 +13,7 @@ def write_file(path, content):
     :return: None
     """
 
-    contexts = EXECUTION_ENVIRONMENT.get().contexts
+    contexts = EXECUTION_CONTEXT.get().contexts
     completion_opts = contexts["completion_opts"]
 
     allow = ((completion_opts.get("tools") or {}).get("write_file") or {}).get("allow", "**")

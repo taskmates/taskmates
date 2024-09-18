@@ -52,10 +52,10 @@ class CompleteCommand:
         if not args.history and not stdin_markdown and not args_markdown and not inputs:
             raise ValueError("No input provided")
 
-        # workflow_name = contexts["completion_opts"]["workflow"]
-        # workflow = workflow_registry[workflow_name](contexts)
-        # await workflow.run(**inputs)
-        await CliComplete(contexts).run(**inputs)
+        workflow_name = contexts["completion_opts"]["workflow"]
+        workflow = workflow_registry[workflow_name](contexts=contexts)
+        await workflow.run(**inputs)
+        # await CliComplete(contexts).run(**inputs)
 
     @staticmethod
     async def get_args_incoming_message(args):

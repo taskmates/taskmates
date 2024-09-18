@@ -33,13 +33,13 @@ async def create_completion():
     if client_version != taskmates.__version__:
         raise ValueError(f"Incompatible client version: {client_version}. Expected: {taskmates.__version__}")
 
-    api_handlers = [
+    processors = [
         WebSocketInterruptAndKillController(websocket),
         WebSocketCompletionStreamer(websocket),
     ]
 
     contexts = ApiContextBuilder(payload).build()
-    return await ApiComplete(contexts, api_handlers).run(payload=payload)
+    return await ApiComplete(contexts=contexts, processors=processors).run(payload=payload)
 
 
 @completions_bp.after_websocket

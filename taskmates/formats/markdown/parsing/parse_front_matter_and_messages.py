@@ -6,7 +6,7 @@ import pyparsing
 import time
 from typeguard import typechecked
 
-from taskmates.core.execution_environment import EXECUTION_ENVIRONMENT
+from taskmates.core.execution_context import EXECUTION_CONTEXT
 from taskmates.formats.markdown.processing.process_image_transclusion import render_image_transclusion
 from taskmates.formats.openai.get_text_content import get_text_content
 from taskmates.formats.openai.set_text_content import set_text_content
@@ -21,13 +21,14 @@ async def parse_front_matter_and_messages(source_file: Path,
                                           content: str,
                                           implicit_role: str) -> Tuple[
     List[Dict[str, Union[str, list[dict]]]], Dict[str, any]]:
-    signals = EXECUTION_ENVIRONMENT.get().signals
+    signals = EXECUTION_CONTEXT.get().signals
     transclusions_base_dir = source_file.parent
 
     messages: list[dict] = []
 
     start_time = time.time()  # Record the start time
     logger.debug(f"[parse_front_matter_and_messages] Parsing markdown: {start_time}-parsed-{source_file.name}")
+    logger.debug("Markdown Content:\n" + content)
 
     parser = markdown_chat_parser(implicit_role=implicit_role)
 

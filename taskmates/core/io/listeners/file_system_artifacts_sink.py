@@ -2,7 +2,7 @@ import os
 from datetime import datetime
 from pathlib import Path
 
-from taskmates.core.execution_environment import EXECUTION_ENVIRONMENT
+from taskmates.core.execution_context import EXECUTION_CONTEXT
 from taskmates.lib.resources_.resources import dump_resource
 from taskmates.core.processor import Processor
 
@@ -17,7 +17,7 @@ class FileSystemArtifactsSink(Processor):
         # Maybe we should get an artifacts_dir instead
 
         taskmates_home = Path(os.environ.get("TASKMATES_HOME", str(Path.home() / ".taskmates")))
-        request_id = EXECUTION_ENVIRONMENT.get().contexts["completion_context"]["request_id"]
+        request_id = EXECUTION_CONTEXT.get().contexts["completion_context"]["request_id"]
 
         # The problem seems to be that we're mixing artifacts and logs
 
@@ -26,9 +26,9 @@ class FileSystemArtifactsSink(Processor):
         dump_resource(full_path, sender.get('content'))
 
     def __enter__(self):
-        signals = EXECUTION_ENVIRONMENT.get().signals
+        signals = EXECUTION_CONTEXT.get().signals
         signals.artifact.artifact.connect(self.handle_artifact, weak=False)
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        signals = EXECUTION_ENVIRONMENT.get().signals
+        signals = EXECUTION_CONTEXT.get().signals
         signals.artifact.artifact.disconnect(self.handle_artifact)

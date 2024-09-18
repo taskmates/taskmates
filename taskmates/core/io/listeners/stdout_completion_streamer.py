@@ -1,7 +1,7 @@
 import sys
 from typing import TextIO
 from taskmates.core.processor import Processor
-from taskmates.core.execution_environment import EXECUTION_ENVIRONMENT
+from taskmates.core.execution_context import EXECUTION_CONTEXT
 
 
 class StdoutCompletionStreamer(Processor):
@@ -14,7 +14,7 @@ class StdoutCompletionStreamer(Processor):
             print(chunk, end="", flush=True, file=self.output_stream)
 
     def __enter__(self):
-        signals = EXECUTION_ENVIRONMENT.get().signals
+        signals = EXECUTION_CONTEXT.get().signals
         if self.format == 'full':
             signals.cli_input.history.connect(self.process_chunk, weak=False)
             signals.cli_input.incoming_message.connect(self.process_chunk, weak=False)
@@ -33,7 +33,7 @@ class StdoutCompletionStreamer(Processor):
             raise ValueError(f"Invalid format: {self.format}")
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        signals = EXECUTION_ENVIRONMENT.get().signals
+        signals = EXECUTION_CONTEXT.get().signals
         if self.format == 'full':
             signals.cli_input.history.disconnect(self.process_chunk)
             signals.cli_input.incoming_message.disconnect(self.process_chunk)

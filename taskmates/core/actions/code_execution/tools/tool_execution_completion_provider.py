@@ -9,7 +9,7 @@ from taskmates.core.actions.code_execution.tools.tool_editor_completion import T
 from taskmates.core.completion_provider import CompletionProvider
 from taskmates.core.tools_registry import tools_registry
 from taskmates.model.tool_call import ToolCall
-from taskmates.core.execution_environment import EXECUTION_ENVIRONMENT
+from taskmates.core.execution_context import EXECUTION_CONTEXT
 from taskmates.types import Chat, CompletionContext
 
 
@@ -24,8 +24,8 @@ class ToolExecutionCompletionProvider(CompletionProvider):
         return len(tool_calls) > 0
 
     async def perform_completion(self, chat: Chat):
-        contexts = EXECUTION_ENVIRONMENT.get().contexts
-        signals = EXECUTION_ENVIRONMENT.get().signals
+        contexts = EXECUTION_CONTEXT.get().contexts
+        signals = EXECUTION_CONTEXT.get().signals
 
         completion_context = contexts["completion_context"]
         cwd = completion_context["cwd"]
