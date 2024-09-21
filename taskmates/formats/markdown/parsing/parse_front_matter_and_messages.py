@@ -21,7 +21,7 @@ async def parse_front_matter_and_messages(source_file: Path,
                                           content: str,
                                           implicit_role: str) -> Tuple[
     List[Dict[str, Union[str, list[dict]]]], Dict[str, any]]:
-    signals = EXECUTION_CONTEXT.get().signals
+    signals = EXECUTION_CONTEXT.get()
     transclusions_base_dir = source_file.parent
 
     messages: list[dict] = []

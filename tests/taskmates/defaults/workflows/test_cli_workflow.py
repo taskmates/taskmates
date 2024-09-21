@@ -1,4 +1,6 @@
+import asyncio
 import io
+import textwrap
 
 import pytest
 
@@ -24,9 +26,9 @@ async def test_cli_workflow(tmp_path, contexts):
     history_file.write_text(history)
 
     signal_capturer = SignalsCapturer()
-    processors = [signal_capturer]
-    await CliComplete(contexts=contexts, processors=processors).run(history_path=str(history_file),
-                                                                    incoming_messages=incoming_messages)
+    jobs = [signal_capturer]
+    await CliComplete(contexts=contexts, jobs=jobs).run(history_path=str(history_file),
+                                                              incoming_messages=incoming_messages)
 
     interesting_signals = ['history', 'incoming_message', 'input_formatting', 'error']
     filtered_signals = signal_capturer.filter_signals(interesting_signals)
@@ -62,13 +64,13 @@ async def test_format_text(tmp_path, contexts):
     history_file.write_text(history)
 
     signal_capturer = SignalsCapturer()
-    processors = [
+    jobs = [
         signal_capturer,
         StdoutCompletionStreamer('text', text_output)
     ]
     contexts['client_config'].update(dict(interactive=False, format='text'))
-    await CliComplete(contexts=contexts, processors=processors).run(history_path=str(history_file),
-                                                                    incoming_messages=incoming_messages)
+    await CliComplete(contexts=contexts, jobs=jobs).run(history_path=str(history_file),
+                                                              incoming_messages=incoming_messages)
 
     text_filtered_signals = signal_capturer.filter_signals(
         ['history', 'incoming_message', 'input_formatting', 'error'])
@@ -97,13 +99,13 @@ async def test_format_full(tmp_path, contexts):
     history_file.write_text(history)
 
     signal_capturer = SignalsCapturer()
-    processors = [
+    jobs = [
         signal_capturer,
         StdoutCompletionStreamer('full', full_output)
     ]
     contexts['client_config'].update(dict(interactive=False, format='full'))
-    await CliComplete(contexts=contexts, processors=processors).run(history_path=str(history_file),
-                                                                    incoming_messages=incoming_messages)
+    await CliComplete(contexts=contexts, jobs=jobs).run(history_path=str(history_file),
+                                                              incoming_messages=incoming_messages)
 
     full_filtered_signals = signal_capturer.filter_signals(
         ['history', 'incoming_message', 'input_formatting', 'error'])
@@ -118,3 +120,56 @@ async def test_format_full(tmp_path, contexts):
     ], "Full format signals should match the expected sequence"
 
     assert full_result == "Previous history\n\nShort answer. 1+1=\n\n**assistant>** \n> Previous history\n> \n> Short answer. 1+1=\n> \n> \n\n", "Full format should contain history, input, and formatted response"
+
+
+@pytest.mark.asyncio
+@pytest.mark.timeout(10)
+async def test_interrupt_tool(tmp_path, contexts):
+    markdown_chat = textwrap.dedent("""
+    How much is 1 + 1?
+
+    **assistant>**
+
+    How much is 1 + 1?
+
+    ###### Steps
+
+    - Run Shell Command [1] `{"cmd":"echo 2; sleep 5; echo fail"}`
+
+    """)
+
+    captured_output = io.StringIO()
+    signal_capturer = SignalsCapturer()
+    jobs = [signal_capturer, StdoutCompletionStreamer('text', captured_output)]
+
+    cli_complete = CliComplete(contexts=contexts, jobs=jobs)
+    task = asyncio.create_task(cli_complete.run(incoming_messages=[markdown_chat]))
+
+    # Wait for the "2" to be printed
+    while "2" not in str(signal_capturer.captured_signals):
+        await asyncio.sleep(0.1)
+
+    # Send interrupt
+    await cli_complete.execution_context.control.interrupt_request.send_async({})
+
+    try:
+        await task
+    except asyncio.CancelledError:
+        pass
+
+    output = captured_output.getvalue()
+
+    expected_response = textwrap.dedent("""\
+    ###### Execution: Run Shell Command [1]
+
+    <pre class='output' style='display:none'>
+    2
+    --- INTERRUPT ---
+    
+    Exit Code: -2
+    </pre>
+    -[x] Done
+
+    """)
+
+    assert output == expected_response

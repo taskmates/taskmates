@@ -18,7 +18,7 @@ class ParseCommand(Command):
         builder = CliContextBuilder(args)
         contexts = builder.build()
 
-        with ExecutionContext(contexts=contexts).context():
+        with ExecutionContext(contexts=contexts):
             taskmates_dirs = contexts["client_config"]["taskmates_dirs"]
 
             markdown_chat = "".join(sys.stdin.readlines())

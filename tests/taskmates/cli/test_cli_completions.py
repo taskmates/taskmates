@@ -180,6 +180,7 @@ def test_interrupt_tool(cli_runner, tmp_path):
     """)
 
     assert process.returncode == 0
+    assert stderr == ""
     assert output == expected_response
 
 

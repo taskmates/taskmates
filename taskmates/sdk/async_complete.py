@@ -14,7 +14,7 @@ async def async_complete(markdown,
     return_value_handler = ReturnValueHandler()
 
     contexts = SdkContextBuilder(completion_opts).build()
-    processors = [return_value_handler]
-    await MarkdownComplete(contexts, processors).run(current_markdown=markdown)
+    jobs = [return_value_handler]
+    await MarkdownComplete(contexts=contexts, jobs=jobs).run(current_markdown=markdown)
 
     return return_value_handler.get_return_value()

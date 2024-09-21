@@ -7,8 +7,8 @@ import subprocess
 import pytest
 import sys
 
-from taskmates.core.signals.signals_context import SignalsContext
-from taskmates.core.execution_context import EXECUTION_CONTEXT
+
+from taskmates.core.execution_context import EXECUTION_CONTEXT, ExecutionContext
 from taskmates.lib.restore_stdout_and_stderr import restore_stdout_and_stderr
 
 
@@ -19,7 +19,7 @@ async def stream_output(fd, stream, signals):
         if not line:
             break
         with restore_stdout_and_stderr():
-            await signals.response.response.send_async(line)
+            await signals.outputs.response.send_async(line)
 
 
 async def run_shell_command(cmd: str) -> str:
@@ -30,7 +30,7 @@ async def run_shell_command(cmd: str) -> str:
     :return: the output of the command
     """
 
-    signals: SignalsContext = EXECUTION_CONTEXT.get().signals
+    execution_context: ExecutionContext = EXECUTION_CONTEXT.get()
 
     if platform.system() == "Windows":
         process = subprocess.Popen(
@@ -56,19 +56,19 @@ async def run_shell_command(cmd: str) -> str:
             process.send_signal(signal.CTRL_BREAK_EVENT)
         else:
             os.killpg(os.getpgid(process.pid), signal.SIGINT)
-        await signals.lifecycle.interrupted.send_async(None)
+        await execution_context.status.interrupted.send_async(None)
 
     async def kill_handler(sender):
         if platform.system() == "Windows":
             process.kill()
         else:
             os.killpg(os.getpgid(process.pid), signal.SIGKILL)
-        await signals.lifecycle.killed.send_async(None)
+        await execution_context.status.killed.send_async(None)
 
-    with signals.control.interrupt.connected_to(interrupt_handler), \
-            signals.control.kill.connected_to(kill_handler):
-        stdout_task = asyncio.create_task(stream_output(sys.stdout, process.stdout, signals))
-        stderr_task = asyncio.create_task(stream_output(sys.stderr, process.stderr, signals))
+    with execution_context.control.interrupt.connected_to(interrupt_handler), \
+            execution_context.control.kill.connected_to(kill_handler):
+        stdout_task = asyncio.create_task(stream_output(sys.stdout, process.stdout, execution_context))
+        stderr_task = asyncio.create_task(stream_output(sys.stderr, process.stderr, execution_context))
 
         await asyncio.wait([stdout_task, stderr_task])
 
@@ -78,13 +78,13 @@ async def run_shell_command(cmd: str) -> str:
 
 @pytest.mark.asyncio
 async def test_run_shell_command(capsys):
-    signals = EXECUTION_CONTEXT.get().signals
+    signals = EXECUTION_CONTEXT.get()
     chunks = []
 
     async def capture_chunk(chunk):
         chunks.append(chunk)
 
-    signals.response.response.connect(capture_chunk)
+    signals.outputs.response.connect(capture_chunk)
 
     if platform.system() == "Windows":
         cmd = "echo Hello, World!"
@@ -99,13 +99,13 @@ async def test_run_shell_command(capsys):
 
 @pytest.mark.asyncio
 async def test_run_shell_command_interrupt(capsys):
-    signals = EXECUTION_CONTEXT.get().signals
+    signals = EXECUTION_CONTEXT.get()
     chunks = []
 
     async def capture_chunk(chunk):
         chunks.append(chunk)
 
-    signals.response.response.connect(capture_chunk)
+    signals.outputs.response.connect(capture_chunk)
 
     async def send_interrupt():
         while len(chunks) < 5:
@@ -132,13 +132,13 @@ async def test_run_shell_command_interrupt(capsys):
 
 @pytest.mark.asyncio
 async def test_run_shell_command_kill(capsys):
-    signals = EXECUTION_CONTEXT.get().signals
+    signals = EXECUTION_CONTEXT.get()
     chunks = []
 
     async def capture_chunk(chunk):
         chunks.append(chunk)
 
-    signals.response.response.connect(capture_chunk)
+    signals.outputs.response.connect(capture_chunk)
 
     async def send_kill():
         while len(chunks) < 3:

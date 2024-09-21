@@ -27,6 +27,7 @@ class GithubIssue(TaskmatesWorkflow):
         # job
         chat_content = self.github_issue_chat(issue_number, repo_name)
 
+        # TODO: CHANGE CWD TO DEMO
         # job
         await CliComplete(contexts=self.execution_context.contexts).run(
             incoming_messages=[chat_content + "\n\nHey @demo_dev please have a look \n\n"],

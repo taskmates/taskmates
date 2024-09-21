@@ -5,30 +5,31 @@ import pytest
 from httpx import ReadError
 from typeguard import typechecked
 
-from taskmates.core.execution_context import EXECUTION_CONTEXT
 from taskmates.core.actions.chat_completion.openai_adapters.anthropic_openai_adapter.response.chat_completion_pre_processor import \
     ChatCompletionPreProcessor
 from taskmates.core.actions.chat_completion.openai_adapters.anthropic_openai_adapter.response.chat_completion_with_username import \
     ChatCompletionWithUsername
+from taskmates.core.execution_context import EXECUTION_CONTEXT, ExecutionContext
 from taskmates.formats.markdown.metadata.get_model_client import get_model_client
 from taskmates.lib.not_set.not_set import NOT_SET
 from taskmates.lib.opentelemetry_.tracing import tracer
 from taskmates.server.streamed_response import StreamedResponse
-from taskmates.core.signals.signals_context import SignalsContext
 
 
 @typechecked
-async def api_request(client, messages: list, model_conf: dict, model_params: dict, signals: SignalsContext) -> dict:
+async def api_request(client, messages: list, model_conf: dict, model_params: dict,
+                      execution_context: ExecutionContext) -> dict:
     streamed_response = StreamedResponse()
-    signals.response.chat_completion.connect(streamed_response.accept, weak=False)
+    execution_context.outputs.chat_completion.connect(streamed_response.accept, weak=False)
 
-    if signals.response.chat_completion.receivers:
+    if execution_context.outputs.chat_completion.receivers:
         model_conf.update({"stream": True})
 
     llm_client_args = get_llm_client_args(messages, model_conf, model_params)
 
     with tracer().start_as_current_span(name="chat-completion"):
-        await signals.artifact.artifact.send_async({"name": "openai_request_payload.json", "content": llm_client_args})
+        await execution_context.artifact.artifact.send_async(
+            {"name": "openai_request_payload.json", "content": llm_client_args})
 
         interrupted_or_killed = False
 
@@ -36,16 +37,16 @@ async def api_request(client, messages: list, model_conf: dict, model_params: di
             nonlocal interrupted_or_killed
             interrupted_or_killed = True
             await chat_completion.response.aclose()
-            await signals.lifecycle.interrupted.send_async(None)
+            await execution_context.status.interrupted.send_async(None)
 
         async def kill_handler(sender):
             nonlocal interrupted_or_killed
             interrupted_or_killed = True
             await chat_completion.response.aclose()
-            await signals.lifecycle.killed.send_async(None)
+            await execution_context.status.killed.send_async(None)
 
-        with signals.control.interrupt.connected_to(interrupt_handler), \
-                signals.control.kill.connected_to(kill_handler):
+        with execution_context.control.interrupt.connected_to(interrupt_handler), \
+                execution_context.control.kill.connected_to(kill_handler):
             chat_completion = await client.chat.completions.create(**llm_client_args)
 
             if model_conf["stream"]:
@@ -59,20 +60,22 @@ async def api_request(client, messages: list, model_conf: dict, model_params: di
                                 content: str = choice.delta.content
                                 # TODO move this to ChatCompletionPreProcessor
                                 choice.delta.content = content.replace("\r", "")
-                        await signals.response.chat_completion.send_async(chat_completion_chunk)
+                        await execution_context.outputs.chat_completion.send_async(chat_completion_chunk)
 
                 except asyncio.CancelledError:
-                    await signals.artifact.artifact.send_async({"name": "response_cancelled.json", "content": str(True)})
+                    await execution_context.artifact.artifact.send_async(
+                        {"name": "response_cancelled.json", "content": str(True)})
                     await chat_completion.response.aclose()
                     raise
                 except ReadError as e:
-                    await signals.artifact.artifact.send_async({"name": "response_read_error.json", "content": str(e)})
+                    await execution_context.artifact.artifact.send_async(
+                        {"name": "response_read_error.json", "content": str(e)})
 
                 response = streamed_response.payload
             else:
                 response = chat_completion.model_dump()
 
-    await signals.artifact.artifact.send_async({"name": "response.json", "content": response})
+    await execution_context.artifact.artifact.send_async({"name": "response.json", "content": response})
 
     if not response['choices']:
         # NOTE: this seems to happen when the request is cancelled before any response is received
@@ -96,7 +99,7 @@ def get_llm_client_args(messages, model_conf, model_params):
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_api_request_happy_path():
+async def test_api_request_happy_path(execution_context):
     # Define the model configuration and parameters as per your actual use case
     model_conf = {
         "model": "echo"
@@ -112,7 +115,7 @@ async def test_api_request_happy_path():
     # Call the api_request function with the defined parameters
     contexts = EXECUTION_CONTEXT.get().contexts
     client = get_model_client(model_conf["model"], contexts["client_config"]["taskmates_dirs"])
-    response = await api_request(client, messages, model_conf, model_params, SignalsContext())
+    response = await api_request(client, messages, model_conf, model_params, execution_context)
 
     # Assert that the response is as expected
     assert 'choices' in response
@@ -124,7 +127,7 @@ async def test_api_request_happy_path():
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_api_request_with_complex_payload():
+async def test_api_request_with_complex_payload(execution_context):
     # Define the complex payload based on the JSON you provided
     messages = [
         {
@@ -198,7 +201,7 @@ async def test_api_request_with_complex_payload():
     # Call the api_request function with the defined parameters
     contexts = EXECUTION_CONTEXT.get().contexts
     client = get_model_client(model_conf["model"], contexts["client_config"]["taskmates_dirs"])
-    response = await api_request(client, messages, model_conf, model_params, SignalsContext())
+    response = await api_request(client, messages, model_conf, model_params, execution_context)
 
     # Assert that the response is as expected
     assert 'choices' in response

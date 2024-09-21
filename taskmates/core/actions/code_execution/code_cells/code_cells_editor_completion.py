@@ -6,15 +6,15 @@ from typeguard import typechecked
 
 from taskmates.core.actions.code_execution.code_cells.code_execution import CodeExecution
 from taskmates.core.actions.code_execution.code_cells.code_execution_output_appender import CodeExecutionOutputAppender
-from taskmates.core.signals.signals_context import SignalsContext
+from taskmates.core.execution_context import ExecutionContext
 
 
 class CodeCellsEditorCompletion:
-    def __init__(self, project_dir, chat_file, signals: SignalsContext):
+    def __init__(self, project_dir, chat_file, execution_context: ExecutionContext):
         self.state = {}
         self.project_dir = project_dir
         self.chat_file: Path = Path(chat_file)
-        self.signals = signals
+        self.execution_context = execution_context
         self.appended_completions = []
         self.processed_code_cells = set()
 
@@ -136,4 +136,4 @@ class CodeCellsEditorCompletion:
 
     async def append(self, text):
         self.appended_completions.append(text)
-        await self.signals.response.response.send_async(text)
+        await self.execution_context.outputs.response.send_async(text)

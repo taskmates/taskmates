@@ -26,7 +26,7 @@ class ChatCompletionProvider(CompletionProvider):
     @typechecked
     async def perform_completion(self, chat: Chat):
         contexts = EXECUTION_CONTEXT.get().contexts
-        signals = EXECUTION_CONTEXT.get().signals
+        signals = EXECUTION_CONTEXT.get()
 
         chat_completion_editor_completion = ChatCompletionEditorCompletion(chat, signals)
 
@@ -34,7 +34,7 @@ class ChatCompletionProvider(CompletionProvider):
             choice = chat_completion_chunk.model_dump()['choices'][0]
             await chat_completion_editor_completion.process_chat_completion_chunk(choice)
 
-        with signals.response.chat_completion.connected_to(restream_completion_chunk):
+        with signals.outputs.chat_completion.connected_to(restream_completion_chunk):
             taskmates_dirs = contexts["client_config"]["taskmates_dirs"]
             model_alias = contexts["completion_opts"]["model"]
             model_conf = get_model_conf(model_alias=model_alias,

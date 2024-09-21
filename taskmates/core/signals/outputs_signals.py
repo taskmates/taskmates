@@ -5,27 +5,27 @@ import pytest
 from taskmates.core.signals.base_signals import BaseSignals
 
 
-class ResponseSignals(BaseSignals):
+class OutputsSignals(BaseSignals):
     def __init__(self):
         super().__init__()
 
-        # TODO: Chat Signals
+        # TODO: Execution Context Outputs
+        self.error = self.namespace.signal('error')
+        self.result = self.namespace.signal('result')
+        self.stdout = self.namespace.signal('stdout')
+
+        # TODO: Markdown Complete Job Outputs
         self.formatting = self.namespace.signal('response_formatting')
         self.responder = self.namespace.signal('responder')
         self.response = self.namespace.signal('response')
         self.next_responder = self.namespace.signal('next_responder')
 
-        # TODO: Task Signals
+        # TODO: Completion Task Outputs
         self.chat_completion = self.namespace.signal('chat_completion')
         self.code_cell_output = self.namespace.signal('code_cell_output')
 
-        # TODO: Response Stream signals
-        self.error = self.namespace.signal('error')
-        self.result = self.namespace.signal('result')
-        self.stdout = self.namespace.signal('stdout')
-
+        # Markdown Complete Job Bindings
         # TODO extract to a new Signals class
-        # Derived/Bindings
         self.formatting.connect(self.stdout.send_async, weak=False)
 
         # TODO split below
@@ -42,7 +42,7 @@ class ResponseSignals(BaseSignals):
 
 @pytest.mark.asyncio
 async def test_error_completion():
-    output = ResponseSignals()
+    output = OutputsSignals()
     received = []
 
     @output.stdout.connect

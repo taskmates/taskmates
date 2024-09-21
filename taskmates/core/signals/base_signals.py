@@ -1,3 +1,4 @@
+import contextlib
 import functools
 from contextlib import contextmanager
 from typing import List
@@ -36,11 +37,11 @@ class BaseSignals:
     def __init__(self):
         self.namespace = Namespace()
 
-    def __del__(self):
-        for name, signal in self.namespace.items():
-            signal.receivers.clear()
+    # def __del__(self):
+    #     for name, signal in self.namespace.items():
+    #         signal.receivers.clear()
 
-    @contextmanager
+    @contextlib.contextmanager
     def connected_to(self, objs: List[Signal], handler: callable):
         try:
             for obj in objs:
@@ -49,6 +50,7 @@ class BaseSignals:
         finally:
             for obj in objs:
                 obj.disconnect(handler)
+
 
     def connect_all(self, signals: 'BaseSignals'):
         for signal_group_name, signal_group in vars(signals).items():

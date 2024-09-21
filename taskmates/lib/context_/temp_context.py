@@ -6,7 +6,7 @@ T = TypeVar('T')
 
 
 @contextlib.contextmanager
-def temp_context(var: contextvars.ContextVar[T], value: T) -> Iterator[T]:
+def temp_context(var: contextvars.ContextVar[T], value: T) -> contextlib.AbstractContextManager[T]:
     # Save the current state of the ContextVar
     token = var.set(value)
     try:

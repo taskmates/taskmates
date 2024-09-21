@@ -1,4 +1,4 @@
-from taskmates.core.processor import Processor
+from taskmates.core.job import Job
 from taskmates.lib.opentelemetry_.wrap_module import wrap_module
 from taskmates.sdk.experimental.subclass_extension_points import SubclassExtensionPoints
 
@@ -7,4 +7,4 @@ from taskmates.sdk.experimental.subclass_extension_points import SubclassExtensi
 
 
 def instrument():
-    SubclassExtensionPoints.subscribe(Processor, wrap_module)
+    SubclassExtensionPoints.subscribe(Job, wrap_module)

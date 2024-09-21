@@ -4,10 +4,10 @@ from pathlib import Path
 
 from taskmates.core.execution_context import EXECUTION_CONTEXT
 from taskmates.lib.resources_.resources import dump_resource
-from taskmates.core.processor import Processor
+from taskmates.core.job import Job
 
 
-class FileSystemArtifactsSink(Processor):
+class FileSystemArtifactsSink(Job):
 
     # TODO: logic for enabling/disabling handlers
 
@@ -26,9 +26,9 @@ class FileSystemArtifactsSink(Processor):
         dump_resource(full_path, sender.get('content'))
 
     def __enter__(self):
-        signals = EXECUTION_CONTEXT.get().signals
+        signals = EXECUTION_CONTEXT.get()
         signals.artifact.artifact.connect(self.handle_artifact, weak=False)
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        signals = EXECUTION_CONTEXT.get().signals
+        signals = EXECUTION_CONTEXT.get()
         signals.artifact.artifact.disconnect(self.handle_artifact)

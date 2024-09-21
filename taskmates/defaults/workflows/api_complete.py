@@ -11,7 +11,7 @@ from taskmates.core.execution_context import EXECUTION_CONTEXT
 class ApiComplete(TaskmatesWorkflow):
     @typechecked
     async def run(self, payload):
-        signals = EXECUTION_CONTEXT.get().signals
+        signals = EXECUTION_CONTEXT.get()
         contexts = EXECUTION_CONTEXT.get().contexts
         try:
             await signals.artifact.artifact.send_async(
@@ -25,6 +25,6 @@ class ApiComplete(TaskmatesWorkflow):
             logger.info(f"REQUEST CANCELLED Request cancelled due to client disconnection")
             await signals.control.kill.send_async({})
         except Exception as e:
-            await signals.response.error.send_async(e)
+            await signals.outputs.error.send_async(e)
         finally:
             logger.info("DONE Closing websocket connection")

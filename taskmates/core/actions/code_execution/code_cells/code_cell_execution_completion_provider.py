@@ -22,7 +22,7 @@ class CodeCellExecutionCompletionProvider(CompletionProvider):
 
     async def perform_completion(self, chat: Chat):
         contexts = EXECUTION_CONTEXT.get().contexts
-        signals = EXECUTION_CONTEXT.get().signals
+        signals = EXECUTION_CONTEXT.get()
 
         completion_context: CompletionContext = contexts["completion_context"]
         markdown_path = completion_context["markdown_path"]
@@ -33,12 +33,12 @@ class CodeCellExecutionCompletionProvider(CompletionProvider):
 
         editor_completion = CodeCellsEditorCompletion(project_dir=cwd,
                                                       chat_file=markdown_path,
-                                                      signals=signals)
+                                                      execution_context=signals)
 
         async def on_code_cell_chunk(code_cell_chunk):
             await editor_completion.process_code_cell_output(code_cell_chunk)
 
-        with signals.response.code_cell_output.connected_to(on_code_cell_chunk):
+        with signals.outputs.code_cell_output.connected_to(on_code_cell_chunk):
             # TODO pass env here
             await execute_markdown_on_local_kernel(content=messages[-1]["content"],
                                                    markdown_path=markdown_path,
@@ -85,10 +85,10 @@ async def test_markdown_code_cells_assistance_streaming(tmp_path):
         ]
     }
 
-    signals = EXECUTION_CONTEXT.get().signals
-    signals.response.code_cell_output.connect(capture_code_cell_chunk)
-    signals.response.response.connect(capture_completion_chunk)
-    signals.response.error.connect(capture_error)
+    signals = EXECUTION_CONTEXT.get()
+    signals.outputs.code_cell_output.connect(capture_code_cell_chunk)
+    signals.outputs.response.connect(capture_completion_chunk)
+    signals.outputs.error.connect(capture_error)
     assistance = CodeCellExecutionCompletionProvider()
     await assistance.perform_completion(chat)
 

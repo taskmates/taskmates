@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 
 
-class Processor(ABC):
+class Job(ABC):
     @abstractmethod
     def __enter__(self):
         pass

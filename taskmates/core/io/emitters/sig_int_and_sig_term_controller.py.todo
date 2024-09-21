@@ -2,7 +2,7 @@ import asyncio
 import signal
 
 from taskmates.core.execution_context import EXECUTION_CONTEXT, ExecutionContext
-from taskmates.core.job import Job
+from taskmates.core.processor import Job
 
 
 class SigIntAndSigTermController(Job):

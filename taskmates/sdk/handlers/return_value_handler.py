@@ -1,11 +1,11 @@
 from typing import Any
 
-from taskmates.core.processor import Processor
+from taskmates.core.job import Job
 from taskmates.core.execution_context import EXECUTION_CONTEXT
 from taskmates.lib.not_set.not_set import NOT_SET
 
 
-class ReturnValueHandler(Processor):
+class ReturnValueHandler(Job):
     def __init__(self):
         self.completion_chunks = []
         self.return_value = NOT_SET
@@ -21,16 +21,16 @@ class ReturnValueHandler(Processor):
         self.error = payload["error"]
 
     def __enter__(self):
-        signals = EXECUTION_CONTEXT.get().signals
-        signals.response.response.connect(self.handle_response_chunk)
-        signals.response.result.connect(self.handle_return_value)
-        signals.response.error.connect(self.handle_error)
+        signals = EXECUTION_CONTEXT.get()
+        signals.outputs.response.connect(self.handle_response_chunk)
+        signals.outputs.result.connect(self.handle_return_value)
+        signals.outputs.error.connect(self.handle_error)
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        signals = EXECUTION_CONTEXT.get().signals
-        signals.response.response.disconnect(self.handle_response_chunk)
-        signals.response.result.disconnect(self.handle_return_value)
-        signals.response.error.disconnect(self.handle_error)
+        signals = EXECUTION_CONTEXT.get()
+        signals.outputs.response.disconnect(self.handle_response_chunk)
+        signals.outputs.result.disconnect(self.handle_return_value)
+        signals.outputs.error.disconnect(self.handle_error)
 
     def should_raise_error(self) -> bool:
         return self.error is not None

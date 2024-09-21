@@ -1,7 +1,7 @@
 from taskmates.core.signals.base_signals import BaseSignals
 
 
-class LifecycleSignals(BaseSignals):
+class StatusSignals(BaseSignals):
     def __init__(self):
         super().__init__()
         self.start = self.namespace.signal('start')

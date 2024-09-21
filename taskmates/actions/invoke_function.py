@@ -2,24 +2,24 @@ import asyncio
 from contextlib import redirect_stdout, redirect_stderr
 from io import StringIO
 
-from taskmates.types import CompletionContext
+from taskmates.core.execution_context import ExecutionContext
 from taskmates.lib.context_.temp_cwd import temp_cwd
 from taskmates.lib.context_.temp_environ import temp_environ
 from taskmates.lib.restore_stdout_and_stderr import restore_stdout_and_stderr
-from taskmates.core.signals.signals_context import SignalsContext
+from taskmates.types import CompletionContext
 
 
 # TODO: review this and the duplication with run_shell_command
-async def stream_output(stream_name, stream, signals: SignalsContext):
+async def stream_output(stream_name, stream, execution_context: ExecutionContext):
     while True:
         line = stream.readline()
         if not line:
             break
         with restore_stdout_and_stderr():
-            await signals.response.response.send_async(line)
+            await execution_context.outputs.response.send_async(line)
 
 
-async def invoke_function(function, arguments, context: CompletionContext, signals: SignalsContext):
+async def invoke_function(function, arguments, context: CompletionContext, execution_context: ExecutionContext):
     stdout_stream = StringIO()
     stderr_stream = StringIO()
 
@@ -33,8 +33,8 @@ async def invoke_function(function, arguments, context: CompletionContext, signa
                 else:
                     return function(**arguments)
 
-    stdout_task = asyncio.create_task(stream_output("stdout", stdout_stream, signals))
-    stderr_task = asyncio.create_task(stream_output("stderr", stderr_stream, signals))
+    stdout_task = asyncio.create_task(stream_output("stdout", stdout_stream, execution_context))
+    stderr_task = asyncio.create_task(stream_output("stderr", stderr_stream, execution_context))
 
     result = await run_function()
 

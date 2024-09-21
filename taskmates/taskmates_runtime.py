@@ -2,6 +2,7 @@ import contextvars
 import os
 
 from taskmates import patches
+from taskmates.load_env_files import load_env_for_environment
 from taskmates.sdk.experimental.extension_manager import EXTENSION_MANAGER
 from taskmates.sdk.experimental.subclass_extension_points import SubclassExtensionPoints
 
@@ -41,6 +42,8 @@ class TaskmatesRuntime:
             return
 
         TaskmatesRuntime._initialized = True
+
+        load_env_for_environment(os.environ.get("TASKMATES_ENV", "production"))
 
         # # # See https://no-color.org/
         # if not os.environ.get("NO_COLOR"):
