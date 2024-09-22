@@ -140,27 +140,23 @@ class ExecutionContext(AbstractContextManager):
         self.workflow_inputs = {}
 
         self.parent_jobs = getattr(self.parent, 'parent_jobs', {})
-        if not self.parent:
-            self.parent_jobs["root"] = self
-        else:
-            self.parent_jobs[to_snake_case(self.__class__.__name__)] = self
 
         if isinstance(jobs, list):
             jobs = {to_snake_case(job.__class__.__name__): job for job in jobs}
 
-        if not self.parent and not jobs:
-            jobs = {
+        self.jobs = jobs or {}
+
+        if not self.parent:
+            self.parent_jobs["root"] = self
+            self.jobs.update({
                 # TODO: job state
                 "interrupt_request_mediator": InterruptRequestMediator(),
                 "interrupted_or_killed": InterruptedOrKilled(),
                 # TODO: job output
                 "return_value": ReturnValueCollector(),
-            }
-
-        if jobs is None:
-            jobs = {}
-
-        self.jobs = jobs
+            })
+        else:
+            self.parent_jobs[to_snake_case(self.__class__.__name__)] = self
 
         # TODO: local vs inherited context
         # self.inputs: dict = {}

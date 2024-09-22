@@ -20,6 +20,7 @@ class SdkContextBuilder(ContextBuilder):
             "request_id": request_id,
             "env": os.environ.copy(),
             "cwd": os.getcwd(),
+            "markdown_path": "<function>",
         })
 
         contexts["completion_opts"].update(self.completion_opts.copy())
@@ -33,9 +34,9 @@ class SdkContextBuilder(ContextBuilder):
 
 
 def test_sdk_context_builder():
-    sdk_opts = {"model": "sdk-model", "max_steps": 3}
+    sdk_opts = {"model": "quote", "max_steps": 3}
     builder = SdkContextBuilder(sdk_opts)
     contexts = builder.build()
-    assert contexts["completion_opts"]["model"] == "sdk-model"
+    assert contexts["completion_opts"]["model"] == "quote"
     assert contexts["completion_opts"]["max_steps"] == 3
     assert contexts["client_config"]["interactive"] == True
