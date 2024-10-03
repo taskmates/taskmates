@@ -1,7 +1,7 @@
-def compute_separator(current_markdown):
+def compute_separator(markdown_chat):
     padding = ""
-    if not current_markdown.endswith("\n\n"):
-        if current_markdown.endswith("\n"):
+    if not markdown_chat.endswith("\n\n"):
+        if markdown_chat.endswith("\n"):
             padding = "\n"
         else:
             padding = "\n\n"

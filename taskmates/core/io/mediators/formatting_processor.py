@@ -1,18 +1,15 @@
 from taskmates.core.compute_separator import compute_separator
-from taskmates.core.job import Job
-from taskmates.core.execution_context import EXECUTION_CONTEXT
+from taskmates.core.execution_context import EXECUTION_CONTEXT, ExecutionContext
+from taskmates.lib.contextlib_.stacked_contexts import stacked_contexts
 
 
-class IncomingMessagesFormattingProcessor(Job):
+class IncomingMessagesFormattingProcessor(ExecutionContext):
     def __enter__(self):
-        signals = EXECUTION_CONTEXT.get()
-        signals.inputs.history.connect(self.handle, weak=False)
-        signals.inputs.incoming_message.connect(self.handle, weak=False)
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        signals = EXECUTION_CONTEXT.get()
-        signals.inputs.history.disconnect(self.handle)
-        signals.inputs.incoming_message.disconnect(self.handle)
+        execution_context = EXECUTION_CONTEXT.get()
+        self.exit_stack.enter_context(stacked_contexts([
+            execution_context.inputs.history.connected_to(self.handle),
+            execution_context.inputs.incoming_message.connected_to(self.handle)
+        ]))
 
     async def handle(self, incoming_content):
         separator = compute_separator(incoming_content)

@@ -14,9 +14,6 @@ from taskmates.types import Chat, CompletionContext
 
 
 class ToolExecutionCompletionProvider(CompletionProvider):
-    def stop(self):
-        raise NotImplementedError("Not implemented")
-
     def can_complete(self, chat: Dict) -> bool:
         messages = chat.get("messages", [])
         last_message = messages[-1] if messages else {}

@@ -4,20 +4,18 @@ from typeguard import typechecked
 
 from taskmates.core.actions.chat_completion.chat_completion_editor_completion import ChatCompletionEditorCompletion
 from taskmates.core.completion_provider import CompletionProvider
+from taskmates.core.execution_context import EXECUTION_CONTEXT
+from taskmates.core.execution_context import ExecutionContext
+from taskmates.core.tools_registry import tools_registry
 from taskmates.formats.markdown.metadata.get_model_client import get_model_client
 from taskmates.formats.markdown.metadata.get_model_conf import get_model_conf
-from taskmates.core.tools_registry import tools_registry
 from taskmates.lib.not_set.not_set import NOT_SET
 from taskmates.lib.openai_.inference.api_request import api_request
 from taskmates.lib.tool_schemas_.tool_schema import tool_schema
-from taskmates.core.execution_context import EXECUTION_CONTEXT
 from taskmates.types import Chat
 
 
 class ChatCompletionProvider(CompletionProvider):
-    def stop(self):
-        raise NotImplementedError("Not implemented")
-
     def can_complete(self, chat):
         last_message = chat["messages"][-1]
         recipient_role = last_message["recipient_role"]
@@ -26,15 +24,15 @@ class ChatCompletionProvider(CompletionProvider):
     @typechecked
     async def perform_completion(self, chat: Chat):
         contexts = EXECUTION_CONTEXT.get().contexts
-        signals = EXECUTION_CONTEXT.get()
+        execution_context: ExecutionContext = EXECUTION_CONTEXT.get()
 
-        chat_completion_editor_completion = ChatCompletionEditorCompletion(chat, signals)
+        chat_completion_editor_completion = ChatCompletionEditorCompletion(chat, execution_context)
 
         async def restream_completion_chunk(chat_completion_chunk):
             choice = chat_completion_chunk.model_dump()['choices'][0]
             await chat_completion_editor_completion.process_chat_completion_chunk(choice)
 
-        with signals.outputs.chat_completion.connected_to(restream_completion_chunk):
+        with execution_context.outputs.chat_completion.connected_to(restream_completion_chunk):
             taskmates_dirs = contexts["client_config"]["taskmates_dirs"]
             model_alias = contexts["completion_opts"]["model"]
             model_conf = get_model_conf(model_alias=model_alias,
@@ -76,6 +74,6 @@ class ChatCompletionProvider(CompletionProvider):
                 **({"tool_choice": tool_choice} if tool_choice is not None else {})
             )
 
-            await signals.artifact.artifact.send_async({"name": "parsed_chat.json", "content": chat})
+            await execution_context.artifact.artifact.send_async({"name": "parsed_chat.json", "content": chat})
 
-            return await api_request(client, messages, model_conf, model_params, signals)
+            return await api_request(client, messages, model_conf, model_params, execution_context)

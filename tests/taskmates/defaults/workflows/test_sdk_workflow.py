@@ -20,7 +20,7 @@ async def test_sdk_workflow(tmp_path, contexts):
     signal_capturer = SignalsCapturer()
     jobs = [signal_capturer]
     workflow = SdkComplete(contexts=contexts, jobs=jobs)
-    result = await workflow.run(current_markdown=markdown)
+    result = await workflow.run(markdown_chat=markdown)
 
     assert result == '\n> Test markdown for SDK workflow\n\n'
 
@@ -38,7 +38,7 @@ async def test_sdk_workflow(tmp_path, contexts):
 #         signal_capturer
 #     ]
 #     workflow = SdkComplete(contexts=contexts, jobs=jobs)
-#     result = await workflow.run(current_markdown=markdown)
+#     result = await workflow.run(markdown_chat=markdown)
 #
 #     assert result == f"\n> Test markdown for SDK workflow with {format_type} format\n\n"
 
@@ -52,6 +52,6 @@ async def test_sdk_workflow(tmp_path, contexts):
 #     signal_capturer = SignalsCapturer()
 #     jobs = [signal_capturer]
 #     workflow = SdkComplete(contexts=contexts, jobs=jobs)
-#     result = await workflow.run(current_markdown=markdown)
+#     result = await workflow.run(markdown_chat=markdown)
 #
 #     assert result == '\n> Test markdown for SDK workflow interrupt\n\n'

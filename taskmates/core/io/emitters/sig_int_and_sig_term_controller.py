@@ -1,12 +1,13 @@
 import asyncio
 import signal
 
+from taskmates.core.daemon import Daemon
 from taskmates.core.execution_context import EXECUTION_CONTEXT, ExecutionContext
-from taskmates.core.job import Job
 
 
-class SigIntAndSigTermController(Job):
+class SigIntAndSigTermController(Daemon):
     def __init__(self):
+        super().__init__()
         self.received_signal = None
         self.task = None
         self.execution_context: ExecutionContext

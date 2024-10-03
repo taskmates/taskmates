@@ -3,13 +3,14 @@ import json
 
 from loguru import logger
 
-from taskmates.core.execution_context import EXECUTION_CONTEXT
-from taskmates.core.job import Job
+from taskmates.core.daemon import Daemon
+from taskmates.core.execution_context import EXECUTION_CONTEXT, ExecutionContext
 from taskmates.lib.json_.json_utils import snake_case
 
 
-class WebSocketInterruptAndKillController(Job):
+class WebSocketInterruptAndKillController(Daemon):
     def __init__(self, websocket):
+        super().__init__()
         self.websocket = websocket
         self.task = None
 

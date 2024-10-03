@@ -12,7 +12,7 @@ from taskmates.types import CompletionOpts
 async def async_complete(markdown: str, **completion_opts: Unpack[CompletionOpts]):
     contexts = SdkContextBuilder(completion_opts).build()
     workflow = SdkComplete(contexts=contexts)
-    return await workflow.run(current_markdown=markdown)
+    return await workflow.run(markdown_chat=markdown)
 
 
 @pytest.mark.asyncio

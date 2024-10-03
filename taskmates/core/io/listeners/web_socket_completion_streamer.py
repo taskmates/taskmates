@@ -2,12 +2,14 @@ import json
 
 from loguru import logger
 
-from taskmates.core.job import Job
+from taskmates.core.daemon import Daemon
 from taskmates.core.execution_context import EXECUTION_CONTEXT
+from taskmates.lib.contextlib_.stacked_contexts import stacked_contexts
 
 
-class WebSocketCompletionStreamer(Job):
+class WebSocketCompletionStreamer(Daemon):
     def __init__(self, websocket):
+        super().__init__()
         self.websocket = websocket
 
     async def handle_completion(self, chunk):
@@ -24,9 +26,7 @@ class WebSocketCompletionStreamer(Job):
         await self.websocket.send(dump)
 
     def __enter__(self):
-        signals = EXECUTION_CONTEXT.get()
-        signals.outputs.stdout.connect(self.handle_completion, weak=False)
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        signals = EXECUTION_CONTEXT.get()
-        signals.outputs.stdout.disconnect(self.handle_completion)
+        execution_context = EXECUTION_CONTEXT.get()
+        self.exit_stack.enter_context(stacked_contexts([
+            execution_context.outputs.stdout.connected_to(self.handle_completion)
+        ]))

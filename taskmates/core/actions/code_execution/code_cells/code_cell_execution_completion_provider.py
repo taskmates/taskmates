@@ -11,9 +11,6 @@ from taskmates.types import Chat, CompletionContext
 
 
 class CodeCellExecutionCompletionProvider(CompletionProvider):
-    def stop(self):
-        raise NotImplementedError("Not implemented")
-
     def can_complete(self, chat):
         is_jupyter_enabled = chat.get("completion_opts", {}).get("jupyter_enabled", True)
         last_message = chat['messages'][-1]

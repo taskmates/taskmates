@@ -69,11 +69,11 @@ class ServerConfig(TypedDict):
 
 class StepContext(TypedDict):
     # TODO: move this to outputs
-    current_markdown: NotRequired[str]
+    markdown_chat: NotRequired[str]
     # TODO: move this to inputs
     current_step: NotRequired[int]
 
 
 class JobContext(TypedDict):
     # TODO: move this to outputs
-    current_markdown: NotRequired[str]
+    markdown_chat: NotRequired[str]

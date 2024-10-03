@@ -2,12 +2,13 @@ import os
 from datetime import datetime
 from pathlib import Path
 
+from taskmates.core.daemon import Daemon
 from taskmates.core.execution_context import EXECUTION_CONTEXT
 from taskmates.lib.resources_.resources import dump_resource
-from taskmates.core.job import Job
+from taskmates.lib.contextlib_.stacked_contexts import stacked_contexts
 
 
-class FileSystemArtifactsSink(Job):
+class FileSystemArtifactsSink(Daemon):
 
     # TODO: logic for enabling/disabling handlers
 
@@ -26,9 +27,7 @@ class FileSystemArtifactsSink(Job):
         dump_resource(full_path, sender.get('content'))
 
     def __enter__(self):
-        signals = EXECUTION_CONTEXT.get()
-        signals.artifact.artifact.connect(self.handle_artifact, weak=False)
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        signals = EXECUTION_CONTEXT.get()
-        signals.artifact.artifact.disconnect(self.handle_artifact)
+        execution_context = EXECUTION_CONTEXT.get()
+        self.exit_stack.enter_context(stacked_contexts([
+            execution_context.artifact.artifact.connected_to(self.handle_artifact)
+        ]))

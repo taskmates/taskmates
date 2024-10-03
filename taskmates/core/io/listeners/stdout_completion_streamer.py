@@ -1,11 +1,14 @@
 import sys
 from typing import TextIO
-from taskmates.core.job import Job
+
+from taskmates.core.daemon import Daemon
 from taskmates.core.execution_context import EXECUTION_CONTEXT
+from taskmates.lib.contextlib_.stacked_contexts import stacked_contexts
 
 
-class StdoutCompletionStreamer(Job):
+class StdoutCompletionStreamer(Daemon):
     def __init__(self, format: str, output_stream: TextIO = sys.stdout):
+        super().__init__()
         self.format = format
         self.output_stream = output_stream
 
@@ -14,39 +17,28 @@ class StdoutCompletionStreamer(Job):
             print(chunk, end="", flush=True, file=self.output_stream)
 
     def __enter__(self):
-        signals = EXECUTION_CONTEXT.get()
+        execution_context = EXECUTION_CONTEXT.get()
+        connections = []
+
         if self.format == 'full':
-            signals.inputs.history.connect(self.process_chunk, weak=False)
-            signals.inputs.incoming_message.connect(self.process_chunk, weak=False)
-            signals.inputs.formatting.connect(self.process_chunk, weak=False)
-            signals.outputs.formatting.connect(self.process_chunk, weak=False)
-            signals.outputs.response.connect(self.process_chunk, weak=False)
-            signals.outputs.responder.connect(self.process_chunk, weak=False)
-            signals.outputs.error.connect(self.process_chunk, weak=False)
+            connections.extend([
+                execution_context.inputs.history.connected_to(self.process_chunk),
+                execution_context.inputs.incoming_message.connected_to(self.process_chunk),
+                execution_context.inputs.formatting.connected_to(self.process_chunk),
+                execution_context.outputs.formatting.connected_to(self.process_chunk),
+                execution_context.outputs.response.connected_to(self.process_chunk),
+                execution_context.outputs.responder.connected_to(self.process_chunk),
+                execution_context.outputs.error.connected_to(self.process_chunk)
+            ])
         elif self.format == 'completion':
-            signals.outputs.responder.connect(self.process_chunk, weak=False)
-            signals.outputs.response.connect(self.process_chunk, weak=False)
-            signals.outputs.error.connect(self.process_chunk, weak=False)
+            connections.extend([
+                execution_context.outputs.responder.connected_to(self.process_chunk),
+                execution_context.outputs.response.connected_to(self.process_chunk),
+                execution_context.outputs.error.connected_to(self.process_chunk)
+            ])
         elif self.format == 'text':
-            signals.outputs.response.connect(self.process_chunk, weak=False)
+            connections.append(execution_context.outputs.response.connected_to(self.process_chunk))
         else:
             raise ValueError(f"Invalid format: {self.format}")
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        signals = EXECUTION_CONTEXT.get()
-        if self.format == 'full':
-            signals.inputs.history.disconnect(self.process_chunk)
-            signals.inputs.incoming_message.disconnect(self.process_chunk)
-            signals.inputs.formatting.disconnect(self.process_chunk)
-            signals.outputs.formatting.disconnect(self.process_chunk)
-            signals.outputs.response.disconnect(self.process_chunk)
-            signals.outputs.responder.disconnect(self.process_chunk)
-            signals.outputs.error.disconnect(self.process_chunk)
-        elif self.format == 'completion':
-            signals.outputs.responder.disconnect(self.process_chunk)
-            signals.outputs.response.disconnect(self.process_chunk)
-            signals.outputs.error.disconnect(self.process_chunk)
-        elif self.format == 'text':
-            signals.outputs.response.disconnect(self.process_chunk)
-        else:
-            raise ValueError(f"Invalid format: {self.format}")
+        self.exit_stack.enter_context(stacked_contexts(connections))

@@ -7,13 +7,13 @@ from taskmates.defaults.workflows.sdk_complete import SdkComplete
 workflow_registry: dict[str, type[TaskmatesWorkflow]] = {}
 
 
-def initialize_registry(function_registry):
-    function_registry["cli_complete"] = CliComplete
-    function_registry["api_complete"] = MarkdownComplete
-    function_registry["sdk_complete"] = SdkComplete
-    function_registry["test_complete"] = MarkdownComplete
-    function_registry["markdown_complete"] = MarkdownComplete
-    function_registry["github_issue"] = GithubIssue
+def initialize_registry(registry):
+    registry["cli_complete"] = CliComplete
+    registry["sdk_complete"] = SdkComplete
+    registry["github_issue"] = GithubIssue
+    # registry["api_complete"] = MarkdownComplete
+    # registry["test_complete"] = MarkdownComplete
+    # registry["markdown_complete"] = MarkdownComplete
 
 
 initialize_registry(workflow_registry)

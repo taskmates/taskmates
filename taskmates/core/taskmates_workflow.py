@@ -1,15 +1,14 @@
 from abc import abstractmethod
 from typing import Any
 
-from taskmates.core.execution_context import ExecutionContext, execution_context
-from taskmates.core.job import Job
+from taskmates.core.execution_context import ExecutionContext, execution_context, ExecutionContext
 from taskmates.runner.contexts.contexts import Contexts
 
 
 class TaskmatesWorkflow(ExecutionContext):
     def __init__(self, *,
                  contexts: Contexts = None,
-                 jobs: dict[str, Job] | list[Job] = None,
+                 jobs: dict[str, ExecutionContext] | list[ExecutionContext] = None,
                  ):
         super().__init__(contexts=contexts, jobs=jobs)
         self.execution_context: ExecutionContext = self

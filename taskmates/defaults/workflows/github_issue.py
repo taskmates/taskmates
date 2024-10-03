@@ -3,15 +3,33 @@ import os
 import pytest
 
 from taskmates.context_builders.cli_context_builder import CliContextBuilder
+from taskmates.core.execution_context import ExecutionContext, merge_jobs
+from taskmates.core.daemons.interrupted_or_killed import InterruptedOrKilled
+from taskmates.core.daemons.return_value import ReturnValue
+from taskmates.core.daemons.interrupt_request_mediator import InterruptRequestMediator
 from taskmates.core.taskmates_workflow import TaskmatesWorkflow
 from taskmates.defaults.workflows.cli_complete import CliComplete
 from taskmates.extensions.actions.get_dotenv_values import get_dotenv_values
 from taskmates.runner.actions.chat_templates.compose_chat_from_github_issue import compose_chat_from_github_issue
 from taskmates.runner.actions.context_templates.set_up_github_token import set_up_github_token
 from taskmates.runner.actions.inputs_templates.github_issue import fetch_github_issue
+from taskmates.runner.contexts.contexts import Contexts
 
 
 class GithubIssue(TaskmatesWorkflow):
+    def __init__(self, *,
+                 contexts: Contexts = None,
+                 jobs: dict[str, ExecutionContext] | list[ExecutionContext] = None,
+                 ):
+        root_jobs = {
+            # TODO: job state
+            "interrupt_request_mediator": InterruptRequestMediator(),
+            "interrupted_or_killed": InterruptedOrKilled(),
+            # TODO: job output
+            "return_value": ReturnValue(),
+        }
+        super().__init__(contexts=contexts, jobs=merge_jobs(jobs, root_jobs))
+
     async def run(self,
                   repo_name: str,
                   issue_number: int,
