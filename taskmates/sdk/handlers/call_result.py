@@ -24,9 +24,9 @@ class CallResult(ExecutionContext):
     def __enter__(self):
         execution_context: ExecutionContext = EXECUTION_CONTEXT.get()
         self.exit_stack.enter_context(stacked_contexts([
-            execution_context.outputs.response.connected_to(self.handle_stdout_chunk),
-            execution_context.outputs.result.connected_to(self.handle_return_value),
-            execution_context.outputs.error.connected_to(self.handle_error)
+            execution_context.output_streams.response.connected_to(self.handle_stdout_chunk),
+            execution_context.output_streams.result.connected_to(self.handle_return_value),
+            execution_context.output_streams.error.connected_to(self.handle_error)
         ]))
 
     def should_raise_error(self) -> bool:

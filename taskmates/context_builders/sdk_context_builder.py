@@ -27,7 +27,7 @@ class SdkContextBuilder(ContextBuilder):
 
         contexts["client_config"].update({
             "interactive": True,
-            "format": "completion",
+            "format": "text"
         })
 
         return contexts

@@ -26,7 +26,7 @@ async def send_signal(ws, signal_type, request_id):
 
 
 # noinspection PyUnusedLocal
-def signal_handler(sig, frame):
+def handle_sig(sig, frame):
     # noinspection PyGlobalUndefined
     global received_signal
     received_signal = sig
@@ -70,8 +70,8 @@ async def perform_websocket_completion(markdown, client_config: ClientConfig):
                 "context": context
             }))
 
-            signal.signal(signal.SIGINT, signal_handler)
-            signal.signal(signal.SIGTERM, signal_handler)
+            signal.signal(signal.SIGINT, handle_sig)
+            signal.signal(signal.SIGTERM, handle_sig)
 
             receive_task = asyncio.create_task(receive_messages(websocket))
             signal_task = asyncio.create_task(handle_signals(websocket, context['request_id'], received_signal))

@@ -17,4 +17,4 @@ class MarkdownCompletionAction(TaskmatesAction):
     async def on_after_step(chat: Chat, execution_context: ExecutionContext):
         separator = compute_separator(chat['markdown_chat'])
         if separator:
-            await execution_context.outputs.response.send_async(separator)
+            await execution_context.output_streams.response.send_async(separator)

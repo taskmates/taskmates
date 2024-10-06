@@ -16,15 +16,15 @@ class MarkdownChat(ExecutionContext):
 
     def __enter__(self):
         execution_context = EXECUTION_CONTEXT.get()
-        if execution_context.workflow_inputs.get("markdown_chat") is not None:
-            self.markdown_chunks.append(execution_context.workflow_inputs.get("markdown_chat"))
+        if execution_context.inputs.get("markdown_chat") is not None:
+            self.markdown_chunks.append(execution_context.inputs.get("markdown_chat"))
 
         self.exit_stack.enter_context(stacked_contexts([
-            execution_context.inputs.history.connected_to(self.handle),
-            execution_context.inputs.incoming_message.connected_to(self.handle),
-            execution_context.inputs.formatting.connected_to(self.handle),
-            execution_context.outputs.formatting.connected_to(self.handle),
-            execution_context.outputs.response.connected_to(self.handle),
-            execution_context.outputs.responder.connected_to(self.handle),
-            execution_context.outputs.error.connected_to(self.handle)
+            execution_context.input_streams.history.connected_to(self.handle),
+            execution_context.input_streams.incoming_message.connected_to(self.handle),
+            execution_context.input_streams.formatting.connected_to(self.handle),
+            execution_context.output_streams.formatting.connected_to(self.handle),
+            execution_context.output_streams.response.connected_to(self.handle),
+            execution_context.output_streams.responder.connected_to(self.handle),
+            execution_context.output_streams.error.connected_to(self.handle)
         ]))

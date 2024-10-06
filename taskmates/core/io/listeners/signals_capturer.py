@@ -12,11 +12,8 @@ class SignalsCapturer(Daemon):
         super().__init__()
         self.captured_signals: list[tuple[str, Any]] = []
 
-    async def handle(self, signal_name: str, payload):
+    async def capture_signal(self, signal_name: str, payload):
         self.captured_signals.append((signal_name, payload))
-
-    async def signal_handler(self, signal_name: str, payload):
-        await self.handle(signal_name, payload)
 
     def __enter__(self):
         execution_context = EXECUTION_CONTEXT.get()
@@ -27,7 +24,7 @@ class SignalsCapturer(Daemon):
                 for signal_name, signal in signal_group.namespace.items():
                     connections.append(
                         signal.connected_to(
-                            functools.partial(self.signal_handler, signal_name)
+                            functools.partial(self.capture_signal, signal_name)
                         )
                     )
 

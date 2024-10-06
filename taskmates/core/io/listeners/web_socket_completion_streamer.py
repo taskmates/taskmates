@@ -28,5 +28,5 @@ class WebSocketCompletionStreamer(Daemon):
     def __enter__(self):
         execution_context = EXECUTION_CONTEXT.get()
         self.exit_stack.enter_context(stacked_contexts([
-            execution_context.outputs.stdout.connected_to(self.handle_completion)
+            execution_context.output_streams.stdout.connected_to(self.handle_completion)
         ]))

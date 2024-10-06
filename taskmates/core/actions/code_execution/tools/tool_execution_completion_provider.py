@@ -41,10 +41,10 @@ class ToolExecutionCompletionProvider(CompletionProvider):
             tool_call_obj = ToolCall.from_dict(tool_call)
 
             async def handle_interrupted(sender):
-                await execution_context.outputs.response.send_async("--- INTERRUPT ---\n")
+                await execution_context.output_streams.response.send_async("--- INTERRUPT ---\n")
 
             async def handle_killed(sender):
-                await execution_context.outputs.response.send_async("--- KILL ---\n")
+                await execution_context.output_streams.response.send_async("--- KILL ---\n")
 
             with execution_context.status.interrupted.connected_to(handle_interrupted), \
                     execution_context.status.killed.connected_to(handle_killed):
@@ -58,7 +58,7 @@ class ToolExecutionCompletionProvider(CompletionProvider):
                 finally:
                     os.chdir(original_cwd)
 
-            await execution_context.outputs.response.send_async(CodeExecution.escape_pre_output(str(return_value)))
+            await execution_context.output_streams.response.send_async(CodeExecution.escape_pre_output(str(return_value)))
             await editor_completion.append_tool_execution_footer(function_title)
 
     @staticmethod

@@ -1,7 +1,7 @@
 from taskmates.core.signals.base_signals import BaseSignals
 
 
-class InputsSignals(BaseSignals):
+class InputStreams(BaseSignals):
     def __init__(self):
         super().__init__()
         self.history = self.namespace.signal('history')

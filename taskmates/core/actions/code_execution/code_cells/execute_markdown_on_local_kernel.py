@@ -131,7 +131,7 @@ async def execute_markdown_on_local_kernel(content, markdown_path: str = None, c
                         continue
 
                     logger.debug("sending msg:", msg["msg_type"])
-                    await execution_context.outputs.code_cell_output.send_async({
+                    await execution_context.output_streams.code_cell_output.send_async({
                         "msg_id": msg_id,
                         "cell_source": source,
                         "msg": msg
@@ -196,7 +196,7 @@ async def test_code_cells_no_code():
     async def capture_chunk(chunk):
         chunks.append(chunk)
 
-    execution_context.outputs.code_cell_output.connect(capture_chunk)
+    execution_context.output_streams.code_cell_output.connect(capture_chunk)
 
     input_md = textwrap.dedent("""\
         # This is a markdown text
@@ -214,7 +214,7 @@ async def test_single_cell():
     async def capture_chunk(chunk):
         chunks.append(chunk)
 
-    execution_context.outputs.code_cell_output.connect(capture_chunk)
+    execution_context.output_streams.code_cell_output.connect(capture_chunk)
 
     input_md = textwrap.dedent("""\
         ```python .eval
@@ -236,7 +236,7 @@ async def test_multiple_cells(tmp_path):
     async def capture_chunk(chunk):
         chunks.append(chunk)
 
-    execution_context.outputs.code_cell_output.connect(capture_chunk)
+    execution_context.output_streams.code_cell_output.connect(capture_chunk)
 
     content = textwrap.dedent("""\
     One cell:
@@ -264,7 +264,7 @@ async def test_cell_error():
     async def capture_chunk(chunk):
         chunks.append(chunk)
 
-    execution_context.outputs.code_cell_output.connect(capture_chunk)
+    execution_context.output_streams.code_cell_output.connect(capture_chunk)
 
     input_md = textwrap.dedent("""\
         ```python .eval
@@ -288,7 +288,7 @@ async def test_cwd(tmp_path):
     async def capture_chunk(chunk):
         chunks.append(chunk)
 
-    execution_context.outputs.code_cell_output.connect(capture_chunk)
+    execution_context.output_streams.code_cell_output.connect(capture_chunk)
 
     # Markdown content that gets the current working directory
     input_md = textwrap.dedent(f"""\
@@ -320,7 +320,7 @@ async def test_cwd(tmp_path):
 #     async def capture_chunk(chunk):
 #         chunks.append(chunk)
 #
-#     execution_context.outputs.code_cell_output.connect(capture_chunk)
+#     execution_context.output_streams.code_cell_output.connect(capture_chunk)
 #
 #     # Markdown content that gets the current working directory
 #     input_md = textwrap.dedent(f"""\
@@ -358,7 +358,7 @@ async def test_interrupt(capsys):
     async def capture_chunk(chunk):
         chunks.append(chunk)
 
-    execution_context.outputs.code_cell_output.connect(capture_chunk)
+    execution_context.output_streams.code_cell_output.connect(capture_chunk)
 
     input_md = textwrap.dedent("""\
         ```python .eval
@@ -401,7 +401,7 @@ async def test_kill(capsys):
     async def capture_chunk(chunk):
         chunks.append(chunk)
 
-    execution_context.outputs.code_cell_output.connect(capture_chunk)
+    execution_context.output_streams.code_cell_output.connect(capture_chunk)
 
     input_md = textwrap.dedent("""\
         ```python .eval
@@ -446,7 +446,7 @@ async def test_custom_env():
     async def capture_chunk(chunk):
         chunks.append(chunk)
 
-    execution_context.outputs.code_cell_output.connect(capture_chunk)
+    execution_context.output_streams.code_cell_output.connect(capture_chunk)
 
     custom_env = os.environ.copy()
     custom_env['CUSTOM_VAR'] = 'test_value'

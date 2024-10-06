@@ -3,7 +3,7 @@ from typing import TypedDict
 from taskmates.actions.parse_markdown_chat import parse_markdown_chat
 from taskmates.core.compute_next_completion import compute_next_completion
 from taskmates.core.compute_separator import compute_separator
-from taskmates.core.execution_context import ExecutionContext, EXECUTION_CONTEXT, merge_jobs, ExecutionContext
+from taskmates.core.execution_context import EXECUTION_CONTEXT, merge_jobs, ExecutionContext
 from taskmates.core.io.listeners.markdown_chat import MarkdownChat
 from taskmates.core.rules.max_steps_check import MaxStepsCheck
 from taskmates.core.states.current_step import CurrentStep
@@ -24,8 +24,14 @@ class MarkdownComplete(TaskmatesWorkflow):
     def __init__(self, *,
                  contexts: Contexts = None,
                  jobs: dict[str, ExecutionContext] | list[ExecutionContext] = None,
+                 inputs: dict = None,
                  ):
-        super().__init__(contexts=contexts, jobs=merge_jobs(jobs, MarkdownChat()))
+        self.markdown_chat = MarkdownChat()
+        super().__init__(contexts=contexts,
+                         jobs=merge_jobs(jobs, {
+                             "markdown_chat": self.markdown_chat,
+                         }),
+                         inputs=inputs)
 
     async def run(self, markdown_chat: str) -> str:
         logger.debug(f"Starting MarkdownComplete with markdown:\n{markdown_chat}")
@@ -37,7 +43,7 @@ class MarkdownComplete(TaskmatesWorkflow):
 
         # Update state
         updated_markdown = self.jobs_registry["markdown_chat"].get()
-        chat = await self.update_job_state(updated_markdown, contexts)
+        chat = await self.get_markdown_chat(updated_markdown, contexts)
 
         job_state: MarkdownCompleteState = {
             # TODO: markdown workflow step/state
@@ -66,7 +72,7 @@ class MarkdownComplete(TaskmatesWorkflow):
 
                 # Update state
                 updated_markdown = self.jobs_registry["markdown_chat"].get()
-                chat = await self.update_job_state(updated_markdown, contexts)
+                chat = await self.get_markdown_chat(updated_markdown, contexts)
 
     async def compute_next_completion(self, run_state, chat):
         contexts = EXECUTION_CONTEXT.get().contexts
@@ -108,7 +114,7 @@ class MarkdownComplete(TaskmatesWorkflow):
             contexts['completion_opts']["max_steps"] = 1
         return chat
 
-    async def update_job_state(self, markdown_chat, contexts):
+    async def get_markdown_chat(self, markdown_chat, contexts):
         chat: Chat = await parse_markdown_chat(
             markdown_chat=markdown_chat,
             markdown_path=(contexts["completion_context"]["markdown_path"]),
@@ -123,10 +129,10 @@ class MarkdownComplete(TaskmatesWorkflow):
         logger.debug(f"Finished completion assistance")
         separator = compute_separator(chat["markdown_chat"])
         if separator:
-            await execution_context.outputs.formatting.send_async(separator)
+            await execution_context.output_streams.formatting.send_async(separator)
         if (contexts['client_config']["interactive"] and
                 not self.execution_context.jobs_registry["interrupted_or_killed"].get()):
             recipient = chat["messages"][-1]["recipient"]
             if recipient:
-                await execution_context.outputs.next_responder.send_async(f"**{recipient}>** ")
+                await execution_context.output_streams.next_responder.send_async(f"**{recipient}>** ")
         await execution_context.status.success.send_async({})

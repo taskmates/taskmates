@@ -21,9 +21,9 @@ class HistorySink(Daemon):
             self.exit_stack.callback(self.file.close)
 
         connections = [
-            execution_context.inputs.incoming_message.connected_to(self.process_chunk),
-            execution_context.inputs.formatting.connected_to(self.process_chunk),
-            execution_context.outputs.stdout.connected_to(self.process_chunk)
+            execution_context.input_streams.incoming_message.connected_to(self.process_chunk),
+            execution_context.input_streams.formatting.connected_to(self.process_chunk),
+            execution_context.output_streams.stdout.connected_to(self.process_chunk)
         ]
 
         self.exit_stack.enter_context(stacked_contexts(connections))

@@ -7,11 +7,11 @@ class IncomingMessagesFormattingProcessor(ExecutionContext):
     def __enter__(self):
         execution_context = EXECUTION_CONTEXT.get()
         self.exit_stack.enter_context(stacked_contexts([
-            execution_context.inputs.history.connected_to(self.handle),
-            execution_context.inputs.incoming_message.connected_to(self.handle)
+            execution_context.input_streams.history.connected_to(self.handle),
+            execution_context.input_streams.incoming_message.connected_to(self.handle)
         ]))
 
     async def handle(self, incoming_content):
         separator = compute_separator(incoming_content)
         if separator:
-            await EXECUTION_CONTEXT.get().inputs.formatting.send_async(separator)
+            await EXECUTION_CONTEXT.get().input_streams.formatting.send_async(separator)

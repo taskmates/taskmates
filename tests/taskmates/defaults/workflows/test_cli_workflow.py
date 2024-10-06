@@ -6,7 +6,7 @@ import pytest
 
 from taskmates.context_builders.test_context_builder import TestContextBuilder
 from taskmates.core.io.listeners.signals_capturer import SignalsCapturer
-from taskmates.core.io.listeners.stdout_completion_streamer import StdoutCompletionStreamer
+from taskmates.core.io.listeners.write_markdown_chat_to_stdout import WriteMarkdownChatToStdout
 from taskmates.defaults.workflows.cli_complete import CliComplete
 
 
@@ -66,7 +66,7 @@ async def test_format_text(tmp_path, contexts):
     signal_capturer = SignalsCapturer()
     jobs = [
         signal_capturer,
-        StdoutCompletionStreamer('text', text_output)
+        WriteMarkdownChatToStdout('text', text_output)
     ]
     contexts['client_config'].update(dict(interactive=False, format='text'))
     await CliComplete(contexts=contexts, jobs=jobs).run(history_path=str(history_file),
@@ -101,7 +101,7 @@ async def test_format_full(tmp_path, contexts):
     signal_capturer = SignalsCapturer()
     jobs = [
         signal_capturer,
-        StdoutCompletionStreamer('full', full_output)
+        WriteMarkdownChatToStdout('full', full_output)
     ]
     contexts['client_config'].update(dict(interactive=False, format='full'))
     await CliComplete(contexts=contexts, jobs=jobs).run(history_path=str(history_file),
@@ -140,7 +140,7 @@ async def test_interrupt_tool(tmp_path, contexts):
 
     captured_output = io.StringIO()
     signal_capturer = SignalsCapturer()
-    jobs = [signal_capturer, StdoutCompletionStreamer('text', captured_output)]
+    jobs = [signal_capturer, WriteMarkdownChatToStdout('text', captured_output)]
 
     cli_complete = CliComplete(contexts=contexts, jobs=jobs)
     task = asyncio.create_task(cli_complete.run(incoming_messages=[markdown_chat]))

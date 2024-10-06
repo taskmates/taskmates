@@ -1,10 +1,11 @@
 import pytest
 from typeguard import typechecked
 
-from taskmates.core.execution_context import ExecutionContext, merge_jobs
+from taskmates.context_builders.sdk_context_builder import SdkContextBuilder
+from taskmates.core.daemons.interrupt_request_mediator import InterruptRequestMediator
 from taskmates.core.daemons.interrupted_or_killed import InterruptedOrKilled
 from taskmates.core.daemons.return_value import ReturnValue
-from taskmates.core.daemons.interrupt_request_mediator import InterruptRequestMediator
+from taskmates.core.execution_context import ExecutionContext, merge_jobs
 from taskmates.core.io.listeners.signals_capturer import SignalsCapturer
 from taskmates.core.taskmates_workflow import TaskmatesWorkflow
 from taskmates.defaults.workflows.markdown_complete import MarkdownComplete
@@ -18,10 +19,8 @@ class SdkComplete(TaskmatesWorkflow):
                  jobs: dict[str, ExecutionContext] | list[ExecutionContext] = None,
                  ):
         root_jobs = {
-            # TODO: job state
             "interrupt_request_mediator": InterruptRequestMediator(),
             "interrupted_or_killed": InterruptedOrKilled(),
-            # TODO: job output
             "return_value": ReturnValue(),
         }
 
@@ -30,16 +29,25 @@ class SdkComplete(TaskmatesWorkflow):
 
     @typechecked
     async def run(self, markdown_chat: str):
-        await MarkdownComplete().run(
-            markdown_chat=markdown_chat
-        )
+        steps = {
+            "markdown_complete": MarkdownComplete()
+        }
+
+        await steps["markdown_complete"].run(**{"markdown_chat": markdown_chat})
 
         return self.jobs_registry["call_result"].get_return_value()
 
 
-@pytest.mark.asyncio
+@pytest.fixture(autouse=True)
+def contexts(taskmates_runtime, tmp_path):
+    contexts = SdkContextBuilder({
+        "model": "quote",
+    }).build()
+    return contexts
+
+
 async def test_sdk_workflow(tmp_path, contexts):
-    markdown = "Test markdown for SDK workflow"
+    markdown = "Hello."
 
     signal_capturer = SignalsCapturer()
     jobs = [signal_capturer]
@@ -50,4 +58,4 @@ async def test_sdk_workflow(tmp_path, contexts):
     # filtered_signals = signal_capturer.captured_signals
     # assert filtered_signals == ()
     #
-    assert result == '\n> Test markdown for SDK workflow\n\n'
+    assert result == '\n> Hello.\n\n'

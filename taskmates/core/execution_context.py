@@ -8,10 +8,9 @@ from blinker import Namespace, Signal
 from opentelemetry import trace
 from ordered_set import OrderedSet
 
-from taskmates.core.signals.artifact_signals import ArtifactSignals
 from taskmates.core.signals.control_signals import ControlSignals
-from taskmates.core.signals.inputs_signals import InputsSignals
-from taskmates.core.signals.outputs_signals import OutputsSignals
+from taskmates.core.signals.input_streams import InputStreams
+from taskmates.core.signals.output_streams import OutputStreams
 from taskmates.core.signals.status_signals import StatusSignals
 from taskmates.lib.context_.temp_context import temp_context
 from taskmates.lib.contextlib_.stacked_contexts import stacked_contexts
@@ -30,6 +29,7 @@ class ExecutionContext(AbstractContextManager):
                  name: str = None,
                  contexts: Contexts = None,
                  jobs: dict[str, 'ExecutionContext'] | list['ExecutionContext'] = None,
+                 inputs: dict = None,
                  ):
         self.namespace = Namespace()
         self.parent: ExecutionContext = EXECUTION_CONTEXT.get(None)
@@ -40,33 +40,32 @@ class ExecutionContext(AbstractContextManager):
         self.name = name
 
         self.contexts: Contexts = copy.deepcopy(coalesce(contexts, getattr(self.parent, 'contexts', {})))
-
-        # TODO: Move to writer
-
-        # TODO: Move to Interrupt*
         self.control = getattr(self.parent, 'control', ControlSignals())
         self.status = getattr(self.parent, 'status', StatusSignals())
-
-        # TODO: Move to CurrentMarkdown
-        # - how about history?
-        #   - markdown writes, signal reads
-        self.inputs = getattr(self.parent, 'inputs', InputsSignals())
-        self.outputs = getattr(self.parent, 'outputs', OutputsSignals())
-
-        self.artifact = getattr(self.parent, 'artifacts', ArtifactSignals())
+        self.input_streams = getattr(self.parent, 'input_streams', InputStreams())
+        self.output_streams = getattr(self.parent, 'output_streams', OutputStreams())
 
         # ---
 
-        self.workflow_inputs = {}
-
-        self.jobs = jobs_to_dict(jobs)
-        self.jobs_registry = getattr(self.parent, 'jobs_registry', {})
-        self.jobs_registry[self.name] = self
-        self.jobs_registry.update(self.jobs)
+        self.inputs = inputs or {}
 
         # TODO: local vs inherited context
         # self.inputs: dict = {}
         # self.outputs: dict = {}
+
+        self.jobs = jobs_to_dict(jobs)
+        self.jobs_registry = getattr(self.parent, 'jobs_registry', {})
+
+        # Check and add each job from self.jobs
+        for job_name, job in self.jobs.items():
+            self.jobs_registry[job_name] = job
+            # TODO: reenable
+            # self._check_and_add_job(job_name, job)
+
+    def _check_and_add_job(self, job_name: str, job: 'ExecutionContext'):
+        if job_name in self.jobs_registry:
+            raise ValueError(f"Job '{job_name}' is already in the registry. Duplicate job names are not allowed.")
+        self.jobs_registry[job_name] = job
 
     # def assign_context(self, value, parent_value, deep_copy=False):
     #     if value is not None:
@@ -116,10 +115,10 @@ def coalesce(*args):
 def execution_context(func):
     @functools.wraps(func)
     async def wrapper(self, **kwargs):
-        self.workflow_inputs = kwargs
+        self.inputs.update(kwargs)
         with tracer().start_as_current_span(format_span_name(func, self), kind=trace.SpanKind.INTERNAL):
             with self:
-                return await func(self, **kwargs)
+                return await func(self, **self.inputs)
 
     return wrapper
 

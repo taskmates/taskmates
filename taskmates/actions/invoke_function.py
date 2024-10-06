@@ -16,7 +16,7 @@ async def stream_output(stream_name, stream, execution_context: ExecutionContext
         if not line:
             break
         with restore_stdout_and_stderr():
-            await execution_context.outputs.response.send_async(line)
+            await execution_context.output_streams.response.send_async(line)
 
 
 async def invoke_function(function, arguments, context: CompletionContext, execution_context: ExecutionContext):

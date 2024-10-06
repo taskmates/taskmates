@@ -13,5 +13,5 @@ class EditorAppender:
         if not sanitized:
             return
 
-        await self.execution_context.outputs.response.send_async(sanitized)
+        await self.execution_context.output_streams.response.send_async(sanitized)
 

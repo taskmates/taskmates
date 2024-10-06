@@ -96,7 +96,7 @@ class AsyncAnthropicOpenAIAdapter:
                 try:
                     # TODO: Add tracing
                     signals = EXECUTION_CONTEXT.get()
-                    await signals.artifact.artifact.send_async(
+                    await signals.output_streams.artifact.send_async(
                         {"name": "anthropic_request_payload.json", "content": payload})
                     chat_completion = await resource.create(**payload)
                     id, created, model_name = None, None, model

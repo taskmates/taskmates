@@ -9,7 +9,7 @@ from taskmates.core.daemons.interrupt_request_mediator import InterruptRequestMe
 from taskmates.core.io.emitters.sig_int_and_sig_term_controller import SigIntAndSigTermController
 from taskmates.core.io.listeners.history_sink import HistorySink
 from taskmates.core.io.listeners.markdown_chat import MarkdownChat
-from taskmates.core.io.listeners.stdout_completion_streamer import StdoutCompletionStreamer
+from taskmates.core.io.listeners.write_markdown_chat_to_stdout import WriteMarkdownChatToStdout
 from taskmates.core.io.mediators.formatting_processor import IncomingMessagesFormattingProcessor
 from taskmates.core.taskmates_workflow import TaskmatesWorkflow
 from taskmates.defaults.workflows.markdown_complete import MarkdownComplete
@@ -51,7 +51,7 @@ class CliComplete(TaskmatesWorkflow):
 
         jobs = [
             SigIntAndSigTermController(),
-            StdoutCompletionStreamer(response_format),
+            WriteMarkdownChatToStdout(response_format),
             HistorySink(history_path)
         ]
 
@@ -66,7 +66,7 @@ class CliComplete(TaskmatesWorkflow):
         # # TODO: move this to EXECUTION_ENVIRONMENT
         # except Exception as e:
         #     signals = EXECUTION_CONTEXT.get()
-        #     await signals.outputs.error.send_async(e)
+        #     await signals.output_streams.error.send_async(e)
         #     raise e
         #     logger.error(e)
 
@@ -83,10 +83,10 @@ class CliComplete(TaskmatesWorkflow):
             if history_path:
                 history = read_history(history_path)
                 if history:
-                    await signals.inputs.history.send_async(history)
+                    await signals.input_streams.history.send_async(history)
 
             for incoming_message in incoming_messages:
                 if incoming_message:
-                    await signals.inputs.incoming_message.send_async(incoming_message)
+                    await signals.input_streams.incoming_message.send_async(incoming_message)
         markdown_chat = incoming_markdown.get()
         return markdown_chat

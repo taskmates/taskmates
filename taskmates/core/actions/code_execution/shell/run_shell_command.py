@@ -3,23 +3,23 @@ import os
 import platform
 import signal
 import subprocess
+import sys
+from typing import TextIO
 
 import pytest
-import sys
-
 
 from taskmates.core.execution_context import EXECUTION_CONTEXT, ExecutionContext
 from taskmates.lib.restore_stdout_and_stderr import restore_stdout_and_stderr
 
 
 # TODO: review this and the duplication with invoke_function
-async def stream_output(fd, stream, signals):
+async def stream_output(fd, stream: TextIO, execution_context: ExecutionContext):
     while True:
         line = await asyncio.get_event_loop().run_in_executor(None, stream.readline)
         if not line:
             break
         with restore_stdout_and_stderr():
-            await signals.outputs.response.send_async(line)
+            await execution_context.output_streams.response.send_async(line)
 
 
 async def run_shell_command(cmd: str) -> str:
@@ -78,39 +78,39 @@ async def run_shell_command(cmd: str) -> str:
 
 @pytest.mark.asyncio
 async def test_run_shell_command(capsys):
-    signals = EXECUTION_CONTEXT.get()
+    execution_context = EXECUTION_CONTEXT.get()
     chunks = []
 
     async def capture_chunk(chunk):
         chunks.append(chunk)
 
-    signals.outputs.response.connect(capture_chunk)
+    execution_context.output_streams.response.connect(capture_chunk)
 
     if platform.system() == "Windows":
         cmd = "echo Hello, World!"
     else:
         cmd = "echo 'Hello, World!'"
 
-    returncode = await run_shell_command(cmd)
+    return_code = await run_shell_command(cmd)
 
-    assert returncode == '\nExit Code: 0'
+    assert return_code == '\nExit Code: 0'
     assert "".join(chunks).strip() == "Hello, World!"
 
 
 @pytest.mark.asyncio
 async def test_run_shell_command_interrupt(capsys):
-    signals = EXECUTION_CONTEXT.get()
+    execution_context = EXECUTION_CONTEXT.get()
     chunks = []
 
     async def capture_chunk(chunk):
         chunks.append(chunk)
 
-    signals.outputs.response.connect(capture_chunk)
+    execution_context.output_streams.response.connect(capture_chunk)
 
     async def send_interrupt():
         while len(chunks) < 5:
             await asyncio.sleep(0.1)
-        await signals.control.interrupt.send_async(None)
+        await execution_context.control.interrupt.send_async(None)
 
     interrupt_task = asyncio.create_task(send_interrupt())
 
@@ -119,31 +119,31 @@ async def test_run_shell_command_interrupt(capsys):
     else:
         cmd = "seq 5; sleep 1; seq 6 10"
 
-    returncode = await run_shell_command(cmd)
+    return_code = await run_shell_command(cmd)
 
     await interrupt_task
 
     if platform.system() == "Windows":
-        assert returncode == '\nExit Code: 1'
+        assert return_code == '\nExit Code: 1'
     else:
-        assert returncode == f'\nExit Code: {-signal.SIGINT.value}'
+        assert return_code == f'\nExit Code: {-signal.SIGINT.value}'
     assert "".join(chunks).strip() == "1\n2\n3\n4\n5"
 
 
 @pytest.mark.asyncio
 async def test_run_shell_command_kill(capsys):
-    signals = EXECUTION_CONTEXT.get()
+    execution_context = EXECUTION_CONTEXT.get()
     chunks = []
 
     async def capture_chunk(chunk):
         chunks.append(chunk)
 
-    signals.outputs.response.connect(capture_chunk)
+    execution_context.output_streams.response.connect(capture_chunk)
 
     async def send_kill():
         while len(chunks) < 3:
             await asyncio.sleep(0.1)
-        await signals.control.kill.send_async(None)
+        await execution_context.control.kill.send_async(None)
 
     kill_task = asyncio.create_task(send_kill())
 

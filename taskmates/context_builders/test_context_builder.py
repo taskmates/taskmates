@@ -24,12 +24,13 @@ class TestContextBuilder(ContextBuilder):
             "model": "quote",
             "inputs": {},
             "max_steps": 1,
-            "workflow": "test_complete"
+            "workflow": "test_complete",
         })
 
         contexts["client_config"].update({
             "interactive": False,
             "taskmates_dirs": [],
+            "format": "completion"
         })
 
         return contexts

@@ -32,7 +32,7 @@ class ChatCompletionProvider(CompletionProvider):
             choice = chat_completion_chunk.model_dump()['choices'][0]
             await chat_completion_editor_completion.process_chat_completion_chunk(choice)
 
-        with execution_context.outputs.chat_completion.connected_to(restream_completion_chunk):
+        with execution_context.output_streams.chat_completion.connected_to(restream_completion_chunk):
             taskmates_dirs = contexts["client_config"]["taskmates_dirs"]
             model_alias = contexts["completion_opts"]["model"]
             model_conf = get_model_conf(model_alias=model_alias,
@@ -74,6 +74,6 @@ class ChatCompletionProvider(CompletionProvider):
                 **({"tool_choice": tool_choice} if tool_choice is not None else {})
             )
 
-            await execution_context.artifact.artifact.send_async({"name": "parsed_chat.json", "content": chat})
+            await execution_context.output_streams.artifact.send_async({"name": "parsed_chat.json", "content": chat})
 
             return await api_request(client, messages, model_conf, model_params, execution_context)
