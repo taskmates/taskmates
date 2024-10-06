@@ -3,7 +3,8 @@ import asyncio
 from loguru import logger
 from typeguard import typechecked
 
-from taskmates.core.execution_context import EXECUTION_CONTEXT, merge_jobs, ExecutionContext
+from taskmates.core.run import RUN, Run
+from taskmates.core.merge_jobs import merge_jobs
 from taskmates.core.daemons.interrupted_or_killed import InterruptedOrKilled
 from taskmates.core.daemons.return_value import ReturnValue
 from taskmates.core.daemons.interrupt_request_mediator import InterruptRequestMediator
@@ -15,21 +16,19 @@ from taskmates.runner.contexts.contexts import Contexts
 class ApiComplete(TaskmatesWorkflow):
     def __init__(self, *,
                  contexts: Contexts = None,
-                 jobs: dict[str, ExecutionContext] | list[ExecutionContext] = None,
+                 jobs: dict[str, Run] | list[Run] = None,
                  ):
-        root_jobs = {
-            # TODO: job state
+        control_flow_jobs = {
             "interrupt_request_mediator": InterruptRequestMediator(),
             "interrupted_or_killed": InterruptedOrKilled(),
-            # TODO: job output
             "return_value": ReturnValue(),
         }
-        super().__init__(contexts=contexts, jobs=merge_jobs(jobs, root_jobs))
+        super().__init__(contexts=contexts, jobs=merge_jobs(jobs, control_flow_jobs))
 
     @typechecked
     async def run(self, payload):
-        signals = EXECUTION_CONTEXT.get()
-        contexts = EXECUTION_CONTEXT.get().contexts
+        signals = RUN.get()
+        contexts = RUN.get().contexts
         try:
             await signals.output_streams.artifact.send_async(
                 {"name": "websockets_api_payload.json", "content": payload})

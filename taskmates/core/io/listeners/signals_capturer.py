@@ -2,7 +2,7 @@ import functools
 from typing import Any
 
 from taskmates.core.daemon import Daemon
-from taskmates.core.execution_context import EXECUTION_CONTEXT
+from taskmates.core.run import RUN
 from taskmates.core.signals.base_signals import BaseSignals
 from taskmates.lib.contextlib_.stacked_contexts import stacked_contexts
 
@@ -16,10 +16,10 @@ class SignalsCapturer(Daemon):
         self.captured_signals.append((signal_name, payload))
 
     def __enter__(self):
-        execution_context = EXECUTION_CONTEXT.get()
+        run = RUN.get()
         connections = []
 
-        for signal_group_name, signal_group in vars(execution_context).items():
+        for signal_group_name, signal_group in vars(run).items():
             if isinstance(signal_group, BaseSignals):
                 for signal_name, signal in signal_group.namespace.items():
                     connections.append(

@@ -3,10 +3,11 @@ import os
 import pytest
 
 from taskmates.context_builders.cli_context_builder import CliContextBuilder
-from taskmates.core.execution_context import ExecutionContext, merge_jobs
+from taskmates.core.daemons.interrupt_request_mediator import InterruptRequestMediator
 from taskmates.core.daemons.interrupted_or_killed import InterruptedOrKilled
 from taskmates.core.daemons.return_value import ReturnValue
-from taskmates.core.daemons.interrupt_request_mediator import InterruptRequestMediator
+from taskmates.core.run import Run
+from taskmates.core.merge_jobs import merge_jobs
 from taskmates.core.taskmates_workflow import TaskmatesWorkflow
 from taskmates.defaults.workflows.cli_complete import CliComplete
 from taskmates.extensions.actions.get_dotenv_values import get_dotenv_values
@@ -19,16 +20,14 @@ from taskmates.runner.contexts.contexts import Contexts
 class GithubIssue(TaskmatesWorkflow):
     def __init__(self, *,
                  contexts: Contexts = None,
-                 jobs: dict[str, ExecutionContext] | list[ExecutionContext] = None,
+                 jobs: dict[str, Run] | list[Run] = None,
                  ):
-        root_jobs = {
-            # TODO: job state
+        control_flow_jobs = {
             "interrupt_request_mediator": InterruptRequestMediator(),
             "interrupted_or_killed": InterruptedOrKilled(),
-            # TODO: job output
             "return_value": ReturnValue(),
         }
-        super().__init__(contexts=contexts, jobs=merge_jobs(jobs, root_jobs))
+        super().__init__(contexts=contexts, jobs=merge_jobs(jobs, control_flow_jobs))
 
     async def run(self,
                   repo_name: str,
@@ -47,7 +46,7 @@ class GithubIssue(TaskmatesWorkflow):
 
         # TODO: CHANGE CWD TO DEMO
         # job
-        await CliComplete(contexts=self.execution_context.contexts).run(
+        await CliComplete(contexts=self.run.contexts).run(
             incoming_messages=[chat_content + "\n\nHey @demo_dev please have a look \n\n"],
             response_format="full",
             history_path=history_path)

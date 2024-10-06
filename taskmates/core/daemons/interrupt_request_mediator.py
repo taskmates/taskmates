@@ -1,7 +1,7 @@
 from loguru import logger
 
 from taskmates.core.daemon import Daemon
-from taskmates.core.execution_context import EXECUTION_CONTEXT
+from taskmates.core.run import RUN
 from taskmates.lib.contextlib_.stacked_contexts import stacked_contexts
 
 
@@ -14,15 +14,15 @@ class InterruptRequestMediator(Daemon):
         if self.interrupt_requested:
             logger.info("Interrupt requested again. Killing the request.")
             # TODO: Send this to the correct Task Signal
-            await EXECUTION_CONTEXT.get().control.kill.send_async({})
+            await RUN.get().control.kill.send_async({})
         else:
             logger.info("Interrupt requested")
             # TODO: Send this to the correct Task Signal
-            await EXECUTION_CONTEXT.get().control.interrupt.send_async({})
+            await RUN.get().control.interrupt.send_async({})
             self.interrupt_requested = True
 
     def __enter__(self):
-        execution_context = EXECUTION_CONTEXT.get()
+        run = RUN.get()
         self.exit_stack.enter_context(stacked_contexts([
-            execution_context.control.interrupt_request.connected_to(self.handle_interrupt_request)
+            run.control.interrupt_request.connected_to(self.handle_interrupt_request)
         ]))

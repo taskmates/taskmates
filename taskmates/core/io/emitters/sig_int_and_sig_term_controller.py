@@ -2,7 +2,7 @@ import asyncio
 import signal
 
 from taskmates.core.daemon import Daemon
-from taskmates.core.execution_context import EXECUTION_CONTEXT, ExecutionContext
+from taskmates.core.run import RUN, Run
 
 
 class SigIntAndSigTermController(Daemon):
@@ -10,10 +10,10 @@ class SigIntAndSigTermController(Daemon):
         super().__init__()
         self.received_signal = None
         self.task = None
-        self.execution_context: ExecutionContext
+        self.run: Run
 
     def __enter__(self):
-        self.execution_context = EXECUTION_CONTEXT.get()
+        self.run = RUN.get()
         signal.signal(signal.SIGINT, self.handle)
         signal.signal(signal.SIGTERM, self.handle)
         self.task = asyncio.create_task(self.run_loop())
@@ -32,11 +32,11 @@ class SigIntAndSigTermController(Daemon):
                 print(flush=True)
                 print("Interrupting...", flush=True)
                 print("Press Ctrl+C again to kill", flush=True)
-                await self.execution_context.control.interrupt_request.send_async({})
+                await self.run.control.interrupt_request.send_async({})
                 await asyncio.sleep(5)
                 self.received_signal = None
             elif self.received_signal == signal.SIGTERM:
-                await self.execution_context.control.kill.send_async({})
+                await self.run.control.kill.send_async({})
                 await asyncio.sleep(5)
                 break
             await asyncio.sleep(0.1)

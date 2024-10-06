@@ -1,15 +1,15 @@
 import pytest
-from typeguard import typechecked
 
-from taskmates.context_builders.test_context_builder import TestContextBuilder
+from taskmates.context_builders.sdk_context_builder import SdkContextBuilder
 from taskmates.core.io.listeners.signals_capturer import SignalsCapturer
 from taskmates.defaults.workflows.sdk_complete import SdkComplete
 
 
 @pytest.fixture(autouse=True)
-def contexts(taskmates_runtime, tmp_path):
-    contexts = TestContextBuilder(tmp_path).build()
-    contexts["completion_opts"]["workflow"] = "sdk_complete"
+def contexts(taskmates_runtime):
+    contexts = SdkContextBuilder({
+        "model": "quote",
+    }).build()
     return contexts
 
 
@@ -23,7 +23,6 @@ async def test_sdk_workflow(tmp_path, contexts):
     result = await workflow.run(markdown_chat=markdown)
 
     assert result == '\n> Test markdown for SDK workflow\n\n'
-
 
 # TODO
 # @pytest.mark.asyncio

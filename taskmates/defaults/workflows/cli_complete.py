@@ -2,10 +2,11 @@ import os
 
 from typeguard import typechecked
 
-from taskmates.core.execution_context import EXECUTION_CONTEXT, ExecutionContext, merge_jobs
+from taskmates.core.daemons.interrupt_request_mediator import InterruptRequestMediator
 from taskmates.core.daemons.interrupted_or_killed import InterruptedOrKilled
 from taskmates.core.daemons.return_value import ReturnValue
-from taskmates.core.daemons.interrupt_request_mediator import InterruptRequestMediator
+from taskmates.core.run import RUN, Run
+from taskmates.core.merge_jobs import merge_jobs
 from taskmates.core.io.emitters.sig_int_and_sig_term_controller import SigIntAndSigTermController
 from taskmates.core.io.listeners.history_sink import HistorySink
 from taskmates.core.io.listeners.markdown_chat import MarkdownChat
@@ -30,16 +31,14 @@ def read_history(history_path):
 class CliComplete(TaskmatesWorkflow):
     def __init__(self, *,
                  contexts: Contexts = None,
-                 jobs: dict[str, ExecutionContext] | list[ExecutionContext] = None,
+                 jobs: dict[str, Run] | list[Run] = None,
                  ):
-        root_jobs = {
-            # TODO: job state
+        control_flow_jobs = {
             "interrupt_request_mediator": InterruptRequestMediator(),
             "interrupted_or_killed": InterruptedOrKilled(),
-            # TODO: job output
             "return_value": ReturnValue(),
         }
-        super().__init__(contexts=contexts, jobs=merge_jobs(jobs, root_jobs))
+        super().__init__(contexts=contexts, jobs=merge_jobs(jobs, control_flow_jobs))
 
     @typechecked
     async def run(self,
@@ -56,7 +55,8 @@ class CliComplete(TaskmatesWorkflow):
         ]
 
         # TODO: build a new Contexts object here
-        result = await MarkdownComplete(contexts=self.execution_context.contexts, jobs=jobs).run(
+        run = RUN.get()
+        result = await MarkdownComplete(contexts=run.contexts, jobs=jobs).run(
             markdown_chat=markdown_chat
         )
 
@@ -65,13 +65,13 @@ class CliComplete(TaskmatesWorkflow):
         # try:
         # # TODO: move this to EXECUTION_ENVIRONMENT
         # except Exception as e:
-        #     signals = EXECUTION_CONTEXT.get()
+        #     signals = RUN.get()
         #     await signals.output_streams.error.send_async(e)
         #     raise e
         #     logger.error(e)
 
-    async def get_incoming_markdown(self, history_path, incoming_messages):
-        signals = EXECUTION_CONTEXT.get()
+    async def get_incoming_markdown(self, history_path, incoming_messages) -> str:
+        signals = RUN.get()
         incoming_markdown = MarkdownChat()
         cli_history_jobs = [
             incoming_markdown,
@@ -88,5 +88,5 @@ class CliComplete(TaskmatesWorkflow):
             for incoming_message in incoming_messages:
                 if incoming_message:
                     await signals.input_streams.incoming_message.send_async(incoming_message)
-        markdown_chat = incoming_markdown.get()
+        markdown_chat = incoming_markdown.get()["full"]
         return markdown_chat

@@ -9,7 +9,7 @@ from taskmates.core.actions.chat_completion.openai_adapters.anthropic_openai_ada
     ChatCompletionPreProcessor
 from taskmates.core.actions.chat_completion.openai_adapters.anthropic_openai_adapter.response.chat_completion_with_username import \
     ChatCompletionWithUsername
-from taskmates.core.execution_context import EXECUTION_CONTEXT, ExecutionContext
+from taskmates.core.run import RUN, Run
 from taskmates.formats.markdown.metadata.get_model_client import get_model_client
 from taskmates.lib.not_set.not_set import NOT_SET
 from taskmates.lib.opentelemetry_.tracing import tracer
@@ -18,17 +18,17 @@ from taskmates.server.streamed_response import StreamedResponse
 
 @typechecked
 async def api_request(client, messages: list, model_conf: dict, model_params: dict,
-                      execution_context: ExecutionContext) -> dict:
+                      run: Run) -> dict:
     streamed_response = StreamedResponse()
-    execution_context.output_streams.chat_completion.connect(streamed_response.accept, weak=False)
+    run.output_streams.chat_completion.connect(streamed_response.accept, weak=False)
 
-    if execution_context.output_streams.chat_completion.receivers:
+    if run.output_streams.chat_completion.receivers:
         model_conf.update({"stream": True})
 
     llm_client_args = get_llm_client_args(messages, model_conf, model_params)
 
     with tracer().start_as_current_span(name="chat-completion"):
-        await execution_context.output_streams.artifact.send_async(
+        await run.output_streams.artifact.send_async(
             {"name": "openai_request_payload.json", "content": llm_client_args})
 
         interrupted_or_killed = False
@@ -37,16 +37,16 @@ async def api_request(client, messages: list, model_conf: dict, model_params: di
             nonlocal interrupted_or_killed
             interrupted_or_killed = True
             await chat_completion.response.aclose()
-            await execution_context.status.interrupted.send_async(None)
+            await run.status.interrupted.send_async(None)
 
         async def kill_handler(sender):
             nonlocal interrupted_or_killed
             interrupted_or_killed = True
             await chat_completion.response.aclose()
-            await execution_context.status.killed.send_async(None)
+            await run.status.killed.send_async(None)
 
-        with execution_context.control.interrupt.connected_to(interrupt_handler), \
-                execution_context.control.kill.connected_to(kill_handler):
+        with run.control.interrupt.connected_to(interrupt_handler), \
+                run.control.kill.connected_to(kill_handler):
             chat_completion = await client.chat.completions.create(**llm_client_args)
 
             if model_conf["stream"]:
@@ -60,22 +60,22 @@ async def api_request(client, messages: list, model_conf: dict, model_params: di
                                 content: str = choice.delta.content
                                 # TODO move this to ChatCompletionPreProcessor
                                 choice.delta.content = content.replace("\r", "")
-                        await execution_context.output_streams.chat_completion.send_async(chat_completion_chunk)
+                        await run.output_streams.chat_completion.send_async(chat_completion_chunk)
 
                 except asyncio.CancelledError:
-                    await execution_context.output_streams.artifact.send_async(
+                    await run.output_streams.artifact.send_async(
                         {"name": "response_cancelled.json", "content": str(True)})
                     await chat_completion.response.aclose()
                     raise
                 except ReadError as e:
-                    await execution_context.output_streams.artifact.send_async(
+                    await run.output_streams.artifact.send_async(
                         {"name": "response_read_error.json", "content": str(e)})
 
                 response = streamed_response.payload
             else:
                 response = chat_completion.model_dump()
 
-    await execution_context.output_streams.artifact.send_async({"name": "response.json", "content": response})
+    await run.output_streams.artifact.send_async({"name": "response.json", "content": response})
 
     if not response['choices']:
         # NOTE: this seems to happen when the request is cancelled before any response is received
@@ -99,7 +99,7 @@ def get_llm_client_args(messages, model_conf, model_params):
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_api_request_happy_path(execution_context):
+async def test_api_request_happy_path(run):
     # Define the model configuration and parameters as per your actual use case
     model_conf = {
         "model": "echo"
@@ -113,9 +113,9 @@ async def test_api_request_happy_path(execution_context):
     ]
 
     # Call the api_request function with the defined parameters
-    contexts = EXECUTION_CONTEXT.get().contexts
+    contexts = RUN.get().contexts
     client = get_model_client(model_conf["model"], contexts["client_config"]["taskmates_dirs"])
-    response = await api_request(client, messages, model_conf, model_params, execution_context)
+    response = await api_request(client, messages, model_conf, model_params, run)
 
     # Assert that the response is as expected
     assert 'choices' in response
@@ -127,7 +127,7 @@ async def test_api_request_happy_path(execution_context):
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_api_request_with_complex_payload(execution_context):
+async def test_api_request_with_complex_payload(run):
     # Define the complex payload based on the JSON you provided
     messages = [
         {
@@ -199,9 +199,9 @@ async def test_api_request_with_complex_payload(execution_context):
     # and the OpenAI API key is set in the environment or configuration
 
     # Call the api_request function with the defined parameters
-    contexts = EXECUTION_CONTEXT.get().contexts
+    contexts = RUN.get().contexts
     client = get_model_client(model_conf["model"], contexts["client_config"]["taskmates_dirs"])
-    response = await api_request(client, messages, model_conf, model_params, execution_context)
+    response = await api_request(client, messages, model_conf, model_params, run)
 
     # Assert that the response is as expected
     assert 'choices' in response

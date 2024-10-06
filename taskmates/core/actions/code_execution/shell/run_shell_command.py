@@ -8,18 +8,18 @@ from typing import TextIO
 
 import pytest
 
-from taskmates.core.execution_context import EXECUTION_CONTEXT, ExecutionContext
+from taskmates.core.run import RUN, Run
 from taskmates.lib.restore_stdout_and_stderr import restore_stdout_and_stderr
 
 
 # TODO: review this and the duplication with invoke_function
-async def stream_output(fd, stream: TextIO, execution_context: ExecutionContext):
+async def stream_output(fd, stream: TextIO, run: Run):
     while True:
         line = await asyncio.get_event_loop().run_in_executor(None, stream.readline)
         if not line:
             break
         with restore_stdout_and_stderr():
-            await execution_context.output_streams.response.send_async(line)
+            await run.output_streams.response.send_async(line)
 
 
 async def run_shell_command(cmd: str) -> str:
@@ -30,7 +30,7 @@ async def run_shell_command(cmd: str) -> str:
     :return: the output of the command
     """
 
-    execution_context: ExecutionContext = EXECUTION_CONTEXT.get()
+    run: Run = RUN.get()
 
     if platform.system() == "Windows":
         process = subprocess.Popen(
@@ -56,19 +56,19 @@ async def run_shell_command(cmd: str) -> str:
             process.send_signal(signal.CTRL_BREAK_EVENT)
         else:
             os.killpg(os.getpgid(process.pid), signal.SIGINT)
-        await execution_context.status.interrupted.send_async(None)
+        await run.status.interrupted.send_async(None)
 
     async def kill_handler(sender):
         if platform.system() == "Windows":
             process.kill()
         else:
             os.killpg(os.getpgid(process.pid), signal.SIGKILL)
-        await execution_context.status.killed.send_async(None)
+        await run.status.killed.send_async(None)
 
-    with execution_context.control.interrupt.connected_to(interrupt_handler), \
-            execution_context.control.kill.connected_to(kill_handler):
-        stdout_task = asyncio.create_task(stream_output(sys.stdout, process.stdout, execution_context))
-        stderr_task = asyncio.create_task(stream_output(sys.stderr, process.stderr, execution_context))
+    with run.control.interrupt.connected_to(interrupt_handler), \
+            run.control.kill.connected_to(kill_handler):
+        stdout_task = asyncio.create_task(stream_output(sys.stdout, process.stdout, run))
+        stderr_task = asyncio.create_task(stream_output(sys.stderr, process.stderr, run))
 
         await asyncio.wait([stdout_task, stderr_task])
 
@@ -78,13 +78,13 @@ async def run_shell_command(cmd: str) -> str:
 
 @pytest.mark.asyncio
 async def test_run_shell_command(capsys):
-    execution_context = EXECUTION_CONTEXT.get()
+    run = RUN.get()
     chunks = []
 
     async def capture_chunk(chunk):
         chunks.append(chunk)
 
-    execution_context.output_streams.response.connect(capture_chunk)
+    run.output_streams.response.connect(capture_chunk)
 
     if platform.system() == "Windows":
         cmd = "echo Hello, World!"
@@ -99,18 +99,18 @@ async def test_run_shell_command(capsys):
 
 @pytest.mark.asyncio
 async def test_run_shell_command_interrupt(capsys):
-    execution_context = EXECUTION_CONTEXT.get()
+    run = RUN.get()
     chunks = []
 
     async def capture_chunk(chunk):
         chunks.append(chunk)
 
-    execution_context.output_streams.response.connect(capture_chunk)
+    run.output_streams.response.connect(capture_chunk)
 
     async def send_interrupt():
         while len(chunks) < 5:
             await asyncio.sleep(0.1)
-        await execution_context.control.interrupt.send_async(None)
+        await run.control.interrupt.send_async(None)
 
     interrupt_task = asyncio.create_task(send_interrupt())
 
@@ -132,18 +132,18 @@ async def test_run_shell_command_interrupt(capsys):
 
 @pytest.mark.asyncio
 async def test_run_shell_command_kill(capsys):
-    execution_context = EXECUTION_CONTEXT.get()
+    run = RUN.get()
     chunks = []
 
     async def capture_chunk(chunk):
         chunks.append(chunk)
 
-    execution_context.output_streams.response.connect(capture_chunk)
+    run.output_streams.response.connect(capture_chunk)
 
     async def send_kill():
         while len(chunks) < 3:
             await asyncio.sleep(0.1)
-        await execution_context.control.kill.send_async(None)
+        await run.control.kill.send_async(None)
 
     kill_task = asyncio.create_task(send_kill())
 

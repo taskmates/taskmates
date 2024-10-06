@@ -6,7 +6,7 @@ import pyparsing
 import time
 from typeguard import typechecked
 
-from taskmates.core.execution_context import EXECUTION_CONTEXT
+from taskmates.core.run import RUN
 from taskmates.formats.markdown.processing.process_image_transclusion import render_image_transclusion
 from taskmates.formats.openai.get_text_content import get_text_content
 from taskmates.formats.openai.set_text_content import set_text_content
@@ -21,7 +21,7 @@ async def parse_front_matter_and_messages(source_file: Path,
                                           content: str,
                                           implicit_role: str) -> Tuple[
     List[Dict[str, Union[str, list[dict]]]], Dict[str, any]]:
-    signals = EXECUTION_CONTEXT.get()
+    signals = RUN.get()
     transclusions_base_dir = source_file.parent
 
     messages: list[dict] = []

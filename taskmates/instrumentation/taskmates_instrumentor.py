@@ -1,4 +1,4 @@
-from taskmates.core.execution_context import ExecutionContext
+from taskmates.core.run import Run
 from taskmates.lib.opentelemetry_.wrap_module import wrap_module
 from taskmates.sdk.experimental.subclass_extension_points import SubclassExtensionPoints
 
@@ -7,4 +7,4 @@ from taskmates.sdk.experimental.subclass_extension_points import SubclassExtensi
 
 
 def instrument():
-    SubclassExtensionPoints.subscribe(ExecutionContext, wrap_module)
+    SubclassExtensionPoints.subscribe(Run, wrap_module)

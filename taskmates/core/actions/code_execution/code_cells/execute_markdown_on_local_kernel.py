@@ -12,7 +12,7 @@ from jupyter_client import AsyncKernelManager, AsyncKernelClient
 from nbformat import NotebookNode
 
 from taskmates.core.actions.code_execution.code_cells.parse_notebook import parse_notebook
-from taskmates.core.execution_context import EXECUTION_CONTEXT, ExecutionContext
+from taskmates.core.run import RUN, Run
 from taskmates.lib.root_path.root_path import root_path
 from taskmates.logging import logger
 
@@ -23,7 +23,7 @@ pytestmark = pytest.mark.slow
 
 # Main execution function
 async def execute_markdown_on_local_kernel(content, markdown_path: str = None, cwd: str = None, env: Mapping = None):
-    execution_context: ExecutionContext = EXECUTION_CONTEXT.get()
+    run: Run = RUN.get()
 
     notebook: NotebookNode
     code_cells: list[NotebookNode]
@@ -58,7 +58,7 @@ async def execute_markdown_on_local_kernel(content, markdown_path: str = None, c
         nonlocal notebook_finished
         notebook_finished = True
         await kernel_manager.interrupt_kernel()
-        await execution_context.status.interrupted.send_async(None)
+        await run.status.interrupted.send_async(None)
 
     async def kill_handler(sender):
         nonlocal notebook_finished
@@ -71,11 +71,11 @@ async def execute_markdown_on_local_kernel(content, markdown_path: str = None, c
         await kernel_manager.signal_kernel(signal.SIGKILL)
         iopub_task.cancel()
         shell_task.cancel()
-        await execution_context.status.killed.send_async(None)
+        await run.status.killed.send_async(None)
         await kernel_manager.shutdown_kernel(now=True)
 
-    with execution_context.control.interrupt.connected_to(interrupt_handler), \
-            execution_context.control.kill.connected_to(kill_handler):
+    with run.control.interrupt.connected_to(interrupt_handler), \
+            run.control.kill.connected_to(kill_handler):
 
         try:
             for cell in code_cells:
@@ -131,7 +131,7 @@ async def execute_markdown_on_local_kernel(content, markdown_path: str = None, c
                         continue
 
                     logger.debug("sending msg:", msg["msg_type"])
-                    await execution_context.output_streams.code_cell_output.send_async({
+                    await run.output_streams.code_cell_output.send_async({
                         "msg_id": msg_id,
                         "cell_source": source,
                         "msg": msg
@@ -190,13 +190,13 @@ async def main(argv=None):
 
 
 async def test_code_cells_no_code():
-    execution_context = EXECUTION_CONTEXT.get()
+    run = RUN.get()
     chunks = []
 
     async def capture_chunk(chunk):
         chunks.append(chunk)
 
-    execution_context.output_streams.code_cell_output.connect(capture_chunk)
+    run.output_streams.code_cell_output.connect(capture_chunk)
 
     input_md = textwrap.dedent("""\
         # This is a markdown text
@@ -208,13 +208,13 @@ async def test_code_cells_no_code():
 
 
 async def test_single_cell():
-    execution_context = EXECUTION_CONTEXT.get()
+    run = RUN.get()
     chunks = []
 
     async def capture_chunk(chunk):
         chunks.append(chunk)
 
-    execution_context.output_streams.code_cell_output.connect(capture_chunk)
+    run.output_streams.code_cell_output.connect(capture_chunk)
 
     input_md = textwrap.dedent("""\
         ```python .eval
@@ -230,13 +230,13 @@ async def test_single_cell():
 
 
 async def test_multiple_cells(tmp_path):
-    execution_context = EXECUTION_CONTEXT.get()
+    run = RUN.get()
     chunks = []
 
     async def capture_chunk(chunk):
         chunks.append(chunk)
 
-    execution_context.output_streams.code_cell_output.connect(capture_chunk)
+    run.output_streams.code_cell_output.connect(capture_chunk)
 
     content = textwrap.dedent("""\
     One cell:
@@ -258,13 +258,13 @@ async def test_multiple_cells(tmp_path):
 
 
 async def test_cell_error():
-    execution_context = EXECUTION_CONTEXT.get()
+    run = RUN.get()
     chunks = []
 
     async def capture_chunk(chunk):
         chunks.append(chunk)
 
-    execution_context.output_streams.code_cell_output.connect(capture_chunk)
+    run.output_streams.code_cell_output.connect(capture_chunk)
 
     input_md = textwrap.dedent("""\
         ```python .eval
@@ -282,13 +282,13 @@ async def test_cell_error():
 
 
 async def test_cwd(tmp_path):
-    execution_context = EXECUTION_CONTEXT.get()
+    run = RUN.get()
     chunks = []
 
     async def capture_chunk(chunk):
         chunks.append(chunk)
 
-    execution_context.output_streams.code_cell_output.connect(capture_chunk)
+    run.output_streams.code_cell_output.connect(capture_chunk)
 
     # Markdown content that gets the current working directory
     input_md = textwrap.dedent(f"""\
@@ -311,7 +311,7 @@ async def test_cwd(tmp_path):
 
 # TODO: This is unsupported in the current implementation
 # async def test_change_cwd(tmp_path):
-#     execution_context = SIGNALS.get()
+#     run = SIGNALS.get()
 #     chunks = []
 #
 #     new_path = (tmp_path / "test_change_cwd")
@@ -320,7 +320,7 @@ async def test_cwd(tmp_path):
 #     async def capture_chunk(chunk):
 #         chunks.append(chunk)
 #
-#     execution_context.output_streams.code_cell_output.connect(capture_chunk)
+#     run.output_streams.code_cell_output.connect(capture_chunk)
 #
 #     # Markdown content that gets the current working directory
 #     input_md = textwrap.dedent(f"""\
@@ -352,13 +352,13 @@ async def test_cwd(tmp_path):
 
 
 async def test_interrupt(capsys):
-    execution_context = EXECUTION_CONTEXT.get()
+    run = RUN.get()
     chunks = []
 
     async def capture_chunk(chunk):
         chunks.append(chunk)
 
-    execution_context.output_streams.code_cell_output.connect(capture_chunk)
+    run.output_streams.code_cell_output.connect(capture_chunk)
 
     input_md = textwrap.dedent("""\
         ```python .eval
@@ -379,7 +379,7 @@ async def test_interrupt(capsys):
             lines = content.split("\n")
             if len(lines) >= 2:
                 break
-        await execution_context.control.interrupt.send_async(None)
+        await run.control.interrupt.send_async(None)
 
     interrupt_task = asyncio.create_task(send_interrupt())
 
@@ -395,13 +395,13 @@ async def test_interrupt(capsys):
 
 
 async def test_kill(capsys):
-    execution_context = EXECUTION_CONTEXT.get()
+    run = RUN.get()
     chunks = []
 
     async def capture_chunk(chunk):
         chunks.append(chunk)
 
-    execution_context.output_streams.code_cell_output.connect(capture_chunk)
+    run.output_streams.code_cell_output.connect(capture_chunk)
 
     input_md = textwrap.dedent("""\
         ```python .eval
@@ -422,7 +422,7 @@ async def test_kill(capsys):
             lines = content.split("\n")
             if len(lines) >= 2:
                 break
-        await execution_context.control.kill.send_async(None)
+        await run.control.kill.send_async(None)
 
     kill_task = asyncio.create_task(send_kill())
 
@@ -440,13 +440,13 @@ async def test_kill(capsys):
 
 
 async def test_custom_env():
-    execution_context = EXECUTION_CONTEXT.get()
+    run = RUN.get()
     chunks = []
 
     async def capture_chunk(chunk):
         chunks.append(chunk)
 
-    execution_context.output_streams.code_cell_output.connect(capture_chunk)
+    run.output_streams.code_cell_output.connect(capture_chunk)
 
     custom_env = os.environ.copy()
     custom_env['CUSTOM_VAR'] = 'test_value'

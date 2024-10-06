@@ -1,5 +1,5 @@
 from taskmates.core.daemon import Daemon
-from taskmates.core.execution_context import EXECUTION_CONTEXT
+from taskmates.core.run import RUN
 from taskmates.lib.contextlib_.stacked_contexts import stacked_contexts
 from taskmates.lib.not_set.not_set import NOT_SET
 
@@ -24,11 +24,11 @@ class ReturnValue(Daemon):
         self.error = error
 
     def __enter__(self):
-        execution_context = EXECUTION_CONTEXT.get()
+        run = RUN.get()
         self.exit_stack.enter_context(stacked_contexts([
-            # execution_context.output_streams.stdout.connected_to(self.handle_stdout_chunk),
-            execution_context.output_streams.result.connected_to(self.handle_return_value),
-            # execution_context.output_streams.error.connected_to(self.handle_error)
+            # run.output_streams.stdout.connected_to(self.handle_stdout_chunk),
+            run.output_streams.result.connected_to(self.handle_return_value),
+            # run.output_streams.error.connected_to(self.handle_error)
         ]))
 
     def _should_raise_error(self) -> bool:

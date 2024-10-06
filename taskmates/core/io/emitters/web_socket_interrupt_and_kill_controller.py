@@ -4,7 +4,7 @@ import json
 from loguru import logger
 
 from taskmates.core.daemon import Daemon
-from taskmates.core.execution_context import EXECUTION_CONTEXT, ExecutionContext
+from taskmates.core.run import RUN, Run
 from taskmates.lib.json_.json_utils import snake_case
 
 
@@ -35,7 +35,7 @@ class WebSocketInterruptAndKillController(Daemon):
             await asyncio.sleep(0.1)
 
     def __enter__(self):
-        control = EXECUTION_CONTEXT.get().control
+        control = RUN.get().control
         self.task = asyncio.create_task(self.run_loop(control))
         return self
 

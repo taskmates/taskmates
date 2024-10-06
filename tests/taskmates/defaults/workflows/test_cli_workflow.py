@@ -5,6 +5,7 @@ import textwrap
 import pytest
 
 from taskmates.context_builders.test_context_builder import TestContextBuilder
+from taskmates.core.run import RUN
 from taskmates.core.io.listeners.signals_capturer import SignalsCapturer
 from taskmates.core.io.listeners.write_markdown_chat_to_stdout import WriteMarkdownChatToStdout
 from taskmates.defaults.workflows.cli_complete import CliComplete
@@ -150,7 +151,8 @@ async def test_interrupt_tool(tmp_path, contexts):
         await asyncio.sleep(0.1)
 
     # Send interrupt
-    await cli_complete.execution_context.control.interrupt_request.send_async({})
+    run = RUN.get()
+    await run.control.interrupt_request.send_async({})
 
     try:
         await task

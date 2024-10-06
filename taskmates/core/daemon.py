@@ -1,5 +1,5 @@
-from taskmates.core.execution_context import ExecutionContext
+from taskmates.core.run import Run
 
 
-class Daemon(ExecutionContext):
+class Daemon(Run):
     pass

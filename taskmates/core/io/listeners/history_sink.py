@@ -1,5 +1,5 @@
 from taskmates.core.daemon import Daemon
-from taskmates.core.execution_context import EXECUTION_CONTEXT
+from taskmates.core.run import RUN
 from taskmates.lib.contextlib_.stacked_contexts import stacked_contexts
 
 
@@ -15,15 +15,15 @@ class HistorySink(Daemon):
             self.file.flush()
 
     def __enter__(self):
-        execution_context = EXECUTION_CONTEXT.get()
+        run = RUN.get()
         if self.path:
             self.file = open(self.path, "a")
             self.exit_stack.callback(self.file.close)
 
         connections = [
-            execution_context.input_streams.incoming_message.connected_to(self.process_chunk),
-            execution_context.input_streams.formatting.connected_to(self.process_chunk),
-            execution_context.output_streams.stdout.connected_to(self.process_chunk)
+            run.input_streams.incoming_message.connected_to(self.process_chunk),
+            run.input_streams.formatting.connected_to(self.process_chunk),
+            run.output_streams.stdout.connected_to(self.process_chunk)
         ]
 
         self.exit_stack.enter_context(stacked_contexts(connections))

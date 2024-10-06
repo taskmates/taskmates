@@ -2,7 +2,7 @@ import textwrap
 
 import pytest
 
-from taskmates.core.execution_context import EXECUTION_CONTEXT
+from taskmates.core.run import RUN
 from taskmates.core.actions.code_execution.code_cells.code_cells_editor_completion import CodeCellsEditorCompletion
 from taskmates.core.actions.code_execution.code_cells.execute_markdown_on_local_kernel import \
     execute_markdown_on_local_kernel
@@ -18,8 +18,8 @@ class CodeCellExecutionCompletionProvider(CompletionProvider):
         return is_jupyter_enabled and len(code_cells) > 0
 
     async def perform_completion(self, chat: Chat):
-        contexts = EXECUTION_CONTEXT.get().contexts
-        signals = EXECUTION_CONTEXT.get()
+        contexts = RUN.get().contexts
+        signals = RUN.get()
 
         completion_context: CompletionContext = contexts["completion_context"]
         markdown_path = completion_context["markdown_path"]
@@ -30,7 +30,7 @@ class CodeCellExecutionCompletionProvider(CompletionProvider):
 
         editor_completion = CodeCellsEditorCompletion(project_dir=cwd,
                                                       chat_file=markdown_path,
-                                                      execution_context=signals)
+                                                      run=signals)
 
         async def on_code_cell_chunk(code_cell_chunk):
             await editor_completion.process_code_cell_output(code_cell_chunk)
@@ -82,10 +82,10 @@ async def test_markdown_code_cells_assistance_streaming(tmp_path):
         ]
     }
 
-    execution_context = EXECUTION_CONTEXT.get()
-    execution_context.output_streams.code_cell_output.connect(capture_code_cell_chunk)
-    execution_context.output_streams.response.connect(capture_completion_chunk)
-    execution_context.output_streams.error.connect(capture_error)
+    run = RUN.get()
+    run.output_streams.code_cell_output.connect(capture_code_cell_chunk)
+    run.output_streams.response.connect(capture_completion_chunk)
+    run.output_streams.error.connect(capture_error)
     assistance = CodeCellExecutionCompletionProvider()
     await assistance.perform_completion(chat)
 
