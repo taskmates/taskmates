@@ -350,7 +350,7 @@ def test_wait_for_workflow_run():
     workflow_content = """
 name: Simple Workflow
 on: [push]
-jobs:
+daemons:
   simple_job:
     runs-on: ubuntu-latest
     steps:
@@ -449,14 +449,14 @@ def get_issue_comments(repo_name: str, issue_number: int) -> List[Dict[str, Any]
 def test_get_issue_comments():
     repo_name = "taskmates/github-integration-testbed"
     issue = create_issue(repo_name, "Test issue for comments", "This is a test issue for fetching comments")
-    
+
     add_comment(repo_name, issue.number, "Test comment 1")
     add_comment(repo_name, issue.number, "Test comment 2")
-    
+
     comments = get_issue_comments(repo_name, issue.number)
     assert len(comments) == 2
     assert comments[0]["body"] == "Test comment 1"
     assert comments[1]["body"] == "Test comment 2"
-    
+
     # Clean up
     update_issue_status(repo_name, issue.number, "closed")

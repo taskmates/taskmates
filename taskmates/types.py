@@ -25,7 +25,6 @@ class RunOpts(TypedDict):
     workflow: NotRequired[str]
     tools: NotRequired[dict]
     participants: NotRequired[dict]
-    inputs: NotRequired[dict]
 
     max_steps: NotRequired[int]
     jupyter_enabled: NotRequired[bool]

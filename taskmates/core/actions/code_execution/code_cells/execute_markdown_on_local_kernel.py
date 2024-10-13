@@ -12,9 +12,10 @@ from jupyter_client import AsyncKernelManager, AsyncKernelClient
 from nbformat import NotebookNode
 
 from taskmates.core.actions.code_execution.code_cells.parse_notebook import parse_notebook
-from taskmates.core.run import RUN, Run
+from taskmates.workflow_engine.run import RUN, Run
 from taskmates.lib.root_path.root_path import root_path
 from taskmates.logging import logger
+from taskmates.workflows.contexts.context import Context
 
 kernel_pool: dict[tuple[str | None, str], AsyncKernelManager] = {}
 
@@ -23,7 +24,10 @@ pytestmark = pytest.mark.slow
 
 # Main execution function
 async def execute_markdown_on_local_kernel(content, markdown_path: str = None, cwd: str = None, env: Mapping = None):
-    run: Run = RUN.get()
+    run: Run[Context] = RUN.get()
+    status = run.signals["status"]
+    control = run.signals["control"]
+    output_streams = run.signals["output_streams"]
 
     notebook: NotebookNode
     code_cells: list[NotebookNode]
@@ -58,7 +62,7 @@ async def execute_markdown_on_local_kernel(content, markdown_path: str = None, c
         nonlocal notebook_finished
         notebook_finished = True
         await kernel_manager.interrupt_kernel()
-        await run.status.interrupted.send_async(None)
+        await status.interrupted.send_async(None)
 
     async def kill_handler(sender):
         nonlocal notebook_finished
@@ -71,11 +75,11 @@ async def execute_markdown_on_local_kernel(content, markdown_path: str = None, c
         await kernel_manager.signal_kernel(signal.SIGKILL)
         iopub_task.cancel()
         shell_task.cancel()
-        await run.status.killed.send_async(None)
+        await status.killed.send_async(None)
         await kernel_manager.shutdown_kernel(now=True)
 
-    with run.control.interrupt.connected_to(interrupt_handler), \
-            run.control.kill.connected_to(kill_handler):
+    with control.interrupt.connected_to(interrupt_handler), \
+            control.kill.connected_to(kill_handler):
 
         try:
             for cell in code_cells:
@@ -131,7 +135,7 @@ async def execute_markdown_on_local_kernel(content, markdown_path: str = None, c
                         continue
 
                     logger.debug("sending msg:", msg["msg_type"])
-                    await run.output_streams.code_cell_output.send_async({
+                    await output_streams.code_cell_output.send_async({
                         "msg_id": msg_id,
                         "cell_source": source,
                         "msg": msg
@@ -196,7 +200,7 @@ async def test_code_cells_no_code():
     async def capture_chunk(chunk):
         chunks.append(chunk)
 
-    run.output_streams.code_cell_output.connect(capture_chunk)
+    run.signals["output_streams"].code_cell_output.connect(capture_chunk)
 
     input_md = textwrap.dedent("""\
         # This is a markdown text
@@ -214,7 +218,7 @@ async def test_single_cell():
     async def capture_chunk(chunk):
         chunks.append(chunk)
 
-    run.output_streams.code_cell_output.connect(capture_chunk)
+    run.signals["output_streams"].code_cell_output.connect(capture_chunk)
 
     input_md = textwrap.dedent("""\
         ```python .eval
@@ -236,7 +240,7 @@ async def test_multiple_cells(tmp_path):
     async def capture_chunk(chunk):
         chunks.append(chunk)
 
-    run.output_streams.code_cell_output.connect(capture_chunk)
+    run.signals["output_streams"].code_cell_output.connect(capture_chunk)
 
     content = textwrap.dedent("""\
     One cell:
@@ -264,7 +268,7 @@ async def test_cell_error():
     async def capture_chunk(chunk):
         chunks.append(chunk)
 
-    run.output_streams.code_cell_output.connect(capture_chunk)
+    run.signals["output_streams"].code_cell_output.connect(capture_chunk)
 
     input_md = textwrap.dedent("""\
         ```python .eval
@@ -288,7 +292,7 @@ async def test_cwd(tmp_path):
     async def capture_chunk(chunk):
         chunks.append(chunk)
 
-    run.output_streams.code_cell_output.connect(capture_chunk)
+    run.signals["output_streams"].code_cell_output.connect(capture_chunk)
 
     # Markdown content that gets the current working directory
     input_md = textwrap.dedent(f"""\
@@ -320,7 +324,7 @@ async def test_cwd(tmp_path):
 #     async def capture_chunk(chunk):
 #         chunks.append(chunk)
 #
-#     run.output_streams.code_cell_output.connect(capture_chunk)
+#     run.states["output_streams"].code_cell_output.connect(capture_chunk)
 #
 #     # Markdown content that gets the current working directory
 #     input_md = textwrap.dedent(f"""\
@@ -358,7 +362,7 @@ async def test_interrupt(capsys):
     async def capture_chunk(chunk):
         chunks.append(chunk)
 
-    run.output_streams.code_cell_output.connect(capture_chunk)
+    run.signals["output_streams"].code_cell_output.connect(capture_chunk)
 
     input_md = textwrap.dedent("""\
         ```python .eval
@@ -379,7 +383,7 @@ async def test_interrupt(capsys):
             lines = content.split("\n")
             if len(lines) >= 2:
                 break
-        await run.control.interrupt.send_async(None)
+        await run.signals["control"].interrupt.send_async(None)
 
     interrupt_task = asyncio.create_task(send_interrupt())
 
@@ -401,7 +405,7 @@ async def test_kill(capsys):
     async def capture_chunk(chunk):
         chunks.append(chunk)
 
-    run.output_streams.code_cell_output.connect(capture_chunk)
+    run.signals["output_streams"].code_cell_output.connect(capture_chunk)
 
     input_md = textwrap.dedent("""\
         ```python .eval
@@ -422,7 +426,7 @@ async def test_kill(capsys):
             lines = content.split("\n")
             if len(lines) >= 2:
                 break
-        await run.control.kill.send_async(None)
+        await run.signals["control"].kill.send_async(None)
 
     kill_task = asyncio.create_task(send_kill())
 
@@ -446,7 +450,7 @@ async def test_custom_env():
     async def capture_chunk(chunk):
         chunks.append(chunk)
 
-    run.output_streams.code_cell_output.connect(capture_chunk)
+    run.signals["output_streams"].code_cell_output.connect(capture_chunk)
 
     custom_env = os.environ.copy()
     custom_env['CUSTOM_VAR'] = 'test_value'

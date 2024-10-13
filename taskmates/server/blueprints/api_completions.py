@@ -3,8 +3,7 @@ import json
 from quart import Blueprint, Response, websocket
 
 import taskmates
-from taskmates.context_builders.api_context_builder import ApiContextBuilder
-from taskmates.defaults.workflows.api_completion_runner import ApiCompletionRunner
+from taskmates.workflows.runners.api_completion_runner import ApiCompletionRunner
 from taskmates.lib.json_.json_utils import snake_case
 from taskmates.logging import logger
 from taskmates.taskmates_runtime import TASKMATES_RUNTIME

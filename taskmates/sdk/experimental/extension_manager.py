@@ -129,7 +129,7 @@ def test_load_extension_failure():
 # class TestExtension(TaskmatesExtension):
 #     def initialize(self):
 #         pass
-#     def after_build_contexts(self, contexts):
+#     def after_build_contexts(self, context):
 #         pass
 # """)
 #

@@ -36,7 +36,9 @@ def test_chat_completion(cli_runner, tmp_path):
     expected_response = textwrap.dedent("""
     > Short answer. 1+1=
     > 
-    > """)
+    > 
+    
+    """)
 
     assert stderr == ""
     assert returncode == 0
@@ -54,7 +56,9 @@ def test_chat_completion_with_mention(cli_runner, tmp_path):
     expected_response = textwrap.dedent("""
     > Hey @jeff short answer. 1+1=
     > 
-    > """)
+    > 
+    
+    """)
 
     assert stderr == ""
     assert returncode == 0
@@ -329,7 +333,9 @@ def test_chat_completion_from_stdin(tmp_path):
     expected_response = textwrap.dedent("""
     > Short answer. 1+1=
     > 
-    > """)
+    > 
+    
+    """)
 
     assert process.returncode == 0
     assert stderr == ""
@@ -348,7 +354,7 @@ def test_cli_completion_with_history(cli_runner, tmp_path):
     stdout, stderr, returncode = cli_runner(args)
 
     # Check the command output
-    expected_response = '\n> Incoming message\n> \n> '
+    expected_response = '\n> Incoming message\n> \n> \n\n'
 
     assert stderr == ""
     assert returncode == 0

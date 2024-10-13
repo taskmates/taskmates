@@ -2,7 +2,8 @@ import asyncio
 from contextlib import redirect_stdout, redirect_stderr
 from io import StringIO
 
-from taskmates.core.run import Run
+from taskmates.workflows.contexts.context import Context
+from taskmates.workflow_engine.run import Run
 from taskmates.lib.context_.temp_cwd import temp_cwd
 from taskmates.lib.context_.temp_environ import temp_environ
 from taskmates.lib.restore_stdout_and_stderr import restore_stdout_and_stderr
@@ -10,16 +11,16 @@ from taskmates.types import RunnerEnvironment
 
 
 # TODO: review this and the duplication with run_shell_command
-async def stream_output(stream_name, stream, run: Run):
+async def stream_output(stream_name, stream, run: Run[Context]):
     while True:
         line = stream.readline()
         if not line:
             break
         with restore_stdout_and_stderr():
-            await run.output_streams.response.send_async(line)
+            await run.signals["output_streams"].response.send_async(line)
 
 
-async def invoke_function(function, arguments, context: RunnerEnvironment, run: Run):
+async def invoke_function(function, arguments, context: RunnerEnvironment, run: Run[Context]):
     stdout_stream = StringIO()
     stderr_stream = StringIO()
 

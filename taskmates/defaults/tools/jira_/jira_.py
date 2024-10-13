@@ -369,7 +369,7 @@ def test_create_issue(tmp_path):
     update_status(issue_key, "In Progress")
 
     updated_issue = get_jira_client().issue(issue_key)
-    assert updated_issue.fields.status.name == "In Progress"
+    assert updated_issue.fields.states["status"].name == "In Progress"
 
 
 @pytest.mark.integration

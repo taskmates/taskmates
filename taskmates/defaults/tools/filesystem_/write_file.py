@@ -2,7 +2,7 @@ import sys
 from pathlib import Path
 
 from taskmates.defaults.tools.filesystem_.is_path_allowed import is_path_allowed
-from taskmates.core.run import RUN
+from taskmates.workflow_engine.run import RUN
 
 
 def write_file(path, content):
@@ -13,7 +13,7 @@ def write_file(path, content):
     :return: None
     """
 
-    contexts = RUN.get().contexts
+    contexts = RUN.get().context
     run_opts = contexts["run_opts"]
 
     allow = ((run_opts.get("tools") or {}).get("write_file") or {}).get("allow", "**")

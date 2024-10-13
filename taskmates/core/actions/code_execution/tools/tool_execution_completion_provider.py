@@ -7,9 +7,11 @@ from taskmates.actions.invoke_function import invoke_function
 from taskmates.core.actions.code_execution.code_cells.code_execution import CodeExecution
 from taskmates.core.actions.code_execution.tools.tool_editor_completion import ToolEditorCompletion
 from taskmates.core.completion_provider import CompletionProvider
+from taskmates.workflows.contexts.context import Context
+from taskmates.workflow_engine.run import RUN
+from taskmates.workflow_engine.run import Run
 from taskmates.core.tools_registry import tools_registry
 from taskmates.model.tool_call import ToolCall
-from taskmates.core.run import RUN, Run
 from taskmates.types import Chat, RunnerEnvironment
 
 
@@ -21,7 +23,7 @@ class ToolExecutionCompletionProvider(CompletionProvider):
         return len(tool_calls) > 0
 
     async def perform_completion(self, chat: Chat):
-        contexts = RUN.get().contexts
+        contexts = RUN.get().context
         run = RUN.get()
 
         runner_environment = contexts["runner_environment"]
@@ -41,13 +43,13 @@ class ToolExecutionCompletionProvider(CompletionProvider):
             tool_call_obj = ToolCall.from_dict(tool_call)
 
             async def handle_interrupted(sender):
-                await run.output_streams.response.send_async("--- INTERRUPT ---\n")
+                await run.signals["output_streams"].response.send_async("--- INTERRUPT ---\n")
 
             async def handle_killed(sender):
-                await run.output_streams.response.send_async("--- KILL ---\n")
+                await run.signals["output_streams"].response.send_async("--- KILL ---\n")
 
-            with run.status.interrupted.connected_to(handle_interrupted), \
-                    run.status.killed.connected_to(handle_killed):
+            with run.signals["status"].interrupted.connected_to(handle_interrupted), \
+                    run.signals["status"].killed.connected_to(handle_killed):
                 original_cwd = os.getcwd()
                 try:
                     try:
@@ -58,18 +60,18 @@ class ToolExecutionCompletionProvider(CompletionProvider):
                 finally:
                     os.chdir(original_cwd)
 
-            await run.output_streams.response.send_async(CodeExecution.escape_pre_output(str(return_value)))
+            await run.signals["output_streams"].response.send_async(CodeExecution.escape_pre_output(str(return_value)))
             await editor_completion.append_tool_execution_footer(function_title)
 
     @staticmethod
     @typechecked
-    async def execute_task(context: RunnerEnvironment, tool_call: ToolCall, run: Run):
+    async def execute_task(context: RunnerEnvironment, tool_call: ToolCall, run: Run[Context]):
         tool_call_id = tool_call.id
         function_name = tool_call.function.name
         arguments = tool_call.function.arguments
 
         child_context = context.copy()
-        child_context["env"] = context["env"].copy()
+        child_context["env"] = {**context["env"]}
         child_context["env"]["TOOL_CALL_ID"] = tool_call_id
 
         function = tools_registry[function_name]

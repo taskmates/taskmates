@@ -5,12 +5,14 @@ import pytest_socket
 import tiktoken
 
 from taskmates.config.load_participant_config import load_cache
-from taskmates.context_builders.test_context_builder import TestContextBuilder
 from taskmates.core.actions.code_execution.code_cells.execute_markdown_on_local_kernel import kernel_pool
-from taskmates.core.io.listeners.captured_signals import CapturedSignals
-from taskmates.core.run import Run
 from taskmates.load_env_files import load_env_for_environment
 from taskmates.taskmates_runtime import TASKMATES_RUNTIME
+from taskmates.workflows.context_builders.test_context_builder import TestContextBuilder
+from taskmates.workflows.daemons.captured_signals_daemon import CapturedSignalsDaemon
+from taskmates.workflows.signals.sinks.write_markdown_chat_to_stdout import WriteMarkdownChatToStdout
+from taskmates.workflow_engine.objective import Objective
+from taskmates.workflows.states.captured_signals import CapturedSignals
 
 
 # def pytest_configure(config):
@@ -67,16 +69,43 @@ def taskmates_runtime():
         TASKMATES_RUNTIME.get().shutdown()
 
 
-@pytest.fixture(autouse=True)
-def contexts(taskmates_runtime, tmp_path):
-    return TestContextBuilder(tmp_path).build()
+@pytest.fixture
+def run_opts():
+    return {
+        "model": "quote",
+        "max_steps": 1
+    }
+
+
+@pytest.fixture
+def context(request, taskmates_runtime, run_opts, tmp_path):
+    context = TestContextBuilder(tmp_path).build(run_opts)
+
+    if "integration" in request.node.keywords:
+        context["run_opts"]["model"] = "claude-3-5-sonnet-20241022"
+        context["run_opts"]["max_steps"] = 100
+    else:
+        context["run_opts"]["model"] = "quote"
+        context["run_opts"]["max_steps"] = 1
+
+    return context
+
+
+@pytest.fixture
+def daemons(request):
+    if "integration" in request.node.keywords:
+        return [WriteMarkdownChatToStdout("full")]
+    else:
+        return [CapturedSignalsDaemon()]
 
 
 @pytest.fixture(autouse=True)
-def run(taskmates_runtime, contexts):
-    jobs = [CapturedSignals()]
-
-    with Run(name="pytest", contexts=contexts, jobs=jobs) as run:
+def run(request, taskmates_runtime, context, daemons):
+    with (Objective(outcome=request.node.name)
+                  .attempt(daemons=daemons,
+                           state={"captured_signals": CapturedSignals()},
+                           context=context)
+          as run):
         yield run
 
 

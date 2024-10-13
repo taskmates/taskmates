@@ -2,7 +2,7 @@ import os
 
 from wrapt import wrap_function_wrapper
 
-from taskmates.context_builders.context_builder import ContextBuilder
+from taskmates.workflows.context_builders.context_builder import ContextBuilder
 from taskmates.sdk import TaskmatesExtension
 from taskmates.sdk.experimental.subclass_extension_points import SubclassExtensionPoints
 

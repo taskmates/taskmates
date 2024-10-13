@@ -1,6 +1,6 @@
 from typing import Optional
 
-from taskmates.core.run import RUN
+from taskmates.workflow_engine.run import RUN
 
 
 async def report_evaluation(summary: Optional[str], result: bool):
@@ -12,5 +12,5 @@ async def report_evaluation(summary: Optional[str], result: bool):
     :return: success
     """
     signals = RUN.get()
-    await signals.output_streams.result.send_async({"result": result, "summary": summary})
+    await signals.signals["output_streams"].result.send_async({"result": result, "summary": summary})
     return result

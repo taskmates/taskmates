@@ -8,18 +8,20 @@ from typing import TextIO
 
 import pytest
 
-from taskmates.core.run import RUN, Run
+from taskmates.workflows.contexts.context import Context
+from taskmates.workflow_engine.run import Run
+from taskmates.workflow_engine.run import RUN
 from taskmates.lib.restore_stdout_and_stderr import restore_stdout_and_stderr
 
 
 # TODO: review this and the duplication with invoke_function
-async def stream_output(fd, stream: TextIO, run: Run):
+async def stream_output(fd, stream: TextIO, run: Run[Context]):
     while True:
         line = await asyncio.get_event_loop().run_in_executor(None, stream.readline)
         if not line:
             break
         with restore_stdout_and_stderr():
-            await run.output_streams.response.send_async(line)
+            await run.signals["output_streams"].response.send_async(line)
 
 
 async def run_shell_command(cmd: str) -> str:
@@ -30,7 +32,7 @@ async def run_shell_command(cmd: str) -> str:
     :return: the output of the command
     """
 
-    run: Run = RUN.get()
+    run: Run[Context] = RUN.get()
 
     if platform.system() == "Windows":
         process = subprocess.Popen(
@@ -56,17 +58,17 @@ async def run_shell_command(cmd: str) -> str:
             process.send_signal(signal.CTRL_BREAK_EVENT)
         else:
             os.killpg(os.getpgid(process.pid), signal.SIGINT)
-        await run.status.interrupted.send_async(None)
+        await run.signals["status"].interrupted.send_async(None)
 
     async def kill_handler(sender):
         if platform.system() == "Windows":
             process.kill()
         else:
             os.killpg(os.getpgid(process.pid), signal.SIGKILL)
-        await run.status.killed.send_async(None)
+        await run.signals["status"].killed.send_async(None)
 
-    with run.control.interrupt.connected_to(interrupt_handler), \
-            run.control.kill.connected_to(kill_handler):
+    with run.signals["control"].interrupt.connected_to(interrupt_handler), \
+            run.signals["control"].kill.connected_to(kill_handler):
         stdout_task = asyncio.create_task(stream_output(sys.stdout, process.stdout, run))
         stderr_task = asyncio.create_task(stream_output(sys.stderr, process.stderr, run))
 
@@ -84,7 +86,7 @@ async def test_run_shell_command(capsys):
     async def capture_chunk(chunk):
         chunks.append(chunk)
 
-    run.output_streams.response.connect(capture_chunk)
+    run.signals["output_streams"].response.connect(capture_chunk)
 
     if platform.system() == "Windows":
         cmd = "echo Hello, World!"
@@ -105,12 +107,12 @@ async def test_run_shell_command_interrupt(capsys):
     async def capture_chunk(chunk):
         chunks.append(chunk)
 
-    run.output_streams.response.connect(capture_chunk)
+    run.signals["output_streams"].response.connect(capture_chunk)
 
     async def send_interrupt():
         while len(chunks) < 5:
             await asyncio.sleep(0.1)
-        await run.control.interrupt.send_async(None)
+        await run.signals["control"].interrupt.send_async(None)
 
     interrupt_task = asyncio.create_task(send_interrupt())
 
@@ -138,12 +140,12 @@ async def test_run_shell_command_kill(capsys):
     async def capture_chunk(chunk):
         chunks.append(chunk)
 
-    run.output_streams.response.connect(capture_chunk)
+    run.signals["output_streams"].response.connect(capture_chunk)
 
     async def send_kill():
         while len(chunks) < 3:
             await asyncio.sleep(0.1)
-        await run.control.kill.send_async(None)
+        await run.signals["control"].kill.send_async(None)
 
     kill_task = asyncio.create_task(send_kill())
 

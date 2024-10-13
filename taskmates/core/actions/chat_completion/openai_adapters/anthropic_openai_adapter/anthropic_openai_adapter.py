@@ -7,6 +7,7 @@ import pytest
 from anthropic import APIStatusError
 from anthropic.types import MessageStartEvent, MessageStopEvent, ContentBlockStartEvent, ContentBlockStopEvent, \
     MessageDeltaEvent, TextDelta, ContentBlockDeltaEvent
+from anthropic.types.beta.prompt_caching import RawPromptCachingBetaMessageStartEvent
 from anthropic.types.input_json_delta import InputJsonDelta
 from typeguard import typechecked
 
@@ -16,7 +17,7 @@ from taskmates.core.actions.chat_completion.openai_adapters.anthropic_openai_ada
     convert_and_merge_messages
 from taskmates.core.actions.chat_completion.openai_adapters.anthropic_openai_adapter.request.convert_openai_tools_to_anthropic import \
     convert_openai_tools_to_anthropic
-from taskmates.core.run import RUN
+from taskmates.workflow_engine.run import RUN
 from taskmates.core.tools_registry import tools_registry
 from taskmates.lib.openai_.model.chat_completion_chunk_model import ChatCompletionChunkModel
 from taskmates.lib.openai_.model.choice_model import ChoiceModel
@@ -26,7 +27,7 @@ from taskmates.lib.tool_schemas_.tool_schema import tool_schema
 
 class AsyncAnthropicOpenAIAdapter:
     def __init__(self):
-        self.client = anthropic.AsyncAnthropic()
+        self.client = anthropic.AsyncAnthropic().beta
 
     @typechecked
     async def create(self,
@@ -67,9 +68,35 @@ class AsyncAnthropicOpenAIAdapter:
 
             stop_sequences = stop if stop else None
 
+            # If there's a system message, wrap it in a list with cache_control
+            if system_message:
+                system_messages = [{
+                    "type": "text",
+                    "text": system_message["content"],
+                    "cache_control": {"type": "ephemeral"}
+                }]
+            else:
+                system_messages = None
+
+            # Always cache the first message
+            first_message = chat_messages[0]
+            if isinstance(first_message['content'], str):
+                first_message['content'] = [{"type": "text", "text": first_message['content']}]
+
+            for content in first_message['content']:
+                content['cache_control'] = {"type": "ephemeral"}
+
+            # If the last message has tool calls, add cache_control to it
+            if chat_messages and isinstance(chat_messages[-1].get('content'), list):
+                last_message = chat_messages[-1]
+                if any(content.get('type') == 'tool_use' for content in last_message['content']):
+                    for content in last_message['content']:
+                        if content.get('type') == 'tool_use':
+                            content['cache_control'] = {"type": "ephemeral"}
+
             payload = dict(
                 max_tokens=max_tokens,
-                system=system_message['content'] if system_message else None,
+                system=system_messages,
                 messages=chat_messages,
                 model=model,
                 stream=stream,
@@ -78,7 +105,7 @@ class AsyncAnthropicOpenAIAdapter:
                 **kwargs
             )
 
-            resource = self.client.messages
+            resource = self.client.prompt_caching.messages
 
             if payload['tools'] is None:
                 del payload['tools']
@@ -95,15 +122,16 @@ class AsyncAnthropicOpenAIAdapter:
             for attempt in range(1, max_attempts + 1):
                 try:
                     # TODO: Add tracing
-                    signals = RUN.get()
-                    await signals.output_streams.artifact.send_async(
+                    run = RUN.get()
+                    output_streams = run.signals["output_streams"]
+                    await output_streams.artifact.send_async(
                         {"name": "anthropic_request_payload.json", "content": payload})
                     chat_completion = await resource.create(**payload)
                     id, created, model_name = None, None, model
                     is_tool_call = False
 
                     async for event in chat_completion:
-                        if isinstance(event, MessageStartEvent):
+                        if isinstance(event, (MessageStartEvent, RawPromptCachingBetaMessageStartEvent)):
                             id = event.message.id
                             choice = ChoiceModel(delta=DeltaModel(content='', role='assistant'))
                             yield ChatCompletionChunkModel(id=id, choices=[choice], created=None,
@@ -306,3 +334,30 @@ async def extract_tool_call(received):
                 function_name = tool_calls[0].get("function", {}).get("name", "")
             arguments += tool_calls[0].get("function", {}).get("arguments", "")
     return arguments, function_name, tool_call_id, tool_calls
+
+# TODO test caching
+# @pytest.mark.integration
+# @pytest.mark.asyncio
+# async def test_create_with_system_message():
+#     client = AsyncAnthropicOpenAIAdapter()
+#     messages = [
+#         {"role": "system", "content": "Respond with a number"},
+#         {"role": "user", "content": "1+1="}
+#     ]
+#     chat_completion = await client.chat.completions.create(
+#         model="claude-3-haiku-20240307",
+#         stream=True,
+#         messages=messages
+#     )
+#
+#     received = []
+#     async for resp in chat_completion:
+#         received += [resp]
+#
+#     assert received[0].model_dump()["choices"][0]["delta"]["role"] == "assistant"
+#
+#     response = ""
+#     for resp in received:
+#         response += resp.model_dump()["choices"][0]["delta"].get("content") or ""
+#
+#     assert response != "2"

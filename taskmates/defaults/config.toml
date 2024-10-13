@@ -9,7 +9,7 @@ cwd = "{os.getcwd()}"
 
 # Completion Options
 [run_opts]
-model = "claude-3-5-sonnet-20240620"
+model = "claude-3-5-sonnet-20241022"
 max_steps = 10000
 
 [[run_opts.taskmates_dirs]]

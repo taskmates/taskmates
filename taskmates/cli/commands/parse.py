@@ -1,13 +1,12 @@
 import argparse
 import json
-from io import StringIO
-
 import sys
+from io import StringIO
 
 from taskmates.actions.parse_markdown_chat import parse_markdown_chat
 from taskmates.cli.commands.base import Command
-from taskmates.context_builders.cli_context_builder import CliContextBuilder
-from taskmates.core.run import Run
+from taskmates.workflows.context_builders.cli_context_builder import CliContextBuilder
+from taskmates.workflow_engine.objective import Objective
 
 
 class ParseCommand(Command):
@@ -18,12 +17,15 @@ class ParseCommand(Command):
         builder = CliContextBuilder(args)
         contexts = builder.build()
 
-        with Run(contexts=contexts):
-            taskmates_dirs = contexts["runner_config"]["taskmates_dirs"]
+        async def attempt_parse_markdown(contexts):
+            with Objective(outcome="parse_markdown").attempt(context=contexts):
+                taskmates_dirs = contexts["runner_config"]["taskmates_dirs"]
 
-            markdown_chat = "".join(sys.stdin.readlines())
-            result = await parse_markdown_chat(markdown_chat, None, taskmates_dirs)
-            print(json.dumps(result, ensure_ascii=False))
+                markdown_chat = "".join(sys.stdin.readlines())
+                result = await parse_markdown_chat(markdown_chat, None, taskmates_dirs)
+                print(json.dumps(result, ensure_ascii=False))
+
+        await attempt_parse_markdown(contexts)
 
 
 async def test_parse(tmp_path):

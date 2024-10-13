@@ -1,13 +1,13 @@
 from pathlib import Path
 
-from taskmates.context_builders.context_builder import ContextBuilder
-from taskmates.runner.contexts.runner_context import default_taskmates_dirs
-from taskmates.sdk.experimental.weave_interface_method import weave_interface_method
 from taskmates.sdk import TaskmatesExtension
+from taskmates.sdk.experimental.weave_interface_method import weave_interface_method
+from taskmates.workflows.context_builders.context_builder import ContextBuilder
+from taskmates.workflows.contexts.context import default_taskmates_dirs
 
 
 class TaskmatesDirsLoader(TaskmatesExtension):
-    # needs: runner_environment.cwd
+    # signals: runner_environment.cwd
 
     def handle(self, wrapped, instance, args, kwargs):
         contexts = wrapped(*args, **kwargs)

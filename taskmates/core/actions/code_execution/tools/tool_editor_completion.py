@@ -1,10 +1,11 @@
 from taskmates.core.actions.code_execution.code_cells.code_execution import CodeExecution
 from taskmates.core.actions.code_execution.tools.editor_appender import EditorAppender
-from taskmates.core.run import Run
+from taskmates.workflows.contexts.context import Context
+from taskmates.workflow_engine.run import Run
 
 
 class ToolEditorCompletion:
-    def __init__(self, project_dir: str, chat_file: str, run: Run):
+    def __init__(self, project_dir: str, chat_file: str, run: Run[Context]):
         self.editor_appender = EditorAppender(project_dir, chat_file, run)
 
     async def append(self, text: str):

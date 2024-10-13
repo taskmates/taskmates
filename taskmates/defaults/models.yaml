@@ -2,7 +2,7 @@ default-anthropic:
   client_type: anthropic
   endpoint: https://api.anthropic.com
   max_context_window: 4096
-  model_name: claude-3-5-sonnet-20240620
+  model_name: claude-3-5-sonnet-20241022
 
 default-openai:
   client_type: openai
@@ -108,7 +108,7 @@ claude-3-sonnet-20240229:
   max_context_window: 4096
   model_name: claude-3-opus-20240229
 
-claude-3-5-sonnet-20240620:
+claude-3-5-sonnet-20241022:
   client_type: anthropic
   endpoint: https://api.anthropic.com
   max_context_window: 4096
@@ -122,6 +122,16 @@ codeqwen:
   endpoint: http://localhost:11434/v1
   max_context_window: 64000
   model_name: codequeen
+
+
+# grok
+
+grok:
+  client_type: openai
+  endpoint: https://api.x.ai/v1/chat/completions
+  max_context_window: 131072
+  model_name: grok-beta
+  api_key: env:XAI_API_KEY
 
 # test
 

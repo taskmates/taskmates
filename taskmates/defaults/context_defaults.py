@@ -1,23 +1,20 @@
-from taskmates.runner.contexts.runner_context import RunnerContext
+from taskmates.workflows.contexts.context import Context
 
 
 class ContextDefaults:
     @staticmethod
-    def build() -> RunnerContext:
+    def build(run_opts=None) -> Context:
+        default_run_opts = {
+            "model": 'claude-3-5-sonnet-20241022',
+            "max_steps": 10000,
+        }
+        run_opts = run_opts or default_run_opts
         return {
             "runner_config": {
                 "taskmates_dirs": [],
             },
             "runner_environment": {},
-            "run_opts": {
-                "model": 'claude-3-5-sonnet-20240620',
-                "inputs": {},
-                "max_steps": 10000,
-            },
-            "step_context": {
-                "current_step": 0,
-            },
-            "job_context": {},
+            "run_opts": run_opts
         }
 
 
@@ -27,4 +24,4 @@ def test_default_context_builder():
     assert isinstance(contexts, dict)
     assert "runner_config" in contexts
     assert "run_opts" in contexts
-    assert contexts["run_opts"]["model"] == 'claude-3-5-sonnet-20240620'
+    assert contexts["run_opts"]["model"] == 'claude-3-5-sonnet-20241022'

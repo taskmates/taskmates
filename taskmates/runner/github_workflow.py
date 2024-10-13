@@ -289,7 +289,7 @@ ReusableWorkflowCallJob = TypedDict(
     'ReusableWorkflowCallJob',
     {
         'name': NotRequired[str],
-        'needs': NotRequired[JobNeeds],
+        'signals': NotRequired[JobNeeds],
         'permissions': NotRequired[Permissions],
         'if': NotRequired[Union[bool, float, str]],
         'uses': str,
@@ -304,7 +304,7 @@ NormalJob = TypedDict(
     'NormalJob',
     {
         'name': NotRequired[str],
-        'needs': NotRequired[JobNeeds],
+        'signals': NotRequired[JobNeeds],
         'permissions': NotRequired[Permissions],
         'runs-on': Union[
             str, List, RunsOn, StringContainingExpressionSyntax, ExpressionSyntax
@@ -332,7 +332,7 @@ Model = TypedDict(
         'env': NotRequired[Env],
         'defaults': NotRequired[Defaults],
         'concurrency': NotRequired[Union[str, Concurrency]],
-        'jobs': Dict[str, Union[NormalJob, ReusableWorkflowCallJob]],
+        'daemons': Dict[str, Union[NormalJob, ReusableWorkflowCallJob]],
         'run-name': NotRequired[str],
         'permissions': NotRequired[Permissions],
     },

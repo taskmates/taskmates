@@ -4,8 +4,9 @@ from typeguard import typechecked
 
 from taskmates.core.actions.chat_completion.chat_completion_editor_completion import ChatCompletionEditorCompletion
 from taskmates.core.completion_provider import CompletionProvider
-from taskmates.core.run import RUN
-from taskmates.core.run import Run
+from taskmates.workflows.contexts.context import Context
+from taskmates.workflow_engine.run import RUN
+from taskmates.workflow_engine.run import Run
 from taskmates.core.tools_registry import tools_registry
 from taskmates.formats.markdown.metadata.get_model_client import get_model_client
 from taskmates.formats.markdown.metadata.get_model_conf import get_model_conf
@@ -23,8 +24,9 @@ class ChatCompletionProvider(CompletionProvider):
 
     @typechecked
     async def perform_completion(self, chat: Chat):
-        contexts = RUN.get().contexts
-        run: Run = RUN.get()
+        contexts = RUN.get().context
+        run: Run[Context] = RUN.get()
+        output_streams = run.signals["output_streams"]
 
         chat_completion_editor_completion = ChatCompletionEditorCompletion(chat, run)
 
@@ -32,7 +34,7 @@ class ChatCompletionProvider(CompletionProvider):
             choice = chat_completion_chunk.model_dump()['choices'][0]
             await chat_completion_editor_completion.process_chat_completion_chunk(choice)
 
-        with run.output_streams.chat_completion.connected_to(restream_completion_chunk):
+        with output_streams.chat_completion.connected_to(restream_completion_chunk):
             taskmates_dirs = contexts["runner_config"]["taskmates_dirs"]
             model_alias = contexts["run_opts"]["model"]
             model_conf = get_model_conf(model_alias=model_alias,
@@ -74,6 +76,6 @@ class ChatCompletionProvider(CompletionProvider):
                 **({"tool_choice": tool_choice} if tool_choice is not None else {})
             )
 
-            await run.output_streams.artifact.send_async({"name": "parsed_chat.json", "content": chat})
+            await output_streams.artifact.send_async({"name": "parsed_chat.json", "content": chat})
 
             return await api_request(client, messages, model_conf, model_params, run)

@@ -1,6 +1,6 @@
 from wrapt import wrap_function_wrapper
 
-from taskmates.core.run import RUN
+from taskmates.workflow_engine.run import RUN
 from taskmates.core.actions.code_execution.code_cells.code_cell_execution_completion_provider import \
     CodeCellExecutionCompletionProvider
 from taskmates.core.actions.code_execution.tools.tool_execution_completion_provider import \
@@ -11,7 +11,7 @@ from taskmates.sdk import TaskmatesExtension
 
 class DotenvInjector(TaskmatesExtension):
     def handle(self, wrapped, instance, args, kwargs):
-        contexts = RUN.get().contexts
+        contexts = RUN.get().context
         interpreter_env = contexts["runner_environment"]["env"]
         working_dir = contexts["runner_environment"]["cwd"]
 

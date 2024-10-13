@@ -3,9 +3,8 @@ from typing import Unpack
 import pytest
 from typeguard import typechecked
 
-from taskmates.context_builders.sdk_context_builder import SdkContextBuilder
-from taskmates.defaults.workflows.sdk_completion_runner import SdkCompletionRunner
 from taskmates.types import RunOpts
+from taskmates.workflows.runners.sdk_completion_runner import SdkCompletionRunner
 
 
 @typechecked

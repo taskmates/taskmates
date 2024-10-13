@@ -1,7 +1,8 @@
 import re
 from typing import Dict
 
-from taskmates.core.run import Run
+from taskmates.workflows.contexts.context import Context
+from taskmates.workflow_engine.run import Run
 
 
 def snake_case_to_title_case(text: str) -> str:
@@ -9,9 +10,9 @@ def snake_case_to_title_case(text: str) -> str:
 
 
 class ChatCompletionEditorCompletion:
-    def __init__(self, chat, run: Run):
+    def __init__(self, chat, run: Run[Context]):
         self.chat = chat
-        self.run = run
+        self.output_streams = run.signals["output_streams"]
         self.recipient = None
         self.role = None
         self.name = None
@@ -72,7 +73,7 @@ class ChatCompletionEditorCompletion:
         if not self.role and delta.get("role"):
             self.role = delta['role']
             recipient = self.chat["messages"][-1]["recipient"]
-            await self.run.output_streams.responder.send_async(f"**{recipient}>** ")
+            await self.output_streams.responder.send_async(f"**{recipient}>** ")
 
     async def append(self, text: str):
-        await self.run.output_streams.response.send_async(text)
+        await self.output_streams.response.send_async(text)
