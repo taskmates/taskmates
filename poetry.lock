@@ -6298,4 +6298,4 @@ chromadb = ["chromadb"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.11.1,<3.13"
-content-hash = "c911e58b2801deb82b0367f072cd51991e442ae255295342c8befa0fbf80b952"
+content-hash = "976a07693db05f6d1f75ebebc2c64d4faf6ea6323dabac7d13b6f86f4fd213f8"
