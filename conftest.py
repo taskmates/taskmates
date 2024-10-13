@@ -7,6 +7,7 @@ import tiktoken
 from taskmates.config.load_participant_config import load_cache
 from taskmates.context_builders.test_context_builder import TestContextBuilder
 from taskmates.core.actions.code_execution.code_cells.execute_markdown_on_local_kernel import kernel_pool
+from taskmates.core.io.listeners.captured_signals import CapturedSignals
 from taskmates.core.run import Run
 from taskmates.load_env_files import load_env_for_environment
 from taskmates.taskmates_runtime import TASKMATES_RUNTIME
@@ -73,7 +74,9 @@ def contexts(taskmates_runtime, tmp_path):
 
 @pytest.fixture(autouse=True)
 def run(taskmates_runtime, contexts):
-    with Run(contexts=contexts) as run:
+    jobs = [CapturedSignals()]
+
+    with Run(name="pytest", contexts=contexts, jobs=jobs) as run:
         yield run
 
 

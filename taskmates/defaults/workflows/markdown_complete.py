@@ -5,8 +5,10 @@ from typeguard import typechecked
 from taskmates.actions.parse_markdown_chat import parse_markdown_chat
 from taskmates.core.compute_next_completion import compute_next_completion
 from taskmates.core.compute_separator import compute_separator
+from taskmates.core.daemons.interrupt_request_mediator import InterruptRequestMediator
+from taskmates.core.daemons.interrupted_or_killed import InterruptedOrKilled
+from taskmates.core.daemons.return_value import ReturnValue
 from taskmates.core.io.listeners.markdown_chat import MarkdownChat
-from taskmates.core.merge_jobs import merge_jobs
 from taskmates.core.rules.max_steps_check import MaxStepsCheck
 from taskmates.core.run import RUN, Run
 from taskmates.core.states.current_step import CurrentStep
@@ -14,7 +16,7 @@ from taskmates.core.taskmates_workflow import TaskmatesWorkflow
 from taskmates.lib.not_set.not_set import NOT_SET
 from taskmates.logging import logger
 from taskmates.runner.actions.markdown_completion_action import MarkdownCompletionAction
-from taskmates.runner.contexts.contexts import Contexts
+from taskmates.runner.contexts.runner_context import RunnerContext
 from taskmates.types import Chat
 
 
@@ -25,13 +27,19 @@ class MarkdownCompleteState(TypedDict):
 
 class MarkdownComplete(TaskmatesWorkflow):
     def __init__(self, *,
-                 contexts: Contexts = None,
-                 jobs: dict[str, Run] | list[Run] = None
+                 contexts: RunnerContext = None
                  ):
+
         super().__init__(contexts=contexts,
-                         jobs=merge_jobs(jobs, {
+                         jobs={
+                             "interrupt_request_mediator": InterruptRequestMediator(),
+                             "interrupted_or_killed": InterruptedOrKilled(),
+                             "return_value": ReturnValue(),
                              "markdown_chat": MarkdownChat(),
-                         }))
+                         })
+        # TODO:
+        # self.outputs
+        # self.topics
 
     @typechecked
     async def run(self, markdown_chat: str) -> str:
@@ -40,7 +48,7 @@ class MarkdownComplete(TaskmatesWorkflow):
         contexts = RUN.get().contexts
         run = RUN.get()
 
-        response_format = contexts["client_config"]["format"]
+        response_format = contexts["runner_config"]["format"]
 
         await self.start_workflow(run)
 
@@ -106,39 +114,39 @@ class MarkdownComplete(TaskmatesWorkflow):
 
         return completion_assistance
 
-    async def prepare_step_context(self, run_state, chat: Chat, contexts: Contexts):
+    async def prepare_step_context(self, run_state, chat: Chat, contexts: RunnerContext):
         run_state["current_step_update"].increment()
         current_step = run_state["current_step_update"].get()
         contexts['step_context']['current_step'] = current_step
         return chat
 
-    async def prepare_completion_job_context(self, chat: Chat, contexts: Contexts):
-        contexts["completion_opts"].update(chat["completion_opts"])
+    async def prepare_completion_job_context(self, chat: Chat, contexts: RunnerContext):
+        contexts["run_opts"].update(chat["run_opts"])
 
-        if "model" in chat["completion_opts"]:
-            contexts['completion_opts']["model"] = chat["completion_opts"]["model"]
-        if contexts['completion_opts']["model"] in ("quote", "echo"):
-            contexts['completion_opts']["max_steps"] = 1
+        if "model" in chat["run_opts"]:
+            contexts['run_opts']["model"] = chat["run_opts"]["model"]
+        if contexts['run_opts']["model"] in ("quote", "echo"):
+            contexts['run_opts']["max_steps"] = 1
         return chat
 
     @typechecked
-    async def get_markdown_chat(self, markdown_chat: str, contexts: Contexts):
+    async def get_markdown_chat(self, markdown_chat: str, contexts: RunnerContext):
         chat: Chat = await parse_markdown_chat(
             markdown_chat=markdown_chat,
-            markdown_path=(contexts["completion_context"]["markdown_path"]),
-            taskmates_dirs=(contexts["client_config"]["taskmates_dirs"]),
-            inputs=(contexts["completion_opts"]["inputs"]))
+            markdown_path=(contexts["runner_environment"]["markdown_path"]),
+            taskmates_dirs=(contexts["runner_config"]["taskmates_dirs"]),
+            inputs=(contexts["run_opts"]["inputs"]))
         return chat
 
     async def start_workflow(self, signals):
         await signals.status.start.send_async({})
 
-    async def end_workflow(self, chat: Chat, contexts: Contexts, run: Run):
+    async def end_workflow(self, chat: Chat, contexts: RunnerContext, run: Run):
         logger.debug(f"Finished completion assistance")
         separator = compute_separator(chat["markdown_chat"])
         if separator:
             await run.output_streams.formatting.send_async(separator)
-        if (contexts['client_config']["interactive"] and
+        if (contexts['runner_config']["interactive"] and
                 not run.jobs_registry["interrupted_or_killed"].get()):
             recipient = chat["messages"][-1]["recipient"]
             if recipient:

@@ -7,12 +7,12 @@ from taskmates.core.actions.code_execution.code_cells.code_cells_editor_completi
 from taskmates.core.actions.code_execution.code_cells.execute_markdown_on_local_kernel import \
     execute_markdown_on_local_kernel
 from taskmates.core.completion_provider import CompletionProvider
-from taskmates.types import Chat, CompletionContext
+from taskmates.types import Chat, RunnerEnvironment
 
 
 class CodeCellExecutionCompletionProvider(CompletionProvider):
     def can_complete(self, chat):
-        is_jupyter_enabled = chat.get("completion_opts", {}).get("jupyter_enabled", True)
+        is_jupyter_enabled = chat.get("run_opts", {}).get("jupyter_enabled", True)
         last_message = chat['messages'][-1]
         code_cells = last_message.get("code_cells", [])
         return is_jupyter_enabled and len(code_cells) > 0
@@ -21,10 +21,10 @@ class CodeCellExecutionCompletionProvider(CompletionProvider):
         contexts = RUN.get().contexts
         signals = RUN.get()
 
-        completion_context: CompletionContext = contexts["completion_context"]
-        markdown_path = completion_context["markdown_path"]
-        cwd = completion_context["cwd"]
-        env = completion_context["env"]
+        runner_environment: RunnerEnvironment = contexts["runner_environment"]
+        markdown_path = runner_environment["markdown_path"]
+        cwd = runner_environment["cwd"]
+        env = runner_environment["env"]
 
         messages = chat.get("messages", [])
 
@@ -61,7 +61,7 @@ async def test_markdown_code_cells_assistance_streaming(tmp_path):
 
     chat: Chat = {
         "markdown_chat": "",
-        "completion_opts": {},
+        "run_opts": {},
         "participants": {},
         "available_tools": [],
         "messages": [

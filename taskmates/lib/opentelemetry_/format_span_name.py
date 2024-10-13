@@ -8,10 +8,10 @@ def format_span_name(wrapped, instance, wrapped_module=None):
     callee_class = instance.__class__ if is_instance_method else instance
     method_separator = "#" if is_instance_method else "."
 
-    # Example: SignalsCapturer@5408743568#filter_signals
+    # Example: CapturedSignals@5408743568#filter_signals
     # span_name = f"{callee_class.__name__}@{id(instance)}{method_separator}{declaring_module}{wrapped.__name__}"
 
-    # Example: filter_signals [SignalsCapturer@5408743568]
+    # Example: filter_signals [CapturedSignals@5408743568]
 
     span_name = f"{wrapped.__name__} [{callee_class.__name__}{declaring_module}@{id(instance)}]"
 

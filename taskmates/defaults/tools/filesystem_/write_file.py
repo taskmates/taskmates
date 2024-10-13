@@ -14,10 +14,10 @@ def write_file(path, content):
     """
 
     contexts = RUN.get().contexts
-    completion_opts = contexts["completion_opts"]
+    run_opts = contexts["run_opts"]
 
-    allow = ((completion_opts.get("tools") or {}).get("write_file") or {}).get("allow", "**")
-    deny = ((completion_opts.get("tools") or {}).get("write_file") or {}).get("deny", None)
+    allow = ((run_opts.get("tools") or {}).get("write_file") or {}).get("allow", "**")
+    deny = ((run_opts.get("tools") or {}).get("write_file") or {}).get("deny", None)
 
     path_obj = Path(path)
     if not path_obj.is_file():

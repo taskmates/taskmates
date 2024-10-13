@@ -18,7 +18,7 @@ class FileSystemArtifactsSink(Daemon):
         # Maybe we should get an artifacts_dir instead
 
         taskmates_home = Path(os.environ.get("TASKMATES_HOME", str(Path.home() / ".taskmates")))
-        request_id = RUN.get().contexts["completion_context"]["request_id"]
+        request_id = RUN.get().contexts["runner_environment"]["request_id"]
 
         # The problem seems to be that we're mixing artifacts and logs
 

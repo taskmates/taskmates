@@ -33,10 +33,10 @@ class SigIntAndSigTermController(Daemon):
                 print("Interrupting...", flush=True)
                 print("Press Ctrl+C again to kill", flush=True)
                 await self.run.control.interrupt_request.send_async({})
-                await asyncio.sleep(5)
+                # await asyncio.sleep(5)
                 self.received_signal = None
             elif self.received_signal == signal.SIGTERM:
                 await self.run.control.kill.send_async({})
-                await asyncio.sleep(5)
+                # await asyncio.sleep(5)
                 break
             await asyncio.sleep(0.1)

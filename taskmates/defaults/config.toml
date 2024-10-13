@@ -1,26 +1,22 @@
-[client_config]
+[runner_config]
 format = "completion"
 interactive = true
 
 # Completion Context
-[completion_context]
+[runner_environment]
 markdown_path = "{uuid4()}.md"
 cwd = "{os.getcwd()}"
 
 # Completion Options
-[completion_opts]
+[run_opts]
 model = "claude-3-5-sonnet-20240620"
 max_steps = 10000
 
-[[completion_opts.taskmates_dirs]]
+[[run_opts.taskmates_dirs]]
 path = "{os.environ.get('TASKMATES_HOME', str(Path.home() / '.taskmates'))}"
 
-[[completion_opts.taskmates_dirs]]
+[[run_opts.taskmates_dirs]]
 path = "{root_path() / 'taskmates' / 'default_config'}"
-
-# Server Configuration
-[server_config]
-# Empty as per the provided SERVER_CONFIG
 
 
 [profile.api]

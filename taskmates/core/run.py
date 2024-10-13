@@ -16,7 +16,7 @@ from taskmates.core.signals.status_signals import StatusSignals
 from taskmates.lib.context_.temp_context import temp_context
 from taskmates.lib.contextlib_.stacked_contexts import stacked_contexts
 from taskmates.lib.str_.to_snake_case import to_snake_case
-from taskmates.runner.contexts.contexts import Contexts
+from taskmates.runner.contexts.runner_context import RunnerContext
 from taskmates.taskmates_runtime import TASKMATES_RUNTIME
 
 Signal.set_class = OrderedSet
@@ -26,7 +26,7 @@ class Run(AbstractContextManager):
     def __init__(self,
                  name: str = None,
                  callable: Callable = None,
-                 contexts: Contexts = None,
+                 contexts: RunnerContext = None,
                  inputs: dict = None,
                  jobs: dict[str, 'Run'] | list['Run'] = None,
                  ):
@@ -39,7 +39,7 @@ class Run(AbstractContextManager):
 
         self.exit_stack = contextlib.ExitStack()
 
-        self.contexts: Contexts = copy.deepcopy(coalesce(contexts, getattr(self.parent, 'contexts', {})))
+        self.contexts: RunnerContext = copy.deepcopy(coalesce(contexts, getattr(self.parent, 'contexts', {})))
         self.inputs = inputs or {}
 
         self.control = getattr(self.parent, 'control', ControlSignals())
@@ -48,8 +48,6 @@ class Run(AbstractContextManager):
         self.output_streams = getattr(self.parent, 'output_streams', OutputStreams())
 
         self.outputs: dict = {}
-
-        self.jobs_registry = getattr(self.parent, 'jobs_registry', {})
 
         self.jobs = jobs_to_dict(jobs)
         self.jobs_registry = getattr(self.parent, 'jobs_registry', {})
@@ -91,6 +89,8 @@ class Run(AbstractContextManager):
 
         # Enters the context of all jobs
         self.exit_stack.enter_context(stacked_contexts(list(self.jobs.values())))
+
+        return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.exit_stack.close()

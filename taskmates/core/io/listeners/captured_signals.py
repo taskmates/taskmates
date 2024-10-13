@@ -7,10 +7,13 @@ from taskmates.core.signals.base_signals import BaseSignals
 from taskmates.lib.contextlib_.stacked_contexts import stacked_contexts
 
 
-class SignalsCapturer(Daemon):
+class CapturedSignals(Daemon):
     def __init__(self):
         super().__init__()
         self.captured_signals: list[tuple[str, Any]] = []
+
+    def get(self):
+        return self.captured_signals
 
     async def capture_signal(self, signal_name: str, payload):
         self.captured_signals.append((signal_name, payload))

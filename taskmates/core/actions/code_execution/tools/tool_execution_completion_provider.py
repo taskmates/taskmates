@@ -10,7 +10,7 @@ from taskmates.core.completion_provider import CompletionProvider
 from taskmates.core.tools_registry import tools_registry
 from taskmates.model.tool_call import ToolCall
 from taskmates.core.run import RUN, Run
-from taskmates.types import Chat, CompletionContext
+from taskmates.types import Chat, RunnerEnvironment
 
 
 class ToolExecutionCompletionProvider(CompletionProvider):
@@ -24,9 +24,9 @@ class ToolExecutionCompletionProvider(CompletionProvider):
         contexts = RUN.get().contexts
         run = RUN.get()
 
-        completion_context = contexts["completion_context"]
-        cwd = completion_context["cwd"]
-        markdown_path = completion_context["markdown_path"]
+        runner_environment = contexts["runner_environment"]
+        cwd = runner_environment["cwd"]
+        markdown_path = runner_environment["markdown_path"]
 
         messages = chat.get("messages", [])
 
@@ -54,7 +54,7 @@ class ToolExecutionCompletionProvider(CompletionProvider):
                         os.chdir(cwd)
                     except FileNotFoundError:
                         pass
-                    return_value = await self.execute_task(completion_context, tool_call_obj, run)
+                    return_value = await self.execute_task(runner_environment, tool_call_obj, run)
                 finally:
                     os.chdir(original_cwd)
 
@@ -63,7 +63,7 @@ class ToolExecutionCompletionProvider(CompletionProvider):
 
     @staticmethod
     @typechecked
-    async def execute_task(context: CompletionContext, tool_call: ToolCall, run: Run):
+    async def execute_task(context: RunnerEnvironment, tool_call: ToolCall, run: Run):
         tool_call_id = tool_call.id
         function_name = tool_call.function.name
         arguments = tool_call.function.arguments

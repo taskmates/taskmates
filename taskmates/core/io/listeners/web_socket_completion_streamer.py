@@ -4,7 +4,6 @@ from loguru import logger
 
 from taskmates.core.daemon import Daemon
 from taskmates.core.run import RUN
-from taskmates.lib.contextlib_.stacked_contexts import stacked_contexts
 
 
 class WebSocketCompletionStreamer(Daemon):
@@ -26,7 +25,5 @@ class WebSocketCompletionStreamer(Daemon):
         await self.websocket.send(dump)
 
     def __enter__(self):
-        run = RUN.get()
-        self.exit_stack.enter_context(stacked_contexts([
-            run.output_streams.stdout.connected_to(self.handle_completion)
-        ]))
+        stdout = RUN.get().output_streams.stdout
+        self.exit_stack.enter_context(stdout.connected_to(self.handle_completion))

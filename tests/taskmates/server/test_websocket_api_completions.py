@@ -10,7 +10,7 @@ from typeguard import typechecked
 import taskmates
 from taskmates.core.run import RUN
 from taskmates.server.blueprints.api_completions import completions_bp as completions_v2_bp
-from taskmates.types import CompletionPayload
+from taskmates.types import ApiRequest
 
 pytestmark = pytest.mark.slow
 
@@ -39,12 +39,12 @@ async def test_chat_completion(app, tmp_path):
     
     **user>** """)
 
-    test_payload: CompletionPayload = {
+    test_payload: ApiRequest = {
         "type": "completions_request",
         "version": taskmates.__version__,
         "markdown_chat": markdown_chat,
-        "completion_context": RUN.get().contexts["completion_context"],
-        "completion_opts": {
+        "runner_environment": RUN.get().contexts["runner_environment"],
+        "run_opts": {
             "model": "quote",
         },
     }
@@ -76,12 +76,12 @@ async def test_chat_completion_with_mention(app, tmp_path):
     
     **user>** """)
 
-    test_payload: CompletionPayload = {
+    test_payload: ApiRequest = {
         "type": "completions_request",
         "version": taskmates.__version__,
         "markdown_chat": markdown_chat,
-        "completion_context": RUN.get().contexts["completion_context"],
-        "completion_opts": {
+        "runner_environment": RUN.get().contexts["runner_environment"],
+        "run_opts": {
             "model": "quote",
         }
     }
@@ -120,12 +120,12 @@ async def test_tool_completion(app, tmp_path):
                          '\n'
                          "**assistant>** ")
 
-    test_payload: CompletionPayload = {
+    test_payload: ApiRequest = {
         "type": "completions_request",
         "version": taskmates.__version__,
         "markdown_chat": markdown_chat,
-        "completion_context": RUN.get().contexts["completion_context"],
-        "completion_opts": {
+        "runner_environment": RUN.get().contexts["runner_environment"],
+        "run_opts": {
             "model": "quote",
         },
     }
@@ -162,12 +162,12 @@ async def test_code_cell_completion(app, tmp_path):
 
     **assistant>** ''')
 
-    test_payload: CompletionPayload = {
+    test_payload: ApiRequest = {
         "type": "completions_request",
         "version": taskmates.__version__,
         "markdown_chat": markdown_chat,
-        "completion_context": RUN.get().contexts["completion_context"],
-        "completion_opts": {
+        "runner_environment": RUN.get().contexts["runner_environment"],
+        "run_opts": {
             "model": "quote",
         },
     }
@@ -188,12 +188,12 @@ async def test_error_completion(app, tmp_path):
         </pre>
     """)
 
-    test_payload: CompletionPayload = {
+    test_payload: ApiRequest = {
         "type": "completions_request",
         "version": taskmates.__version__,
         "markdown_chat": "REQUEST\n\n",
-        "completion_context": RUN.get().contexts["completion_context"],
-        "completion_opts": {
+        "runner_environment": RUN.get().contexts["runner_environment"],
+        "run_opts": {
             "model": "non-existent-model",
         },
     }
@@ -256,12 +256,12 @@ async def test_interrupt_tool(app, tmp_path):
                              '-[x] Done\n'
                              '\n')
 
-    test_payload: CompletionPayload = {
+    test_payload: ApiRequest = {
         "type": "completions_request",
         "version": taskmates.__version__,
         "markdown_chat": markdown_chat,
-        "completion_context": RUN.get().contexts["completion_context"],
-        "completion_opts": {
+        "runner_environment": RUN.get().contexts["runner_environment"],
+        "run_opts": {
             "model": "quote",
         },
     }
@@ -277,7 +277,7 @@ async def test_interrupt_tool(app, tmp_path):
                 if "5" in message["payload"]["markdown_chunk"]:
                     break
 
-        await ws.send(json.dumps({"type": "interrupt", "completion_context": RUN.get().contexts["completion_context"]}))
+        await ws.send(json.dumps({"type": "interrupt", "runner_environment": RUN.get().contexts["runner_environment"]}))
 
         remaining = await collect_until_closed(ws)
         messages.extend(remaining)
@@ -309,12 +309,12 @@ async def test_code_cell_no_output(app, tmp_path):
                            'Done\n'
                            '\n'
                            '**assistant>** ')
-    test_payload: CompletionPayload = {
+    test_payload: ApiRequest = {
         "type": "completions_request",
         "version": taskmates.__version__,
         "markdown_chat": markdown_chat,
-        "completion_context": RUN.get().contexts["completion_context"],
-        "completion_opts": {
+        "runner_environment": RUN.get().contexts["runner_environment"],
+        "run_opts": {
             "model": "quote",
         },
     }
@@ -367,12 +367,12 @@ async def test_interrupt_code_cell(app, tmp_path):
                          '</pre>\n'
                          '\n')
 
-    test_payload: CompletionPayload = {
+    test_payload: ApiRequest = {
         "type": "completions_request",
         "version": taskmates.__version__,
         "markdown_chat": markdown_chat,
-        "completion_context": RUN.get().contexts["completion_context"],
-        "completion_opts": {
+        "runner_environment": RUN.get().contexts["runner_environment"],
+        "run_opts": {
             "model": "quote",
         },
     }
@@ -388,7 +388,7 @@ async def test_interrupt_code_cell(app, tmp_path):
                 if "2" in message["payload"]["markdown_chunk"]:
                     break
 
-        await ws.send(json.dumps({"type": "interrupt", "completion_context": RUN.get().contexts["completion_context"]}))
+        await ws.send(json.dumps({"type": "interrupt", "runner_environment": RUN.get().contexts["runner_environment"]}))
 
         remaining = await collect_until_closed(ws)
         messages.extend(remaining)
@@ -425,12 +425,12 @@ async def test_kill_tool(app, tmp_path):
                          '-[x] Done\n'
                          '\n')
 
-    test_payload: CompletionPayload = {
+    test_payload: ApiRequest = {
         "type": "completions_request",
         "version": taskmates.__version__,
         "markdown_chat": markdown_chat,
-        "completion_context": RUN.get().contexts["completion_context"],
-        "completion_opts": {
+        "runner_environment": RUN.get().contexts["runner_environment"],
+        "run_opts": {
             "model": "quote",
         },
     }
@@ -446,7 +446,7 @@ async def test_kill_tool(app, tmp_path):
                 if "Starting" in message["payload"]["markdown_chunk"]:
                     break
 
-        await ws.send(json.dumps({"type": "kill", "completion_context": RUN.get().contexts["completion_context"]}))
+        await ws.send(json.dumps({"type": "kill", "runner_environment": RUN.get().contexts["runner_environment"]}))
 
         remaining = await collect_until_closed(ws)
         messages.extend(remaining)
@@ -475,12 +475,12 @@ async def test_kill_code_cell(app, tmp_path):
 
     expected_response = '###### Cell Output: stdout [cell_0]\n\n<pre>\nStarting\r\n</pre>\n\n'
 
-    test_payload: CompletionPayload = {
+    test_payload: ApiRequest = {
         "type": "completions_request",
         "version": taskmates.__version__,
         "markdown_chat": markdown_chat,
-        "completion_context": RUN.get().contexts["completion_context"],
-        "completion_opts": {
+        "runner_environment": RUN.get().contexts["runner_environment"],
+        "run_opts": {
             "model": "quote",
         },
     }
@@ -496,7 +496,7 @@ async def test_kill_code_cell(app, tmp_path):
                 if "Starting" in message["payload"]["markdown_chunk"]:
                     break
 
-        await ws.send(json.dumps({"type": "kill", "completion_context": RUN.get().contexts["completion_context"]}))
+        await ws.send(json.dumps({"type": "kill", "runner_environment": RUN.get().contexts["runner_environment"]}))
 
         remaining = await collect_until_closed(ws)
         messages.extend(remaining)
@@ -516,7 +516,7 @@ async def get_markdown_response(messages):
 
 
 @typechecked
-async def send_and_collect_messages(client, payload: CompletionPayload, endpoint: str):
+async def send_and_collect_messages(client, payload: ApiRequest, endpoint: str):
     async with client.websocket(endpoint) as ws:
         await ws.send(json.dumps(payload))
         return await collect_until_closed(ws)
@@ -555,12 +555,12 @@ async def test_client_disconnect(app, tmp_path):
 
     """)
 
-    test_payload: CompletionPayload = {
+    test_payload: ApiRequest = {
         "type": "completions_request",
         "version": taskmates.__version__,
         "markdown_chat": markdown_chat,
-        "completion_context": RUN.get().contexts["completion_context"],
-        "completion_opts": {
+        "runner_environment": RUN.get().contexts["runner_environment"],
+        "run_opts": {
             "model": "quote",
         },
     }

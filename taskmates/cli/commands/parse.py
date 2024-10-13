@@ -19,7 +19,7 @@ class ParseCommand(Command):
         contexts = builder.build()
 
         with Run(contexts=contexts):
-            taskmates_dirs = contexts["client_config"]["taskmates_dirs"]
+            taskmates_dirs = contexts["runner_config"]["taskmates_dirs"]
 
             markdown_chat = "".join(sys.stdin.readlines())
             result = await parse_markdown_chat(markdown_chat, None, taskmates_dirs)
@@ -53,7 +53,7 @@ async def test_parse(tmp_path):
         assert "participants" in result
         assert "messages" in result
         assert "available_tools" in result
-        assert "completion_opts" in result
+        assert "run_opts" in result
 
         # Check messages
         assert len(result["messages"]) == 3  # system message + user message + assistant message

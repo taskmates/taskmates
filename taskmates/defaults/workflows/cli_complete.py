@@ -2,20 +2,14 @@ import os
 
 from typeguard import typechecked
 
-from taskmates.core.daemons.interrupt_request_mediator import InterruptRequestMediator
-from taskmates.core.daemons.interrupted_or_killed import InterruptedOrKilled
-from taskmates.core.daemons.return_value import ReturnValue
-from taskmates.core.run import RUN, Run
-from taskmates.core.merge_jobs import merge_jobs
-from taskmates.core.io.emitters.sig_int_and_sig_term_controller import SigIntAndSigTermController
 from taskmates.core.io.listeners.history_sink import HistorySink
 from taskmates.core.io.listeners.markdown_chat import MarkdownChat
-from taskmates.core.io.listeners.write_markdown_chat_to_stdout import WriteMarkdownChatToStdout
 from taskmates.core.io.mediators.formatting_processor import IncomingMessagesFormattingProcessor
+from taskmates.core.run import RUN
 from taskmates.core.taskmates_workflow import TaskmatesWorkflow
 from taskmates.defaults.workflows.markdown_complete import MarkdownComplete
 from taskmates.lib.contextlib_.stacked_contexts import stacked_contexts
-from taskmates.runner.contexts.contexts import Contexts
+from taskmates.runner.contexts.runner_context import RunnerContext
 
 
 def read_history(history_path):
@@ -30,15 +24,9 @@ def read_history(history_path):
 
 class CliComplete(TaskmatesWorkflow):
     def __init__(self, *,
-                 contexts: Contexts = None,
-                 jobs: dict[str, Run] | list[Run] = None,
+                 contexts: RunnerContext = None,
                  ):
-        control_flow_jobs = {
-            "interrupt_request_mediator": InterruptRequestMediator(),
-            "interrupted_or_killed": InterruptedOrKilled(),
-            "return_value": ReturnValue(),
-        }
-        super().__init__(contexts=contexts, jobs=merge_jobs(jobs, control_flow_jobs))
+        super().__init__(contexts=contexts)
 
     @typechecked
     async def run(self,
@@ -48,15 +36,8 @@ class CliComplete(TaskmatesWorkflow):
                   ):
         markdown_chat = await self.get_incoming_markdown(history_path, incoming_messages)
 
-        jobs = [
-            SigIntAndSigTermController(),
-            WriteMarkdownChatToStdout(response_format),
-            HistorySink(history_path)
-        ]
-
-        # TODO: build a new Contexts object here
-        run = RUN.get()
-        result = await MarkdownComplete(contexts=run.contexts, jobs=jobs).run(
+        # TODO: build a new RunnerContext object here
+        result = await MarkdownComplete().run(
             markdown_chat=markdown_chat
         )
 
@@ -75,7 +56,6 @@ class CliComplete(TaskmatesWorkflow):
         incoming_markdown = MarkdownChat()
         cli_history_jobs = [
             incoming_markdown,
-            HistorySink(history_path),
             IncomingMessagesFormattingProcessor(),
         ]
         # TODO: replace this with an ExecutionEnvironment context

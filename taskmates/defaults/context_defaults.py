@@ -1,16 +1,15 @@
-from taskmates.runner.contexts.contexts import Contexts
+from taskmates.runner.contexts.runner_context import RunnerContext
 
 
 class ContextDefaults:
     @staticmethod
-    def build() -> Contexts:
+    def build() -> RunnerContext:
         return {
-            "client_config": {
+            "runner_config": {
                 "taskmates_dirs": [],
             },
-            "server_config": {},
-            "completion_context": {},
-            "completion_opts": {
+            "runner_environment": {},
+            "run_opts": {
                 "model": 'claude-3-5-sonnet-20240620',
                 "inputs": {},
                 "max_steps": 10000,
@@ -26,6 +25,6 @@ def test_default_context_builder():
     builder = ContextDefaults()
     contexts = builder.build()
     assert isinstance(contexts, dict)
-    assert "client_config" in contexts
-    assert "completion_opts" in contexts
-    assert contexts["completion_opts"]["model"] == 'claude-3-5-sonnet-20240620'
+    assert "runner_config" in contexts
+    assert "run_opts" in contexts
+    assert contexts["run_opts"]["model"] == 'claude-3-5-sonnet-20240620'

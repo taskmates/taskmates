@@ -12,8 +12,8 @@ from taskmates.sdk import TaskmatesExtension
 class DotenvInjector(TaskmatesExtension):
     def handle(self, wrapped, instance, args, kwargs):
         contexts = RUN.get().contexts
-        interpreter_env = contexts["completion_context"]["env"]
-        working_dir = contexts["completion_context"]["cwd"]
+        interpreter_env = contexts["runner_environment"]["env"]
+        working_dir = contexts["runner_environment"]["cwd"]
 
         env = get_dotenv_values(working_dir)
 

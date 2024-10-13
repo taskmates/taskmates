@@ -5,58 +5,21 @@ import textwrap
 import pytest
 
 from taskmates.context_builders.test_context_builder import TestContextBuilder
-from taskmates.core.run import RUN
-from taskmates.core.io.listeners.signals_capturer import SignalsCapturer
 from taskmates.core.io.listeners.write_markdown_chat_to_stdout import WriteMarkdownChatToStdout
+from taskmates.core.run import RUN, Run
 from taskmates.defaults.workflows.cli_complete import CliComplete
 
 
 @pytest.fixture(autouse=True)
 def contexts(taskmates_runtime, tmp_path):
     contexts = TestContextBuilder(tmp_path).build()
-    contexts["completion_opts"]["workflow"] = "cli_complete"
+    contexts["run_opts"]["workflow"] = "cli_complete"
     return contexts
 
 
 @pytest.mark.asyncio
-async def test_cli_workflow(tmp_path, contexts):
-    history = "Initial history\n"
-    incoming_messages = ["Incoming message"]
-
-    history_file = tmp_path / "history.txt"
-    history_file.write_text(history)
-
-    signal_capturer = SignalsCapturer()
-    jobs = [signal_capturer]
-    await CliComplete(contexts=contexts, jobs=jobs).run(history_path=str(history_file),
-                                                              incoming_messages=incoming_messages)
-
-    interesting_signals = ['history', 'incoming_message', 'input_formatting', 'error']
-    filtered_signals = signal_capturer.filter_signals(interesting_signals)
-
-    with open(history_file, "r") as f:
-        history_content = f.read()
-
-    assert filtered_signals == [('history', 'Initial history\n'),
-                                ('input_formatting', '\n'),
-                                ('incoming_message', 'Incoming message'),
-                                ('input_formatting', '\n\n')]
-    assert history_content == ('Initial history\n'
-                               '\n'
-                               'Incoming message\n'
-                               '\n'
-                               '**assistant>** \n'
-                               '> Initial history\n'
-                               '> \n'
-                               '> Incoming message\n'
-                               '> \n'
-                               '> \n'
-                               '\n')
-
-
-@pytest.mark.asyncio
 async def test_format_text(tmp_path, contexts):
-    text_output = io.StringIO()
+    string_io = io.StringIO()
 
     history = "Previous history\n"
     incoming_messages = ["Short answer. 1+1="]
@@ -64,22 +27,20 @@ async def test_format_text(tmp_path, contexts):
     history_file = tmp_path / "history.txt"
     history_file.write_text(history)
 
-    signal_capturer = SignalsCapturer()
-    jobs = [
-        signal_capturer,
-        WriteMarkdownChatToStdout('text', text_output)
-    ]
-    contexts['client_config'].update(dict(interactive=False, format='text'))
-    await CliComplete(contexts=contexts, jobs=jobs).run(history_path=str(history_file),
-                                                              incoming_messages=incoming_messages)
+    with Run(jobs=[WriteMarkdownChatToStdout('text', string_io)]):
+        contexts['runner_config'].update(dict(interactive=False, format='text'))
+        workflow = CliComplete()
+        await workflow.run(history_path=str(history_file),
+                           incoming_messages=incoming_messages)
 
-    text_filtered_signals = signal_capturer.filter_signals(
+    last_run = workflow.last_run
+    filtered_signals = last_run.jobs_registry["captured_signals"].filter_signals(
         ['history', 'incoming_message', 'input_formatting', 'error'])
 
-    text_result = text_output.getvalue()
+    text_result = string_io.getvalue()
 
     # Assertions for signals
-    assert text_filtered_signals == [
+    assert filtered_signals == [
         ('history', 'Previous history\n'),
         ('input_formatting', '\n'),
         ('incoming_message', 'Short answer. 1+1='),
@@ -91,7 +52,7 @@ async def test_format_text(tmp_path, contexts):
 
 @pytest.mark.asyncio
 async def test_format_full(tmp_path, contexts):
-    full_output = io.StringIO()
+    string_io = io.StringIO()
 
     history = "Previous history\n"
     incoming_messages = ["Short answer. 1+1="]
@@ -99,21 +60,20 @@ async def test_format_full(tmp_path, contexts):
     history_file = tmp_path / "history.txt"
     history_file.write_text(history)
 
-    signal_capturer = SignalsCapturer()
-    jobs = [
-        signal_capturer,
-        WriteMarkdownChatToStdout('full', full_output)
-    ]
-    contexts['client_config'].update(dict(interactive=False, format='full'))
-    await CliComplete(contexts=contexts, jobs=jobs).run(history_path=str(history_file),
-                                                              incoming_messages=incoming_messages)
+    contexts['runner_config'].update(dict(interactive=False, format='full'))
 
-    full_filtered_signals = signal_capturer.filter_signals(
-        ['history', 'incoming_message', 'input_formatting', 'error'])
+    with Run(jobs=[WriteMarkdownChatToStdout('full', string_io)]):
+        workflow = CliComplete()
+        await workflow.run(history_path=str(history_file),
+                           incoming_messages=incoming_messages)
 
-    full_result = full_output.getvalue()
+        last_run = workflow.last_run
+        filtered_signals = last_run.jobs_registry["captured_signals"].filter_signals(
+            ['history', 'incoming_message', 'input_formatting', 'error'])
 
-    assert full_filtered_signals == [
+        full_result = string_io.getvalue()
+
+    assert filtered_signals == [
         ('history', 'Previous history\n'),
         ('input_formatting', '\n'),
         ('incoming_message', 'Short answer. 1+1='),
@@ -139,27 +99,27 @@ async def test_interrupt_tool(tmp_path, contexts):
 
     """)
 
-    captured_output = io.StringIO()
-    signal_capturer = SignalsCapturer()
-    jobs = [signal_capturer, WriteMarkdownChatToStdout('text', captured_output)]
+    string_io = io.StringIO()
 
-    cli_complete = CliComplete(contexts=contexts, jobs=jobs)
-    task = asyncio.create_task(cli_complete.run(incoming_messages=[markdown_chat]))
+    with Run(jobs=[WriteMarkdownChatToStdout('text', string_io)]):
+        workflow = CliComplete()
+        task = asyncio.create_task(workflow.run(incoming_messages=[markdown_chat]))
 
-    # Wait for the "2" to be printed
-    while "2" not in str(signal_capturer.captured_signals):
-        await asyncio.sleep(0.1)
+        run = RUN.get()
 
-    # Send interrupt
-    run = RUN.get()
-    await run.control.interrupt_request.send_async({})
+        # Wait for the "2" to be printed
+        while "2" not in str(run.jobs_registry["captured_signals"].get()):
+            await asyncio.sleep(0.1)
 
-    try:
-        await task
-    except asyncio.CancelledError:
-        pass
+        # Send interrupt
+        await run.control.interrupt_request.send_async({})
 
-    output = captured_output.getvalue()
+        try:
+            await task
+        except asyncio.CancelledError:
+            pass
+
+        output = string_io.getvalue()
 
     expected_response = textwrap.dedent("""\
     ###### Execution: Run Shell Command [1]

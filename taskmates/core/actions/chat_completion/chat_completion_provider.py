@@ -33,8 +33,8 @@ class ChatCompletionProvider(CompletionProvider):
             await chat_completion_editor_completion.process_chat_completion_chunk(choice)
 
         with run.output_streams.chat_completion.connected_to(restream_completion_chunk):
-            taskmates_dirs = contexts["client_config"]["taskmates_dirs"]
-            model_alias = contexts["completion_opts"]["model"]
+            taskmates_dirs = contexts["runner_config"]["taskmates_dirs"]
+            model_alias = contexts["run_opts"]["model"]
             model_conf = get_model_conf(model_alias=model_alias,
                                         messages=chat["messages"],
                                         taskmates_dirs=taskmates_dirs)

@@ -48,7 +48,7 @@ def test_parse_basic(cli_runner):
     assert "participants" in result
     assert "messages" in result
     assert "available_tools" in result
-    assert "completion_opts" in result
+    assert "run_opts" in result
 
     assert len(result["messages"]) == 4  # system message + empty message + user message + assistant message
     assert result["messages"][0]["role"] == "system"
@@ -109,7 +109,7 @@ def test_parse_with_mention(cli_runner, tmp_path):
 #     assert "participants" in result
 #     assert "messages" in result
 #     assert "available_tools" in result
-#     assert "completion_opts" in result
+#     assert "run_opts" in result
 #
 #     assert len(result["messages"]) == 1  # only user message (empty)
 #     assert result["messages"][0]["role"] == "user"

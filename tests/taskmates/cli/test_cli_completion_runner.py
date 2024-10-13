@@ -334,3 +334,38 @@ def test_chat_completion_from_stdin(tmp_path):
     assert process.returncode == 0
     assert stderr == ""
     assert stdout == expected_response
+
+def test_cli_completion_with_history(cli_runner, tmp_path):
+    # Create initial history file
+    history_file = tmp_path / "history.txt"
+    history_file.write_text("Initial history\n")
+
+    # Prepare the incoming message
+    incoming_message = "Incoming message"
+
+    # Run the CLI command
+    args = ["complete", "--model=quote", "--history", str(history_file), incoming_message]
+    stdout, stderr, returncode = cli_runner(args)
+
+    # Check the command output
+    expected_response = '\n> Incoming message\n> \n> '
+
+    assert stderr == ""
+    assert returncode == 0
+    assert stdout == expected_response
+
+    # Check the updated history file content
+    with open(history_file, "r") as f:
+        history_content = f.read()
+
+    expected_history = ('Initial history\n'
+                        '\n'
+                        '**user>** Incoming message\n'
+                        '\n'
+                        '**assistant>** \n'
+                        '> Incoming message\n'
+                        '> \n'
+                        '> \n'
+                        '\n')
+
+    assert history_content == expected_history

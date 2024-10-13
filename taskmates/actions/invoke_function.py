@@ -6,7 +6,7 @@ from taskmates.core.run import Run
 from taskmates.lib.context_.temp_cwd import temp_cwd
 from taskmates.lib.context_.temp_environ import temp_environ
 from taskmates.lib.restore_stdout_and_stderr import restore_stdout_and_stderr
-from taskmates.types import CompletionContext
+from taskmates.types import RunnerEnvironment
 
 
 # TODO: review this and the duplication with run_shell_command
@@ -19,7 +19,7 @@ async def stream_output(stream_name, stream, run: Run):
             await run.output_streams.response.send_async(line)
 
 
-async def invoke_function(function, arguments, context: CompletionContext, run: Run):
+async def invoke_function(function, arguments, context: RunnerEnvironment, run: Run):
     stdout_stream = StringIO()
     stderr_stream = StringIO()
 

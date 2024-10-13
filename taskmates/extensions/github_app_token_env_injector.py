@@ -15,14 +15,14 @@ from taskmates.sdk import TaskmatesExtension
 # @scope("app")
 class GithubAppTokenEnvInjector(TaskmatesExtension):
     def handle(self, wrapped, instance, args, kwargs):
-        completion_context = RUN.get().contexts["completion_context"]
-        interpreter_env = completion_context["env"]
+        runner_environment = RUN.get().contexts["runner_environment"]
+        interpreter_env = runner_environment["env"]
 
         if "GITHUB_APP_INSTALLATION_ID" not in interpreter_env:
             return wrapped(*args, **kwargs)
 
         # Cache dir:
-        cache_dir = completion_context["cwd"] + "/.taskmates/tmp/cache"
+        cache_dir = runner_environment["cwd"] + "/.taskmates/tmp/cache"
         os.makedirs(cache_dir, exist_ok=True)
         cache_key = f"{cache_dir}/github_app_installation_token.json"
 
@@ -67,7 +67,7 @@ class GithubAppTokenEnvInjector(TaskmatesExtension):
 #     injector = GithubAppTokenEnvInjector()
 #
 #     test_context = {
-#         "completion_context": {
+#         "runner_environment": {
 #             "env": {
 #                 "GITHUB_APP_INSTALLATION_ID": "test_installation_id",
 #                 "GITHUB_APP_ID": "test_app_id",

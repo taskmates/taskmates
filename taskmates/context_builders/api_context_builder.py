@@ -4,44 +4,44 @@ from uuid import uuid4
 import taskmates
 from taskmates.context_builders.context_builder import ContextBuilder
 from taskmates.defaults.context_defaults import ContextDefaults
-from taskmates.runner.contexts.contexts import Contexts
-from taskmates.types import CompletionPayload
+from taskmates.runner.contexts.runner_context import RunnerContext
+from taskmates.types import ApiRequest
 
 
 class ApiContextBuilder(ContextBuilder):
-    def __init__(self, payload: CompletionPayload):
+    def __init__(self, payload: ApiRequest):
         self.payload = payload
 
-    def build(self) -> Contexts:
+    def build(self) -> RunnerContext:
         contexts = ContextDefaults().build()
         request_id = str(uuid4())
 
-        contexts["completion_opts"]["workflow"] = "api_complete"
-        contexts["completion_context"].update(self.payload["completion_context"].copy())
-        contexts["completion_context"].update({
+        contexts["run_opts"]["workflow"] = "api_complete"
+        contexts["runner_environment"].update(self.payload["runner_environment"].copy())
+        contexts["runner_environment"].update({
             "request_id": request_id,
             "env": os.environ.copy(),
         })
 
-        contexts["completion_opts"].update(self.payload["completion_opts"].copy())
+        contexts["run_opts"].update(self.payload["run_opts"].copy())
 
-        contexts["client_config"].update(dict(interactive=True,
+        contexts["runner_config"].update(dict(interactive=True,
                                               format="completion"))
 
         return contexts
 
 
 def test_api_context_builder(tmp_path, contexts):
-    payload: CompletionPayload = {
+    payload: ApiRequest = {
         "type": "completions_request",
         "version": taskmates.__version__,
         "markdown_chat": "hello",
-        "completion_context": contexts["completion_context"],
-        "completion_opts": {
+        "runner_environment": contexts["runner_environment"],
+        "run_opts": {
             "model": "quote",
         },
     }
     builder = ApiContextBuilder(payload)
     contexts = builder.build()
-    assert contexts["completion_opts"]["model"] == "quote"
-    assert contexts["client_config"]["interactive"] == True
+    assert contexts["run_opts"]["model"] == "quote"
+    assert contexts["runner_config"]["interactive"] == True

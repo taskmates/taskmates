@@ -1,11 +1,11 @@
 from abc import ABC, abstractmethod
 
-from taskmates.runner.contexts.contexts import Contexts
+from taskmates.runner.contexts.runner_context import RunnerContext
 
 
 class ContextBuilder(ABC):
     @abstractmethod
-    def build(self) -> Contexts:
+    def build(self) -> RunnerContext:
         pass
 
 

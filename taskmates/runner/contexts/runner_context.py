@@ -1,18 +1,16 @@
-import contextvars
 import os
 from pathlib import Path
 
 from typing_extensions import TypedDict
 
 from taskmates.lib.root_path.root_path import root_path
-from taskmates.types import CompletionOpts, CompletionContext, ClientConfig, ServerConfig, StepContext, JobContext
+from taskmates.types import RunOpts, RunnerEnvironment, RunnerConfig, StepContext, JobContext
 
 
-class Contexts(TypedDict):
-    client_config: ClientConfig
-    completion_context: CompletionContext
-    completion_opts: CompletionOpts
-    server_config: ServerConfig
+class RunnerContext(TypedDict):
+    runner_config: RunnerConfig
+    runner_environment: RunnerEnvironment
+    run_opts: RunOpts
     step_context: StepContext
     job_context: JobContext
 
@@ -24,4 +22,3 @@ default_taskmates_dirs = [
     system_taskmates_dir,
     bundled_taskmates_dir,
 ]
-

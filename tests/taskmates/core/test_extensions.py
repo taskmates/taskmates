@@ -2,7 +2,7 @@
 # import contextlib
 # from typing import Iterator
 #
-# from taskmates.runner.contexts.contexts import Contexts
+# from taskmates.runner.contexts.contexts import RunnerContext
 # from taskmates.sdk.experimental.taskmates_extension import TaskmatesExtension
 #
 #
@@ -12,9 +12,9 @@
 #         return "TestExtension"
 #
 #     @contextlib.contextmanager
-#     def completion_context(self, history: str | None,
+#     def runner_environment(self, history: str | None,
 #                            incoming_messages: list[str],
-#                            contexts: Contexts) -> Iterator[tuple[str | None, list[str], Contexts]]:
+#                            contexts: RunnerContext) -> Iterator[tuple[str | None, list[str], RunnerContext]]:
 #         yield "modified_history", ["modified_messages"], {"modified_contexts": True}
 #
 #
@@ -27,8 +27,8 @@
 #         return "CaptureContext"
 #
 #     @contextlib.contextmanager
-#     def completion_context(self, *args):
-#         self.captured_args['completion_context'] = args
+#     def runner_environment(self, *args):
+#         self.captured_args['runner_environment'] = args
 #         yield args
 #
 #     @contextlib.contextmanager

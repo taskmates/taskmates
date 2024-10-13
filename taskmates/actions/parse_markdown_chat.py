@@ -62,7 +62,7 @@ async def parse_markdown_chat(markdown_chat: str,
     recipient_config.pop("system", None)
     recipient_config.pop("role", None)
 
-    completion_opts = {**recipient_config, **chat_front_matter}
+    run_opts = {**recipient_config, **chat_front_matter}
     notebook, code_cells = parse_notebook(get_text_content(messages[-1]))
 
     if code_cells:
@@ -70,7 +70,7 @@ async def parse_markdown_chat(markdown_chat: str,
 
     return {
         'markdown_chat': markdown_chat,
-        'completion_opts': completion_opts,
+        'run_opts': run_opts,
         'messages': messages,
         'participants': participants_configs,
         'available_tools': (list(available_tools.keys()))

@@ -1,6 +1,6 @@
-from taskmates.runner.contexts.contexts import Contexts
+from taskmates.runner.contexts.runner_context import RunnerContext
 
 
 class MaxStepsCheck:
-    def should_break(self, contexts: Contexts):
-        return contexts['step_context']["current_step"] >= contexts['completion_opts']["max_steps"]
+    def should_break(self, contexts: RunnerContext):
+        return contexts['step_context']["current_step"] >= contexts['run_opts']["max_steps"]

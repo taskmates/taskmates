@@ -3,29 +3,29 @@ from uuid import uuid4
 
 from taskmates.context_builders.context_builder import ContextBuilder
 from taskmates.defaults.context_defaults import ContextDefaults
-from taskmates.runner.contexts.contexts import Contexts
-from taskmates.types import CompletionOpts
+from taskmates.runner.contexts.runner_context import RunnerContext
+from taskmates.types import RunOpts
 
 
 class SdkContextBuilder(ContextBuilder):
-    def __init__(self, completion_opts: CompletionOpts):
-        self.completion_opts = completion_opts
+    def __init__(self, run_opts: RunOpts):
+        self.run_opts = run_opts
 
-    def build(self) -> Contexts:
+    def build(self) -> RunnerContext:
         contexts = ContextDefaults().build()
         request_id = str(uuid4())
 
-        contexts["completion_opts"]["workflow"] = "sdk_complete"
-        contexts["completion_context"].update({
+        contexts["run_opts"]["workflow"] = "sdk_complete"
+        contexts["runner_environment"].update({
             "request_id": request_id,
             "env": os.environ.copy(),
             "cwd": os.getcwd(),
             "markdown_path": "<function>",
         })
 
-        contexts["completion_opts"].update(self.completion_opts.copy())
+        contexts["run_opts"].update(self.run_opts.copy())
 
-        contexts["client_config"].update({
+        contexts["runner_config"].update({
             "interactive": True,
             "format": "text"
         })
@@ -37,6 +37,6 @@ def test_sdk_context_builder():
     sdk_opts = {"model": "quote", "max_steps": 3}
     builder = SdkContextBuilder(sdk_opts)
     contexts = builder.build()
-    assert contexts["completion_opts"]["model"] == "quote"
-    assert contexts["completion_opts"]["max_steps"] == 3
-    assert contexts["client_config"]["interactive"] == True
+    assert contexts["run_opts"]["model"] == "quote"
+    assert contexts["run_opts"]["max_steps"] == 3
+    assert contexts["runner_config"]["interactive"] == True

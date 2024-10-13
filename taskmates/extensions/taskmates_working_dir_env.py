@@ -8,14 +8,14 @@ from taskmates.sdk.experimental.subclass_extension_points import SubclassExtensi
 
 
 class TaskmatesWorkingDirEnv(TaskmatesExtension):
-    # outputs: completion_context.cwd
+    # outputs: runner_environment.cwd
 
     def wraper(self, wrapped, instance, args, kwargs):
         contexts = wrapped(*args, **kwargs)
         working_dir = os.environ.get('TASKMATES_WORKING_DIR')
 
         if working_dir:
-            contexts["completion_context"]["cwd"] = working_dir
+            contexts["runner_environment"]["cwd"] = working_dir
 
         return contexts
 

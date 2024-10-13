@@ -4,14 +4,13 @@ import pytest
 from typeguard import typechecked
 
 from taskmates.context_builders.sdk_context_builder import SdkContextBuilder
-from taskmates.defaults.workflows.sdk_complete import SdkComplete
-from taskmates.types import CompletionOpts
+from taskmates.defaults.workflows.sdk_completion_runner import SdkCompletionRunner
+from taskmates.types import RunOpts
 
 
 @typechecked
-async def async_complete(markdown: str, **completion_opts: Unpack[CompletionOpts]):
-    contexts = SdkContextBuilder(completion_opts).build()
-    workflow = SdkComplete(contexts=contexts)
+async def async_complete(markdown: str, **run_opts: Unpack[RunOpts]):
+    workflow = SdkCompletionRunner(run_opts=run_opts)
     return await workflow.run(markdown_chat=markdown)
 
 

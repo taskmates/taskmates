@@ -26,8 +26,8 @@ def load_env_files(environment=None):
 
 
 def load_env_for_environment(environment):
-    if environment not in ['development', 'test', 'production']:
-        raise ValueError("Invalid environment. Choose 'development', 'test', or 'production'.")
+    if environment not in ['production', 'development', 'integration_test', 'test']:
+        raise ValueError(f"Invalid environment {environment!r}. Choose 'development', 'test', or 'production'.")
 
     load_env_files(environment)
 
