@@ -12,6 +12,7 @@ def contexts(taskmates_runtime, tmp_path):
     return contexts
 
 
+@pytest.mark.integration
 async def test_github_issue_workflow(tmp_path):
     run = RUN.get()
     run.set_result("github_issue_markdown_chat", None, "ISSUE_CHAT_CONTENT")
