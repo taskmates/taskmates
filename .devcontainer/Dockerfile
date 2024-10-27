@@ -39,6 +39,9 @@ WORKDIR /workspace
 
 ARG GITHUB_TOKEN
 
+# Fail if GITHUB_TOKEN is not set
+RUN if [ -z "$GITHUB_TOKEN" ]; then echo "Error: GITHUB_TOKEN is not set" && exit 1; fi
+
 # Configure git to use the GITHUB_TOKEN
 RUN git config --global url."https://${GITHUB_TOKEN}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
 
