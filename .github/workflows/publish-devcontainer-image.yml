@@ -1,4 +1,4 @@
-name: Create and publish a Docker image
+name: Create and publish a Devcontainer image
 
 on:
   workflow_run:
@@ -12,7 +12,7 @@ env:
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
-  build-and-push-image:
+  build-and-push-devcontainer-image:
     runs-on: ubuntu-latest
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     permissions:
@@ -38,9 +38,10 @@ jobs:
         id: push
         uses: docker/build-push-action@v6
         with:
+          file: .devcontainer/Dockerfile
           context: .
           push: true
-          tags: ${{ steps.meta.outputs.tags }}
+          tags: taskmates:devcontainer
           labels: ${{ steps.meta.outputs.labels }}
 
 #      - name: Generate artifact attestation

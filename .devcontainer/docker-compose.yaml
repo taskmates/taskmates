@@ -1,4 +1,9 @@
 services:
-  shell:
+#  shell:
+#    build: .
+#    command: sleep infinity
+  devcontainer:
     build: .
-    command: tail -f /dev/null
+    command: sleep infinity
+    volumes:
+      - ..:/workspaces:cached

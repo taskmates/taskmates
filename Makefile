@@ -8,8 +8,8 @@ format:
 	isort .
 
 
-docker_build:
+docker-build:
 	DOCKER_BUILDKIT=1 docker build -f Dockerfile -t taskmates --progress=plain .
 
-docker_run:
+docker-run:
 	docker run -p 55000:55000 taskmates

@@ -1,5 +1,10 @@
 FROM mcr.microsoft.com/devcontainers/python:1-3.11
 
+# Create the user
+ARG USERNAME=vscode
+ARG USER_UID=1000
+ARG USER_GID=$USER_UID
+
 # Install build dependencies and tools
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
@@ -26,10 +31,10 @@ RUN python -m pip install --user pipx
 RUN python -m pipx ensurepath
 
 # Install Poetry
-RUN pipx install poetry
+RUN pipx install --force --python 3.11 poetry && pipx ensurepath
 
 # Add pipx and poetry to PATH
-ENV PATH="/root/.local/bin:$PATH"
+#ENV PATH="/home/$USERNAME/.local/bin:$PATH"
 
 # Verify installations
 RUN pipx --version && poetry --version
@@ -37,22 +42,14 @@ RUN pipx --version && poetry --version
 # Set the working directory in the container
 WORKDIR /workspace
 
-#ARG GITHUB_TOKEN
-#
-## Fail if GITHUB_TOKEN is not set
-#RUN if [ -z "$GITHUB_TOKEN" ]; then echo "Error: GITHUB_TOKEN is not set" && exit 1; fi
-#
-## Configure git to use the GITHUB_TOKEN
-#RUN git config --global url."https://${GITHUB_TOKEN}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
-
 # Install Taskmates
 ADD https://api.github.com/repos/taskmates/taskmates/git/refs/heads/main /tmp/taskmates-version.json
-RUN pipx install --force --python 3.11 git+https://${GITHUB_TOKEN}@github.com/taskmates/taskmates.git
+RUN pipx install --force --python 3.11 git+https://github.com/taskmates/taskmates.git
 
 # Set up dev environment
 ADD https://api.github.com/repos/taskmates/taskmates/git/refs/heads/main /tmp/repo-version.json
 RUN git clone https://github.com/taskmates/taskmates.git .
 RUN poetry install --no-interaction --no-ansi --quiet --no-root
 
-# Command to run when starting the container
-ENTRYPOINT ["bash"]
+# Switch to the vscode user for subsequent commands
+USER $USERNAME
