@@ -41,7 +41,7 @@ jobs:
           file: .devcontainer/Dockerfile
           context: .
           push: true
-          tags: taskmates:devcontainer
+          tags: ghcr.io/taskmates/taskmates:devcontainer
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
