@@ -1,10 +1,5 @@
 FROM mcr.microsoft.com/devcontainers/python:1-3.11
 
-# Create the user
-ARG USERNAME=vscode
-ARG USER_UID=1000
-ARG USER_GID=$USER_UID
-
 # Install build dependencies and tools
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
@@ -49,7 +44,7 @@ RUN pipx install --force --python 3.11 git+https://github.com/taskmates/taskmate
 # Set up dev environment
 ADD https://api.github.com/repos/taskmates/taskmates/git/refs/heads/main /tmp/repo-version.json
 RUN git clone https://github.com/taskmates/taskmates.git .
-RUN poetry install --no-interaction --no-ansi --quiet --no-root
 
-# Switch to the vscode user for subsequent commands
-USER $USERNAME
+# Install dependencies using Poetry with cache mount
+RUN --mount=type=cache,target=/root/.cache/pypoetry,id=poetry_cache \
+    poetry install --no-interaction --no-root

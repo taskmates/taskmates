@@ -7,7 +7,7 @@ from taskmates.sdk import TaskmatesExtension
 from taskmates.sdk.experimental.subclass_extension_points import SubclassExtensionPoints
 
 
-class TaskmatesWorkingDirEnv(TaskmatesExtension):
+class TaskmatesWorkingDirEnvReader(TaskmatesExtension):
     # outputs: runner_environment.cwd
 
     def wraper(self, wrapped, instance, args, kwargs):

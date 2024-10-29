@@ -3,6 +3,7 @@ import asyncio
 import os
 import signal
 import sys
+import tempfile
 import textwrap
 from queue import Empty
 from typing import Mapping
@@ -12,9 +13,9 @@ from jupyter_client import AsyncKernelManager, AsyncKernelClient
 from nbformat import NotebookNode
 
 from taskmates.core.actions.code_execution.code_cells.parse_notebook import parse_notebook
-from taskmates.workflow_engine.run import RUN, Run
 from taskmates.lib.root_path.root_path import root_path
 from taskmates.logging import logger
+from taskmates.workflow_engine.run import RUN, Run
 from taskmates.workflows.contexts.context import Context
 
 kernel_pool: dict[tuple[str | None, str], AsyncKernelManager] = {}
@@ -95,13 +96,16 @@ async def execute_markdown_on_local_kernel(content, markdown_path: str = None, c
                     # Remove the "%%bash\n" prefix
                     bash_content = source[7:]
 
-                    # Escape newlines and single quotes
-                    escaped_source = bash_content.replace("'", "'\\''").replace("\n", "\\n")
+                    # Create a temporary file with the bash script
+                    with tempfile.NamedTemporaryFile(mode='w', suffix='.sh', delete=False) as f:
+                        f.write(bash_content)
+                        temp_path = f.name
 
-                    # Wrap the escaped content in $'...' syntax
-                    escaped_source = f"$'{escaped_source}'"
+                    # Make the script executable
+                    os.chmod(temp_path, 0o755)
 
-                    source = f"!bash -c {escaped_source}"
+                    # Execute the script and clean up
+                    source = f"!bash {temp_path}"
 
                 msg_id = kernel_client.execute(source)
                 logger.debug("msg_id:", msg_id)
@@ -112,13 +116,13 @@ async def execute_markdown_on_local_kernel(content, markdown_path: str = None, c
                         if cell_finished:
                             break
                         continue
-                    if msg['parent_header']['msg_id'] in setup_msgs and msg["msg_type"] != "error":
+                    if msg['parent_header'].get('msg_id') in setup_msgs and msg["msg_type"] != "error":
                         continue
 
-                    if msg['parent_header']['msg_id'] != msg_id and msg["msg_type"] != "error":
+                    if msg['parent_header'].get('msg_id') != msg_id and msg["msg_type"] != "error":
                         continue
 
-                    logger.debug(f"received msg: {msg['msg_type']}, msg_id={msg['parent_header']['msg_id']}")
+                    logger.debug(f"received msg: {msg['msg_type']}, msg_id={msg['parent_header'].get('msg_id')}")
                     logger.debug(f"    msg: {msg}")
 
                     if msg['msg_type'] == 'error':
@@ -479,3 +483,29 @@ async def test_custom_env():
 
     assert len(chunks) > 1
     assert chunks[-1]['msg']['content']['text'].strip() == 'Not found'
+
+
+async def test_bash_heredoc(capsys):
+    run = RUN.get()
+    chunks = []
+
+    async def capture_chunk(chunk):
+        chunks.append(chunk)
+
+    run.signals["output_streams"].code_cell_output.connect(capture_chunk)
+
+    input_md = textwrap.dedent('''
+        ```python .eval
+        %%bash
+        cat << 'EOF'
+        content
+        EOF
+        ```
+    ''')
+
+    await execute_markdown_on_local_kernel(input_md, markdown_path="test_bash_heredoc")
+
+    # Get all output messages
+    stream_chunks = [chunk['msg']['content'] for chunk in chunks if chunk['msg']['msg_type'] == 'stream']
+
+    assert stream_chunks == [{'name': 'stdout', 'text': 'content\r\n'}]

@@ -1,10 +1,10 @@
 import contextvars
 import importlib
 import os
+import sys
 import tempfile
 
 import pytest
-import sys
 
 from taskmates.sdk.experimental.taskmates_extension import TaskmatesExtension
 
@@ -61,8 +61,9 @@ class ExtensionManager:
 
 # Last ones are run first
 DEFAULT_EXTENSIONS: list[str] = [
+    'taskmates.extensions.taskmates_env_injector.TaskmatesEnvInjector',
     'taskmates.extensions.taskmates_dirs_loader.TaskmatesDirsLoader',
-    'taskmates.extensions.taskmates_working_dir_env.TaskmatesWorkingDirEnv',
+    'taskmates.extensions.taskmates_working_dir_env_reader.TaskmatesWorkingDirEnvReader',
 ]
 
 extension_manager = ExtensionManager(DEFAULT_EXTENSIONS)
@@ -114,7 +115,6 @@ def test_load_extension_failure():
     with pytest.raises(RuntimeError):
         manager._load_extension("non_existent_module.NonExistentExtension")
 
-
 # TODO: rewrite these tests to NOT call .initialize
 #
 # def test_initialize_with_external_directory():
@@ -147,11 +147,11 @@ def test_load_extension_failure():
 #     assert os.environ['TASKMATES_ENV'] == 'test'  # Ensure we're not in development mode
 #
 #     os.environ[
-#         'TASKMATES_EXTENSIONS'] = 'taskmates.extensions.taskmates_dirs_loader.TaskmatesDirsLoader,taskmates.extensions.taskmates_working_dir_env.TaskmatesWorkingDirEnv'
+#         'TASKMATES_EXTENSIONS'] = 'taskmates.extensions.taskmates_dirs_loader.TaskmatesDirsLoader,taskmates.extensions.taskmates_working_dir_env_reader.TaskmatesWorkingDirEnvReader'
 #     manager = ExtensionManager(['taskmates.extensions.taskmates_dirs_loader.TaskmatesDirsLoader'])
 #     manager.initialize()
 #     expected_extensions = ['taskmates.extensions.taskmates_dirs_loader.TaskmatesDirsLoader',
-#                            'taskmates.extensions.taskmates_working_dir_env.TaskmatesWorkingDirEnv']
+#                            'taskmates.extensions.taskmates_working_dir_env_reader.TaskmatesWorkingDirEnvReader']
 #     assert all(ext in manager.extensions + manager._get_additional_extensions() for ext in expected_extensions)
 #     assert len(manager.extensions + manager._get_additional_extensions()) == len(expected_extensions)
 #     del os.environ['TASKMATES_EXTENSIONS']
