@@ -59,7 +59,7 @@ opentelemetry-proto = "^1.23.0"
 opentelemetry-sdk = "^1.23.0"
 opentelemetry-semantic-conventions = "^0.44b0"
 opentelemetry-util-http = "^0.44b0"
-tiktoken = "^0.7.0"
+tiktoken = "^0.8.0"
 
 # fix 1.65.1
 # https://github.com/grpc/grpc/issues/37178
