@@ -91,6 +91,8 @@ testcontainers = "^4.7.2"
 commentjson = "^0.9.0"
 python-dotenv = "^1.0.1"
 toml = "^0.10.2"
+python-on-whales = "^0.73.0"
+
 [tool.poetry.group.dev.dependencies]
 pytest-socket = "^0.7.0"
 icecream = "^2.1.3"

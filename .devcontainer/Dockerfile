@@ -31,20 +31,26 @@ RUN pipx install --force --python 3.11 poetry && pipx ensurepath
 # Add pipx and poetry to PATH
 #ENV PATH="/home/$USERNAME/.local/bin:$PATH"
 
-# Verify installations
-RUN pipx --version && poetry --version
-
-# Set the working directory in the container
-WORKDIR /workspace
-
 # Install Taskmates
 ADD https://api.github.com/repos/taskmates/taskmates/git/refs/heads/main /tmp/taskmates-version.json
 RUN pipx install --force --python 3.11 git+https://github.com/taskmates/taskmates.git
 
 # Set up dev environment
+WORKDIR /workspace
+USER root
+
 ADD https://api.github.com/repos/taskmates/taskmates/git/refs/heads/main /tmp/repo-version.json
 RUN git clone https://github.com/taskmates/taskmates.git .
 
+#RUN poetry config virtualenvs.create false
+#RUN poetry config virtualenvs.in-project true
+RUN poetry config cache-dir /root/.cache/pypoetry
+RUN poetry config virtualenvs.path /root/.cache/pypoetry/virtualenvs
+
+
 # Install dependencies using Poetry with cache mount
-RUN --mount=type=cache,target=/root/.cache/pypoetry,id=poetry_cache \
-    poetry install --no-interaction --no-root
+#RUN --mount=type=cache,target=/root/.cache/pypoetry,id=poetry_cache,sharing=locked \
+#    poetry install --no-interaction --no-root
+
+
+RUN poetry install --no-interaction --no-root

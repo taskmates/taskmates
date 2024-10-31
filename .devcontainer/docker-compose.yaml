@@ -1,9 +1,0 @@
-services:
-#  shell:
-#    build: .
-#    command: sleep infinity
-  devcontainer:
-    build: .
-    command: sleep infinity
-    volumes:
-      - ..:/workspaces:cached

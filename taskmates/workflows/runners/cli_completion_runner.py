@@ -86,9 +86,9 @@ class CliCompletionRunner:
     def read_stdin_incoming_message(self) -> str:
         # Read markdown from stdin if available
         stdin_markdown = ""
-        selected = select.select([sys.stdin, ], [], [], 0.0)[0]
-        pycharm_env = os.environ.get("PYCHARM_HOSTED", 0) == '1'
-        if (selected or not pycharm_env) and not sys.stdin.isatty():
+        selected = select.select([sys.stdin, ], [], [], 0)[0]
+        # if selected or not sys.stdin.isatty():
+        if selected:
             stdin_markdown = "".join(sys.stdin.readlines())
 
         if stdin_markdown and not stdin_markdown.startswith("**"):

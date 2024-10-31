@@ -20,13 +20,13 @@ devcontainer-build:
 	mkdir -p tmp/cache/poetry
 	DOCKER_BUILDKIT=1 docker buildx build \
 		--build-arg BUILDKIT_INLINE_CACHE=1 \
-		--cache-from type=local,src=tmp/cache/poetry \
-		--cache-to type=local,dest=tmp/cache/poetry \
+		--cache-from type=local,src=tmp/cache/docker \
+		--cache-to type=local,dest=tmp/cache/docker \
 		-f .devcontainer/Dockerfile \
-		-t devcontainer \
+		-t ghcr.io/taskmates/taskmates:devcontainer \
 		--progress=plain \
 		.
 
-.PHONY: devcontainer-run
-devcontainer-run:
-	docker run --rm -it devcontainer $(CMD)
+.PHONY: devcontainer-shell
+devcontainer-shell:
+	docker compose --project-directory . -f .devcontainer/docker-compose.yml run devcontainer bash

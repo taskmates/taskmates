@@ -1,0 +1,15 @@
+services:
+  devcontainer:
+    image: ghcr.io/taskmates/taskmates:devcontainer
+    command: sleep infinity
+    environment:
+      - ANTHROPIC_API_KEY
+      - GOOGLE_AI_STUDIO_API_KEY
+      - GOOGLE_API_KEY
+      - GROQ_API_KEY
+      - OPENAI_API_KEY
+      - PROMPTLAYER_API_KEY
+      - WANDB_API_KEY
+      - XAI_API_KEY
+    volumes:
+      - .:/host/repository:cached
