@@ -21,6 +21,7 @@ def dev_env():
         env.destroy()
 
 
+@pytest.mark.integration
 def test_repository_mount(dev_env):
     result = dev_env.execute(
         command=["sh", "-c", "git rev-parse --is-inside-work-tree && echo 'mounted' || echo 'not mounted'"],
@@ -29,6 +30,7 @@ def test_repository_mount(dev_env):
     assert "mounted" in result.lower()
 
 
+@pytest.mark.integration
 def test_taskmates_version(dev_env):
     result = dev_env.execute(
         command=["taskmates", "--version"]
@@ -37,6 +39,7 @@ def test_taskmates_version(dev_env):
     assert result == "Taskmates 0.2.0"
 
 
+@pytest.mark.integration
 def test_anthropic_api_key(dev_env):
     result = dev_env.execute(
         command=["sh", "-c", "echo $ANTHROPIC_API_KEY | wc -c"]
