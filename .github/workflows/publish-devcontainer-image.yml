@@ -15,9 +15,6 @@ jobs:
   build-and-push-devcontainer-image:
     runs-on: ubuntu-latest
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
-    strategy:
-      matrix:
-        architecture: [amd64, arm64]    
     permissions:
       contents: read
       packages: write
@@ -50,4 +47,5 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          platforms: linux/${{ matrix.architecture }}
+          platforms: linux/amd64,linux/arm64
+
