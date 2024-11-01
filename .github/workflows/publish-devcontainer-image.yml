@@ -13,7 +13,7 @@ env:
 
 jobs:
   build-and-push-devcontainer-image:
-    runs-on: macos-latest
+    runs-on: ubuntu-22.04-arm64
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     permissions:
       contents: read
