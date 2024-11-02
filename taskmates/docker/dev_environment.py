@@ -126,14 +126,44 @@ class DevEnvironment:
     def execute(self, command: List[str],
                 service: Optional[str] = None,
                 workdir: Optional[str] = None,
+                envs: Optional[Dict[str, str]] = None,
                 tty: bool = False) -> str:
         service = service or self.service
         return self.client.compose.execute(
             service=service,
             command=command,
             workdir=workdir,
+            envs=envs,
             tty=tty
         )
+
+
+def test_dev_environment_logs(tmp_path: Path):
+    compose_content = """
+services:
+  log_test:
+    image: alpine:latest
+    command: sh -c 'echo "log line 1" && echo "log line 2" && echo "log line 3" && sleep infinity'
+"""
+    compose_file = tmp_path / "docker-compose.yml"
+    compose_file.write_text(compose_content)
+
+    env = DevEnvironment(
+        compose_files=compose_file,
+        project_name="test_logs",
+        project_directory=tmp_path,
+        service="log_test"
+    )
+
+    try:
+        env.up()
+        logs = env.get_logs("log_test")
+        assert logs == 'log_test-1  | log line 1\nlog_test-1  | log line 2\nlog_test-1  | log line 3\n'
+
+        tail_logs = env.get_logs("log_test", tail=2)
+        assert tail_logs == 'log_test-1  | log line 2\nlog_test-1  | log line 3\n'
+    finally:
+        env.destroy()
 
 
 def test_execute(tmp_path: Path):
@@ -161,29 +191,65 @@ services:
         env.destroy()
 
 
-def test_dev_environment_logs(tmp_path: Path):
+def test_execute_with_envs(tmp_path: Path):
     compose_content = """
 services:
-  log_test:
+  env_test:
     image: alpine:latest
-    command: sh -c 'echo "log line 1" && echo "log line 2" && echo "log line 3" && sleep infinity'
+    command: sleep infinity
 """
     compose_file = tmp_path / "docker-compose.yml"
     compose_file.write_text(compose_content)
 
     env = DevEnvironment(
         compose_files=compose_file,
-        project_name="test_logs",
+        project_name="test_execute_envs",
         project_directory=tmp_path,
-        service="log_test"
+        service="env_test"
     )
 
     try:
         env.up()
-        logs = env.get_logs("log_test")
-        assert logs == 'log_test-1  | log line 1\nlog_test-1  | log line 2\nlog_test-1  | log line 3\n'
+        result = env.execute(
+            ["sh", "-c", "echo $TEST_VAR"],
+            envs={"TEST_VAR": "Hello from environment"}
+        )
+        assert result.strip() == "Hello from environment"
+    finally:
+        env.destroy()
 
-        tail_logs = env.get_logs("log_test", tail=2)
-        assert tail_logs == 'log_test-1  | log line 2\nlog_test-1  | log line 3\n'
+
+def test_get_service_port(tmp_path: Path):
+    compose_content = """
+services:
+  port_test:
+    image: alpine:latest
+    command: sh -c 'nc -l -p 8080 -k'  # -k keeps listening after client disconnects
+    ports:
+      - "8080"  # Only specify container port to let Docker assign a random host port
+"""
+    compose_file = tmp_path / "docker-compose.yml"
+    compose_file.write_text(compose_content)
+
+    env = DevEnvironment(
+        compose_files=compose_file,
+        project_name="test_port",
+        project_directory=tmp_path,
+        service="port_test"
+    )
+
+    try:
+        env.up()
+        # Get the dynamically assigned port
+        port = env.get_service_port(container_port=8080)
+
+        # Verify we can actually connect to the port
+        assert env.wait_for_port("localhost", port, timeout=10), f"Could not connect to port {port}"
+
+        # Try to establish a real connection and send/receive data
+        with socket.create_connection(("localhost", port), timeout=5) as sock:
+            sock.send(b"test\n")
+            assert sock.getpeername()[1] == port  # Verify we're connected to the right port
+
     finally:
         env.destroy()

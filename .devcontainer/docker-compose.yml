@@ -11,5 +11,7 @@ services:
       - PROMPTLAYER_API_KEY
       - WANDB_API_KEY
       - XAI_API_KEY
+      - TASKMATES_DIR=/root/.taskmates
     volumes:
       - .:/host/repository:cached
+      - ${HOME}/.taskmates:/root/.taskmates

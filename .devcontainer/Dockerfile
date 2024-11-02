@@ -28,29 +28,27 @@ RUN python -m pipx ensurepath
 # Install Poetry
 RUN pipx install --force --python 3.11 poetry && pipx ensurepath
 
-# Add pipx and poetry to PATH
-#ENV PATH="/home/$USERNAME/.local/bin:$PATH"
-
 # Install Taskmates
 ADD https://api.github.com/repos/taskmates/taskmates/git/refs/heads/main /tmp/taskmates-version.json
 RUN pipx install --force --python 3.11 git+https://github.com/taskmates/taskmates.git
 
 # Set up dev environment
-WORKDIR /workspace
-USER root
+WORKDIR /workspaces/taskmates
 
+# Configure Poetry
+RUN poetry config cache-dir /home/vscode/.cache/pypoetry
+RUN poetry config virtualenvs.path /home/vscode/.cache/pypoetry/virtualenvs
+
+
+# Install dependencies using Poetry
+ADD https://raw.githubusercontent.com/taskmates/taskmates/main/pyproject.toml ./pyproject.toml
+ADD https://raw.githubusercontent.com/taskmates/taskmates/main/poetry.lock ./poetry.lock
+RUN poetry install --no-interaction --no-root
+RUN rm pyproject.toml poetry.lock
+
+# Now clone the full repository
 ADD https://api.github.com/repos/taskmates/taskmates/git/refs/heads/main /tmp/repo-version.json
 RUN git clone https://github.com/taskmates/taskmates.git .
 
-#RUN poetry config virtualenvs.create false
-#RUN poetry config virtualenvs.in-project true
-RUN poetry config cache-dir /root/.cache/pypoetry
-RUN poetry config virtualenvs.path /root/.cache/pypoetry/virtualenvs
-
-
-# Install dependencies using Poetry with cache mount
-#RUN --mount=type=cache,target=/root/.cache/pypoetry,id=poetry_cache,sharing=locked \
-#    poetry install --no-interaction --no-root
-
-
-RUN poetry install --no-interaction --no-root
+RUN chown -R vscode:vscode .
+USER vscode

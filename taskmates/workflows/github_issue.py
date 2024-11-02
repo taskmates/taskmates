@@ -18,7 +18,7 @@ async def get_github_issue_markdown_chat(issue_number, repo_name):
 
 
 @fulfills(outcome="set_github_token_env")
-def set_up_env():
+async def set_up_env():
     cwd = os.getcwd()
     env = os.environ
     set_up_github_token(cwd, env)
@@ -36,7 +36,7 @@ class GithubIssue(Workflow):
                     response_format: str = 'text',
                     history_path: str = None
                     ):
-        set_up_env()
+        await set_up_env()
 
         markdown_chat = await get_github_issue_markdown_chat(issue_number, repo_name)
 
