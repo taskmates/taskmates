@@ -4,12 +4,12 @@ from typing import Any
 import pytest
 from opentelemetry import trace
 
-from taskmates.workflow_engine.plan import Plan
-from taskmates.workflow_engine.run import RUN
-from taskmates.workflow_engine.runner import Runner
 from taskmates.lib.opentelemetry_.format_span_name import format_span_name
 from taskmates.lib.opentelemetry_.tracing import tracer
 from taskmates.lib.str_.to_snake_case import to_snake_case
+from taskmates.workflow_engine.plan import Plan
+from taskmates.workflow_engine.run import RUN
+from taskmates.workflow_engine.runner import Runner
 
 
 class Workflow(Plan, ABC):
@@ -18,15 +18,20 @@ class Workflow(Plan, ABC):
 
         parent_attempt = RUN.get()
 
-        objective = parent_attempt.request(outcome=to_snake_case(self.__class__.__name__),
-                                                     inputs=inputs)
+        objective = parent_attempt.request(
+            outcome=to_snake_case(self.__class__.__name__),
+            inputs=inputs)
+
         context = await self.create_context(**kwargs)
+
         run = objective.attempt(
             context=context,
-            daemons=self.create_daemons(),
-            state=self.create_state(),
-            signals=self.create_signals(),
+            daemons=await self.create_daemons(),
+            state=await self.create_state(),
+            signals=await self.create_signals(),
         )
+
+        # TODO: interesting...
         objective.last_run = run
         objective.runs.append(objective.last_run)
 
@@ -56,13 +61,13 @@ async def test_workflow_execution(context):
         async def steps(self, **kwargs):
             return sum(kwargs.values())
 
-        def create_daemons(self):
+        async def create_daemons(self):
             return {}
 
-        def create_signals(self):
+        async def create_signals(self):
             return {}
 
-        def create_state(self):
+        async def create_state(self):
             return {}
 
     workflow = TestWorkflow()

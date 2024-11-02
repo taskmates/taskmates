@@ -18,7 +18,7 @@ class ParseCommand(Command):
         contexts = builder.build()
 
         async def attempt_parse_markdown(contexts):
-            with Objective(outcome="parse_markdown").attempt(context=contexts):
+            with Objective(outcome="cli_parse_markdown_runner").environment(context=contexts):
                 taskmates_dirs = contexts["runner_config"]["taskmates_dirs"]
 
                 markdown_chat = "".join(sys.stdin.readlines())

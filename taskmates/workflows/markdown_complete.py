@@ -8,21 +8,21 @@ from taskmates.core.compute_separator import compute_separator
 from taskmates.lib.not_set.not_set import NOT_SET
 from taskmates.logging import logger
 from taskmates.types import Chat
+from taskmates.workflow_engine.fulfills import fulfills
+from taskmates.workflow_engine.run import RUN, Run
+from taskmates.workflow_engine.workflow import Workflow
 from taskmates.workflows.actions.markdown_completion_action import MarkdownCompletionAction
 from taskmates.workflows.contexts.context import Context
 from taskmates.workflows.daemons.interrupt_request_daemon import InterruptRequestDaemon
 from taskmates.workflows.daemons.interrupted_or_killed_daemon import InterruptedOrKilledDaemon
 from taskmates.workflows.daemons.markdown_chat_daemon import MarkdownChatDaemon
 from taskmates.workflows.daemons.return_value_daemon import ReturnValueDaemon
-from taskmates.workflow_engine.fulfills import fulfills
-from taskmates.workflow_engine.run import RUN, Run
 from taskmates.workflows.rules.max_steps_check import MaxStepsCheck
 from taskmates.workflows.states.current_step import CurrentStep
 from taskmates.workflows.states.interrupted import Interrupted
 from taskmates.workflows.states.interrupted_or_killed import InterruptedOrKilled
 from taskmates.workflows.states.markdown_chat import MarkdownChat
 from taskmates.workflows.states.return_value import ReturnValue
-from taskmates.workflow_engine.workflow import Workflow
 
 
 class CompletionRunEnvironment(TypedDict):
@@ -34,7 +34,8 @@ class MarkdownComplete(Workflow):
     def __init__(self):
         super().__init__()
 
-    def create_daemons(self):
+    @fulfills(outcome="daemons")
+    async def create_daemons(self):
         return {
             "interrupt_request_mediator": InterruptRequestDaemon(),
             "interrupted_or_killed": InterruptedOrKilledDaemon(),
@@ -42,13 +43,15 @@ class MarkdownComplete(Workflow):
             "markdown_chat": MarkdownChatDaemon(),
         }
 
-    def create_signals(self):
+    @fulfills(outcome="signals")
+    async def create_signals(self):
         return {
             "max_steps_check": MaxStepsCheck(),
             "current_step": CurrentStep(),
         }
 
-    def create_state(self) -> dict[str, Any]:
+    @fulfills(outcome="state")
+    async def create_state(self) -> dict[str, Any]:
         return {
             "interrupted": Interrupted(),
             "interrupted_or_killed": InterruptedOrKilled(),

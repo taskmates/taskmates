@@ -4,6 +4,7 @@ import textwrap
 
 import pytest
 
+from taskmates.workflow_engine.environment import environment
 from taskmates.workflow_engine.run import RUN
 from taskmates.workflows.cli_complete import CliComplete
 from taskmates.workflows.context_builders.test_context_builder import TestContextBuilder
@@ -27,19 +28,18 @@ async def test_format_text(tmp_path, contexts):
     history_file = tmp_path / "history.txt"
     history_file.write_text(history)
 
-    async def attempt_format_text(string_io, contexts, history_file, incoming_messages):
-        with RUN.get().request().attempt(
-                daemons=[WriteMarkdownChatToStdout('text', string_io)]) as run:
-            contexts['runner_config'].update(dict(interactive=False, format='text'))
-            workflow = CliComplete()
-            await workflow.fulfill(history_path=str(history_file),
-                                   incoming_messages=incoming_messages)
+    @environment(daemons_fn=lambda: [WriteMarkdownChatToStdout('text', string_io)])
+    async def attempt_format_text(contexts, history_file, incoming_messages):
+        contexts['runner_config'].update(dict(interactive=False, format='text'))
+        workflow = CliComplete()
+        await workflow.fulfill(history_path=str(history_file),
+                               incoming_messages=incoming_messages)
 
-            filtered_signals = run.state["captured_signals"].filter_signals(
-                ['history', 'incoming_message', 'input_formatting', 'error'])
+        filtered_signals = RUN.get().state["captured_signals"].filter_signals(
+            ['history', 'incoming_message', 'input_formatting', 'error'])
         return filtered_signals
 
-    filtered_signals = await attempt_format_text(string_io, contexts, history_file, incoming_messages)
+    filtered_signals = await attempt_format_text(contexts, history_file, incoming_messages)
 
     text_result = string_io.getvalue()
 
@@ -66,17 +66,16 @@ async def test_format_full(tmp_path, contexts):
 
     contexts['runner_config'].update(dict(interactive=False, format='full'))
 
+    @environment(daemons_fn=lambda: [WriteMarkdownChatToStdout('full', string_io)])
     async def attempt_format_full(string_io, history_file, incoming_messages):
-        with RUN.get().request().attempt(
-                daemons=[WriteMarkdownChatToStdout('full', string_io)]) as run:
-            workflow = CliComplete()
-            await workflow.fulfill(history_path=str(history_file),
-                                   incoming_messages=incoming_messages)
+        workflow = CliComplete()
+        await workflow.fulfill(history_path=str(history_file),
+                               incoming_messages=incoming_messages)
 
-            filtered_signals = run.state["captured_signals"].filter_signals(
-                ['history', 'incoming_message', 'input_formatting', 'error'])
+        filtered_signals = RUN.get().state["captured_signals"].filter_signals(
+            ['history', 'incoming_message', 'input_formatting', 'error'])
 
-            full_result = string_io.getvalue()
+        full_result = string_io.getvalue()
         return filtered_signals, full_result
 
     filtered_signals, full_result = await attempt_format_full(string_io, history_file, incoming_messages)
@@ -109,26 +108,26 @@ async def test_interrupt_tool(tmp_path, contexts):
 
     string_io = io.StringIO()
 
+    @environment(daemons_fn=lambda: [WriteMarkdownChatToStdout('text', string_io)])
     async def attempt_interrupt_tool(string_io, markdown_chat):
-        with RUN.get().request().attempt(daemons=[WriteMarkdownChatToStdout('text', string_io)]):
-            workflow = CliComplete()
-            task = asyncio.create_task(workflow.fulfill(incoming_messages=[markdown_chat]))
+        workflow = CliComplete()
+        task = asyncio.create_task(workflow.fulfill(incoming_messages=[markdown_chat]))
 
-            run = RUN.get()
+        run = RUN.get()
 
-            # Wait for the "2" to be printed
-            while "2" not in string_io.getvalue():
-                await asyncio.sleep(0.1)
+        # Wait for the "2" to be printed
+        while "2" not in string_io.getvalue():
+            await asyncio.sleep(0.1)
 
-            # Send interrupt
-            await run.signals["control"].interrupt_request.send_async({})
+        # Send interrupt
+        await run.signals["control"].interrupt_request.send_async({})
 
-            try:
-                await task
-            except asyncio.CancelledError:
-                pass
+        try:
+            await task
+        except asyncio.CancelledError:
+            pass
 
-            output = string_io.getvalue()
+        output = string_io.getvalue()
         return output
 
     output = await attempt_interrupt_tool(string_io, markdown_chat)

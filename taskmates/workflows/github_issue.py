@@ -1,6 +1,5 @@
 import os
 
-from taskmates.extensions.actions.get_dotenv_values import get_dotenv_values
 from taskmates.extensions.actions.get_github_app_installation_token import GithubAppInstallationToken
 from taskmates.workflow_engine.fulfills import fulfills
 from taskmates.workflow_engine.workflow import Workflow
@@ -12,17 +11,16 @@ from taskmates.workflows.markdown_complete import MarkdownComplete
 
 @fulfills(outcome="github_issue_markdown_chat")
 async def get_github_issue_markdown_chat(issue_number, repo_name):
+    await set_github_access_token_env()
+
     inputs = fetch_github_issue(issue_number, repo_name)
     chat_content = compose_chat_from_github_issue(inputs)
     return chat_content
 
 
-@fulfills(outcome="set_up_env")
-async def set_up_env():
+@fulfills(outcome="github_access_token_env")
+async def set_github_access_token_env():
     env = os.environ
-
-    dotenv_values = get_dotenv_values(os.getcwd())
-    env.update(dotenv_values)
 
     token_response = GithubAppInstallationToken(
         env['GITHUB_APP_ID'],
@@ -30,8 +28,6 @@ async def set_up_env():
         env['GITHUB_APP_INSTALLATION_ID']
     ).get()
     env["GITHUB_ACCESS_TOKEN"] = token_response['token']
-
-    os.environ.update({"TASKMATES_ENV": "production"})
 
 
 class GithubIssue(Workflow):
@@ -41,8 +37,6 @@ class GithubIssue(Workflow):
                     response_format: str = 'text',
                     history_path: str = None
                     ):
-        await set_up_env()
-
         markdown_chat = await get_github_issue_markdown_chat(issue_number, repo_name)
 
         # TODO: CHANGE CWD TO DEMO

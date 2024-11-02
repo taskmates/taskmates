@@ -5,13 +5,15 @@ import sys
 from typeguard import typechecked
 
 from taskmates.cli.lib.merge_inputs import merge_inputs
-from taskmates.workflows.context_builders.cli_context_builder import CliContextBuilder
+from taskmates.workflow_engine.environment import environment
+from taskmates.workflow_engine.fulfills import fulfills
 from taskmates.workflow_engine.objective import Objective
 from taskmates.workflow_engine.run import to_daemons_dict
-from taskmates.workflows.signals.sources.sig_int_and_sig_term_controller import SigIntAndSigTermController
+from taskmates.workflow_engine.workflow_registry import workflow_registry
+from taskmates.workflows.context_builders.cli_context_builder import CliContextBuilder
 from taskmates.workflows.signals.sinks.history_sink import HistorySink
 from taskmates.workflows.signals.sinks.write_markdown_chat_to_stdout import WriteMarkdownChatToStdout
-from taskmates.workflow_engine.workflow_registry import workflow_registry
+from taskmates.workflows.signals.sources.sig_int_and_sig_term_controller import SigIntAndSigTermController
 
 
 def read_history(history_path):
@@ -35,30 +37,27 @@ class CliCompletionRunner:
     @typechecked
     async def run(self):
         async def attempt_cli_completion(context):
-            with Objective(outcome="cli_completion").attempt(context=context) as run:
+            with Objective(outcome="cli_completion_runner").environment(context=context) as run:
                 await run.signals["status"].start.send_async({})
 
-                async def attempt_args_inputs():
-                    with run.request(outcome="args_inputs").attempt():
-                        return self.get_args_inputs()
+                inputs = await self.get_args_inputs()
 
-                inputs = await attempt_args_inputs()
+                @environment(daemons_fn=lambda: to_daemons_dict([
+                    SigIntAndSigTermController(),
+                    WriteMarkdownChatToStdout(inputs.get('response_format')),
+                    HistorySink(inputs.get('history_path'))
+                ]))
+                async def run_workflow(inputs):
+                    workflow_name = self.context["run_opts"]["workflow"]
+                    workflow = workflow_registry[workflow_name]()
+                    return await workflow.fulfill(**inputs)
 
-                async def attempt_io(inputs):
-                    with run.request(outcome="io").attempt(daemons=(to_daemons_dict([
-                        SigIntAndSigTermController(),
-                        WriteMarkdownChatToStdout(inputs.get('response_format')),
-                        HistorySink(inputs.get('history_path'))
-                    ]))):
-                        workflow_name = self.context["run_opts"]["workflow"]
-                        workflow = workflow_registry[workflow_name]()
-                        return await workflow.fulfill(**inputs)
-
-                return await attempt_io(inputs)
+                return await run_workflow(inputs)
 
         return await attempt_cli_completion(self.context)
 
-    def get_args_inputs(self):
+    @fulfills("args_inputs")
+    async def get_args_inputs(self):
         inputs = merge_inputs(self.args.inputs)
         stdin_markdown = self.read_stdin_incoming_message()
         args_markdown = self.get_args_incoming_message(self.args)

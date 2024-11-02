@@ -32,11 +32,14 @@ class Run(Generic[TContext], Daemon):
         self.namespace = Namespace()
 
         self.objective = objective
+
         self.context: TContext = context
         self.signals = signals
-        self.state = state
-        self.results = results
         self.daemons = to_daemons_dict(daemons)
+        self.state = state
+
+        self.results = results
+        # TODO: self.actions =
 
     # def _add_state(self, name: str, value):
     #     if name in self.state:
@@ -47,13 +50,6 @@ class Run(Generic[TContext], Daemon):
         return Objective(outcome=outcome,
                          inputs=inputs,
                          requester=self)
-
-    def fork(self):
-        return Run(objective=self.objective,
-                   context=self.context.copy(),
-                   state=self.state.copy(),
-                   results=self.results.copy(),
-                   signals=self.signals.copy())
 
     def __enter__(self):
         TASKMATES_RUNTIME.get().initialize()

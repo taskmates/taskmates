@@ -3,6 +3,7 @@ import time
 from pathlib import Path
 from typing import Optional, List, Union, Dict
 
+import pytest
 from python_on_whales import DockerClient
 
 
@@ -136,6 +137,9 @@ class DevEnvironment:
             envs=envs or {},
             tty=tty
         )
+
+
+pytestmark = pytest.mark.integration
 
 
 def test_dev_environment_logs(tmp_path: Path):

@@ -1,53 +1,29 @@
-import asyncio
 from functools import wraps
-from typing import Callable, Optional, Any
+from typing import Callable
 
 import pytest
+from jupyter_core.utils import ensure_async
 
 from taskmates.workflow_engine.objective import Objective
 from taskmates.workflow_engine.run import RUN
 from taskmates.workflows.contexts.context import Context, default_taskmates_dirs
 
 
-async def ensure_async(fn: Callable) -> Any:
-    if asyncio.iscoroutinefunction(fn):
-        return await fn()
-    return fn()
-
-
-def fulfills(
-        outcome: str,
-        context_fn: Callable = lambda: RUN.get().context,
-        state_fn: Callable = lambda: RUN.get().state,
-        signals_fn: Callable = lambda: {},
-        daemons_fn: Optional[Callable] = lambda: {}
-):
-    def decorator(steps_fn: Callable):
-        @wraps(steps_fn)
+def fulfills(outcome: str):
+    def decorator(fn: Callable):
+        @wraps(fn)
         async def _fulfills_wrapper(*args, **kwargs):
             run = RUN.get()
 
-            context = await ensure_async(context_fn)
-            state = await ensure_async(state_fn)
-            signals = await ensure_async(signals_fn)
-            daemons = await ensure_async(daemons_fn) if daemons_fn else None
-
-            # Check cache in parent run
+            # Check result in parent run
             args_key = {"args": args, "kwargs": kwargs} if args or kwargs else None
             existing_result = run.get_result(outcome, args_key)
             if existing_result is not None:
                 return existing_result
 
-            with run.request(outcome=outcome).attempt(
-                    context=context,
-                    daemons=daemons,
-                    signals=signals
-            ) as run:
-                if state:
-                    run.state.update(state)
-
-                # Execute and cache in parent run
-                result = await steps_fn(*args, **kwargs)
+            with run.request(outcome=outcome).attempt():
+                # Execute and store result in parent run
+                result = await ensure_async(fn(*args, **kwargs))
                 run.set_result(outcome, args_key, result)
                 return result
 
@@ -77,8 +53,7 @@ def test_context() -> Context:
 
 @pytest.fixture
 def run(test_context):
-    request = Objective(outcome="test")
-    run = request.attempt(context=test_context)
+    run = Objective(outcome="test_runner").environment(context=test_context)
     token = RUN.set(run)
     yield run
     RUN.reset(token)

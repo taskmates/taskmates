@@ -7,17 +7,17 @@ from taskmates.workflows.contexts.context import Context
 
 
 class Plan:
-    def create_daemons(self) -> dict[str, Daemon]:
-        return {}
-
-    def create_signals(self) -> dict[str, Any]:
-        return {}
-
-    def create_state(self) -> dict[str, Any]:
-        pass
-
     async def create_context(self, **kwargs) -> Context:
         return RUN.get().context.copy()
+
+    async def create_signals(self) -> dict[str, Any]:
+        return {}
+
+    async def create_daemons(self) -> dict[str, Daemon]:
+        return {}
+
+    async def create_state(self) -> dict[str, Any]:
+        pass
 
     @abstractmethod
     async def steps(self, *args, **kwargs) -> Any:

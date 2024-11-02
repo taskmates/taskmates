@@ -1,9 +1,9 @@
 from typeguard import typechecked
 
-from taskmates.workflows.context_builders.sdk_context_builder import SdkContextBuilder
-from taskmates.workflow_engine.objective import Objective
-from taskmates.workflows.markdown_complete import MarkdownComplete
 from taskmates.types import RunOpts
+from taskmates.workflow_engine.objective import Objective
+from taskmates.workflows.context_builders.sdk_context_builder import SdkContextBuilder
+from taskmates.workflows.markdown_complete import MarkdownComplete
 
 
 class SdkCompletionRunner:
@@ -15,7 +15,7 @@ class SdkCompletionRunner:
     @typechecked
     async def run(self, markdown_chat: str):
         async def attempt_sdk_completion(context, markdown_chat):
-            with Objective(outcome="sdk_completion").attempt(context=context) as run:
+            with Objective(outcome="sdk_completion_runner").environment(context=context) as run:
                 await run.signals["status"].start.send_async({})
                 steps = {
                     "markdown_complete": MarkdownComplete()
