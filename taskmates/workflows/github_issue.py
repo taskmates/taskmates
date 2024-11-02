@@ -1,13 +1,13 @@
 import os
 
-from taskmates.workflows.markdown_complete import MarkdownComplete
 from taskmates.extensions.actions.get_dotenv_values import get_dotenv_values
-from taskmates.workflows.actions.chat_templates.compose_chat_from_github_issue import \
-    compose_chat_from_github_issue
-from taskmates.workflows.actions.context_templates.set_up_github_token import set_up_github_token
-from taskmates.workflows.actions.inputs_templates.github_issue import fetch_github_issue
+from taskmates.extensions.actions.get_github_app_installation_token import GithubAppInstallationToken
 from taskmates.workflow_engine.fulfills import fulfills
 from taskmates.workflow_engine.workflow import Workflow
+from taskmates.workflows.actions.chat_templates.compose_chat_from_github_issue import \
+    compose_chat_from_github_issue
+from taskmates.workflows.actions.inputs_templates.github_issue import fetch_github_issue
+from taskmates.workflows.markdown_complete import MarkdownComplete
 
 
 @fulfills(outcome="github_issue_markdown_chat")
@@ -17,16 +17,21 @@ async def get_github_issue_markdown_chat(issue_number, repo_name):
     return chat_content
 
 
-@fulfills(outcome="set_github_token_env")
+@fulfills(outcome="set_up_env")
 async def set_up_env():
-    cwd = os.getcwd()
     env = os.environ
-    set_up_github_token(cwd, env)
 
-    working_dir = "/Users/ralphus/Development/taskmates/taskmates"
+    dotenv_values = get_dotenv_values(os.getcwd())
+    env.update(dotenv_values)
+
+    token_response = GithubAppInstallationToken(
+        env['GITHUB_APP_ID'],
+        env['GITHUB_APP_PRIVATE_KEY'],
+        env['GITHUB_APP_INSTALLATION_ID']
+    ).get()
+    env["GITHUB_ACCESS_TOKEN"] = token_response['token']
+
     os.environ.update({"TASKMATES_ENV": "production"})
-    env = get_dotenv_values(working_dir)
-    os.environ.update(env)
 
 
 class GithubIssue(Workflow):

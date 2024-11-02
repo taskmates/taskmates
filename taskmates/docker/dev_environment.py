@@ -133,7 +133,7 @@ class DevEnvironment:
             service=service,
             command=command,
             workdir=workdir,
-            envs=envs,
+            envs=envs or {},
             tty=tty
         )
 
