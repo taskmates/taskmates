@@ -1,15 +1,16 @@
 from typeguard import typechecked
 
-from taskmates.workflows.daemons.markdown_chat_daemon import MarkdownChatDaemon
 from taskmates.workflow_engine.run import RUN
-from taskmates.workflows.signals.processors.incoming_messages_formatting_processor import IncomingMessagesFormattingProcessor
-from taskmates.workflows.states.markdown_chat import MarkdownChat
 from taskmates.workflow_engine.workflow import Workflow
-from taskmates.workflows.get_incoming_markdown import get_incoming_markdown
+from taskmates.workflows.actions.get_incoming_markdown import get_incoming_markdown
+from taskmates.workflows.daemons.markdown_chat_daemon import MarkdownChatDaemon
 from taskmates.workflows.markdown_complete import MarkdownComplete
+from taskmates.workflows.signals.processors.incoming_messages_formatting_processor import \
+    IncomingMessagesFormattingProcessor
+from taskmates.workflows.states.markdown_chat import MarkdownChat
 
 
-class CliInputsComplete(Workflow):
+class CliComplete(Workflow):
     @typechecked
     async def steps(self,
                     incoming_messages: list[str],

@@ -19,7 +19,7 @@ class CompleteCommand:
         #                     help='WebSocket URL for websocket method')
 
         parser.add_argument('--model', type=str, default='claude-3-5-sonnet-20241022', help='The model to use')
-        parser.add_argument('--workflow', type=str, default='cli_inputs_complete', help='The workflow to use')
+        parser.add_argument('--workflow', type=str, default='cli_complete', help='The workflow to use')
         parser.add_argument('-n', '--max-steps', type=int, default=100,
                             help='The maximum number of steps')
         parser.add_argument('--inputs', type=json.loads, action='append', default=[],

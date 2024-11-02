@@ -1,5 +1,5 @@
 from taskmates.workflow_engine.run import RUN
-from taskmates.workflows.read_history import read_history
+from taskmates.workflows.actions.read_history import read_history
 
 
 async def get_incoming_markdown(history_path, incoming_messages) -> str:

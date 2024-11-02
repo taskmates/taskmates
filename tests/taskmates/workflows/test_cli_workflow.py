@@ -5,7 +5,7 @@ import textwrap
 import pytest
 
 from taskmates.workflow_engine.run import RUN
-from taskmates.workflows.cli_inputs_complete import CliInputsComplete
+from taskmates.workflows.cli_complete import CliComplete
 from taskmates.workflows.context_builders.test_context_builder import TestContextBuilder
 from taskmates.workflows.signals.sinks.write_markdown_chat_to_stdout import WriteMarkdownChatToStdout
 
@@ -13,7 +13,7 @@ from taskmates.workflows.signals.sinks.write_markdown_chat_to_stdout import Writ
 @pytest.fixture(autouse=True)
 def contexts(taskmates_runtime, tmp_path):
     contexts = TestContextBuilder(tmp_path).build()
-    contexts["run_opts"]["workflow"] = "cli_inputs_complete"
+    contexts["run_opts"]["workflow"] = "cli_complete"
     return contexts
 
 
@@ -31,7 +31,7 @@ async def test_format_text(tmp_path, contexts):
         with RUN.get().request().attempt(
                 daemons=[WriteMarkdownChatToStdout('text', string_io)]) as run:
             contexts['runner_config'].update(dict(interactive=False, format='text'))
-            workflow = CliInputsComplete()
+            workflow = CliComplete()
             await workflow.fulfill(history_path=str(history_file),
                                    incoming_messages=incoming_messages)
 
@@ -69,7 +69,7 @@ async def test_format_full(tmp_path, contexts):
     async def attempt_format_full(string_io, history_file, incoming_messages):
         with RUN.get().request().attempt(
                 daemons=[WriteMarkdownChatToStdout('full', string_io)]) as run:
-            workflow = CliInputsComplete()
+            workflow = CliComplete()
             await workflow.fulfill(history_path=str(history_file),
                                    incoming_messages=incoming_messages)
 
@@ -111,7 +111,7 @@ async def test_interrupt_tool(tmp_path, contexts):
 
     async def attempt_interrupt_tool(string_io, markdown_chat):
         with RUN.get().request().attempt(daemons=[WriteMarkdownChatToStdout('text', string_io)]):
-            workflow = CliInputsComplete()
+            workflow = CliComplete()
             task = asyncio.create_task(workflow.fulfill(incoming_messages=[markdown_chat]))
 
             run = RUN.get()
