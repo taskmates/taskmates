@@ -15,12 +15,11 @@ def environment(fulfillers: Dict[str, Callable] | None = None):
         @wraps(fn)
         async def _environment_wrapper(*args, **kwargs):
             nonlocal fulfillers
-            run = RUN.get()
-
             if fulfillers is None:
                 fulfillers = {}
 
             default_fulfillers = {
+                'objective': lambda: RUN.get().objective,
                 'context': lambda: RUN.get().context,
                 'state': lambda: RUN.get().state,
                 'signals': lambda: RUN.get().signals,
@@ -31,6 +30,7 @@ def environment(fulfillers: Dict[str, Callable] | None = None):
             # Merge provided fulfillers with defaults
             effective_fulfillers = {**default_fulfillers, **fulfillers}
 
+            objective = await ensure_async(effective_fulfillers['objective']())
             context = await ensure_async(effective_fulfillers['context']())
             state = await ensure_async(effective_fulfillers['state']())
             signals = await ensure_async(effective_fulfillers['signals']())
@@ -38,7 +38,7 @@ def environment(fulfillers: Dict[str, Callable] | None = None):
             results = await ensure_async(effective_fulfillers['results']())
 
             forked_run = Run(
-                objective=run.objective,
+                objective=objective,
                 context=context,
                 state=state,
                 results=results,
