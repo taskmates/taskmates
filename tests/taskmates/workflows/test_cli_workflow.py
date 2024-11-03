@@ -28,7 +28,7 @@ async def test_format_text(tmp_path, contexts):
     history_file = tmp_path / "history.txt"
     history_file.write_text(history)
 
-    @environment(daemons_fn=lambda: [WriteMarkdownChatToStdout('text', string_io)])
+    @environment(fulfillers={'daemons': lambda: [WriteMarkdownChatToStdout('text', string_io)]})
     async def attempt_format_text(contexts, history_file, incoming_messages):
         contexts['runner_config'].update(dict(interactive=False, format='text'))
         workflow = CliComplete()
@@ -66,7 +66,7 @@ async def test_format_full(tmp_path, contexts):
 
     contexts['runner_config'].update(dict(interactive=False, format='full'))
 
-    @environment(daemons_fn=lambda: [WriteMarkdownChatToStdout('full', string_io)])
+    @environment(fulfillers={'daemons': lambda: [WriteMarkdownChatToStdout('full', string_io)]})
     async def attempt_format_full(string_io, history_file, incoming_messages):
         workflow = CliComplete()
         await workflow.fulfill(history_path=str(history_file),
@@ -108,7 +108,7 @@ async def test_interrupt_tool(tmp_path, contexts):
 
     string_io = io.StringIO()
 
-    @environment(daemons_fn=lambda: [WriteMarkdownChatToStdout('text', string_io)])
+    @environment(fulfillers={'daemons': lambda: [WriteMarkdownChatToStdout('text', string_io)]})
     async def attempt_interrupt_tool(string_io, markdown_chat):
         workflow = CliComplete()
         task = asyncio.create_task(workflow.fulfill(incoming_messages=[markdown_chat]))

@@ -9,11 +9,11 @@ from taskmates.workflows.states.markdown_chat import MarkdownChat
 
 
 @fulfills(outcome="incoming_markdown")
-@environment(
-    daemons_fn=lambda: [MarkdownChatDaemon(),
-                        IncomingMessagesFormattingProcessor()],
-    state_fn=lambda: {"markdown_chat": MarkdownChat()}
-)
+@environment(fulfillers={
+    'daemons': lambda: [MarkdownChatDaemon(),
+                     IncomingMessagesFormattingProcessor()],
+    'state': lambda: {"markdown_chat": MarkdownChat()}
+})
 async def get_incoming_markdown(history_path, incoming_messages) -> str:
     run = RUN.get()
     if history_path:

@@ -42,11 +42,13 @@ class CliCompletionRunner:
 
                 inputs = await self.get_args_inputs()
 
-                @environment(daemons_fn=lambda: to_daemons_dict([
-                    SigIntAndSigTermController(),
-                    WriteMarkdownChatToStdout(inputs.get('response_format')),
-                    HistorySink(inputs.get('history_path'))
-                ]))
+                @environment(fulfillers={
+                    'daemons': lambda: to_daemons_dict([
+                        SigIntAndSigTermController(),
+                        WriteMarkdownChatToStdout(inputs.get('response_format')),
+                        HistorySink(inputs.get('history_path'))
+                    ])
+                })
                 async def run_workflow(inputs):
                     workflow_name = self.context["run_opts"]["workflow"]
                     workflow = workflow_registry[workflow_name]()

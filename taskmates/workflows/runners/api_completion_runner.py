@@ -21,13 +21,13 @@ class ApiCompletionRunner:
     @typechecked
     async def run(self, payload: ApiRequest):
         @fulfills("api_completion")
-        @environment(
-            context_fn=lambda: ApiContextBuilder(payload).build(),
-            daemons_fn=lambda: to_daemons_dict([
+        @environment(fulfillers={
+            'context': lambda: ApiContextBuilder(payload).build(),
+            'daemons': lambda: to_daemons_dict([
                 WebSocketInterruptAndKillController(self.resources["websocket"]),
                 WebSocketCompletionStreamer(self.resources["websocket"]),
             ])
-        )
+        })
         async def attempt_api_completion(payload):
             run = RUN.get()
             await run.signals["status"].start.send_async({})

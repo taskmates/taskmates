@@ -19,7 +19,10 @@ class Objective:
         self.requester = requester
 
         self.runs = []
-        self.last_run = None
+
+    @property
+    def last_run(self):
+        return self.runs[-1]
 
     def environment(self, context: Context):
         from taskmates.workflow_engine.run import Run

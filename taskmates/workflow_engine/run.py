@@ -2,16 +2,20 @@ import contextvars
 from typing import Any, Generic, TypeVar, Mapping
 
 from blinker import Namespace, Signal
+from opentelemetry import trace
 from ordered_set import OrderedSet
 from typeguard import typechecked
 
 from taskmates.lib.context_.temp_context import temp_context
 from taskmates.lib.contextlib_.stacked_contexts import stacked_contexts
+from taskmates.lib.opentelemetry_.format_span_name import format_span_name
+from taskmates.lib.opentelemetry_.tracing import tracer
 from taskmates.lib.str_.to_snake_case import to_snake_case
 from taskmates.taskmates_runtime import TASKMATES_RUNTIME
 from taskmates.workflow_engine.base_signals import BaseSignals
 from taskmates.workflow_engine.daemon import Daemon
 from taskmates.workflow_engine.objective import Objective
+from taskmates.workflow_engine.runner import Runner
 
 Signal.set_class = OrderedSet
 
@@ -81,6 +85,19 @@ class Run(Generic[TContext], Daemon):
             return self.results[outcome].get(str(args_key))
 
         return self.results[outcome]
+
+    async def run_steps(self, steps):
+        self.objective.runs.append(self)
+
+        runner = Runner(func=steps, inputs=self.objective.inputs)
+
+        with tracer().start_as_current_span(
+                format_span_name(steps, self.objective),
+                kind=trace.SpanKind.INTERNAL
+        ):
+            with self:
+                runner.start()
+                return await runner.get_result()
 
 
 RUN: contextvars.ContextVar[Run] = contextvars.ContextVar(Run.__class__.__name__)

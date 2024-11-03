@@ -1,6 +1,6 @@
 import asyncio
 from functools import wraps
-from typing import Callable, Optional
+from typing import Callable, Dict
 
 import pytest
 from jupyter_core.utils import ensure_async
@@ -10,23 +10,32 @@ from taskmates.workflow_engine.run import RUN, Run
 from taskmates.workflows.contexts.context import Context, default_taskmates_dirs
 
 
-def environment(
-        context_fn: Callable = lambda: RUN.get().context,
-        state_fn: Callable = lambda: RUN.get().state,
-        signals_fn: Callable = lambda: RUN.get().signals,
-        daemons_fn: Optional[Callable] = lambda: {},
-        results_fn: Callable = lambda: RUN.get().results
-):
+def environment(fulfillers: Dict[str, Callable] | None = None):
     def decorator(fn: Callable):
         @wraps(fn)
         async def _environment_wrapper(*args, **kwargs):
+            nonlocal fulfillers
             run = RUN.get()
 
-            context = await ensure_async(context_fn())
-            state = await ensure_async(state_fn())
-            signals = await ensure_async(signals_fn())
-            daemons = await ensure_async(daemons_fn())
-            results = await ensure_async(results_fn())
+            if fulfillers is None:
+                fulfillers = {}
+
+            default_fulfillers = {
+                'context': lambda: RUN.get().context,
+                'state': lambda: RUN.get().state,
+                'signals': lambda: RUN.get().signals,
+                'daemons': lambda: {},
+                'results': lambda: RUN.get().results
+            }
+
+            # Merge provided fulfillers with defaults
+            effective_fulfillers = {**default_fulfillers, **fulfillers}
+
+            context = await ensure_async(effective_fulfillers['context']())
+            state = await ensure_async(effective_fulfillers['state']())
+            signals = await ensure_async(effective_fulfillers['signals']())
+            daemons = await ensure_async(effective_fulfillers['daemons']())
+            results = await ensure_async(effective_fulfillers['results']())
 
             forked_run = Run(
                 objective=run.objective,
@@ -85,25 +94,26 @@ async def test_environment_decorator_basic_functionality(run):
     assert result.objective == run.objective  # But should have the same objective
 
 
-# async def test_environment_decorator_state_isolation(run):
-#     run.state['original'] = 'value'
-#
-#     @environment()
-#     async def test_function():
-#         current_run = RUN.get()
-#         current_run.state['modified'] = 'new_value'
-#         return current_run.state
-#
-#     result = await test_function()
-#
-#     # The forked run should have the original state
-#     assert result['original'] == 'value'
-#
-#     # The modification should not affect the original run
-#     assert 'modified' not in run.state
-#
-#     # The modification should be present in the forked state
-#     assert result['modified'] == 'new_value'
+async def test_environment_decorator_with_custom_fulfillers(run):
+    custom_context = Context(
+        runner_config={"interactive": True},
+        runner_environment={},
+        run_opts={}
+    )
+
+    custom_fulfillers = {
+        'context': lambda: custom_context,
+        'state': lambda: {'custom': 'state'},
+    }
+
+    @environment(fulfillers=custom_fulfillers)
+    async def test_function():
+        current_run = RUN.get()
+        return current_run.context, current_run.state
+
+    context, state = await test_function()
+    assert context == custom_context
+    assert state == {'custom': 'state'}
 
 
 async def test_environment_decorator_with_sync_function(run):
@@ -134,3 +144,19 @@ async def test_environment_decorator_nested(run):
     assert inner_run is not run
     assert inner_run is not outer_run
     assert inner_run.objective == outer_run.objective == run.objective
+
+
+async def test_environment_decorator_partial_fulfillers(run):
+    # Test that providing only some fulfillers works correctly
+    custom_fulfillers = {
+        'state': lambda: {'custom': 'state'}
+    }
+
+    @environment(fulfillers=custom_fulfillers)
+    async def test_function():
+        current_run = RUN.get()
+        return current_run.context, current_run.state
+
+    context, state = await test_function()
+    assert context == run.context  # Should use default context
+    assert state == {'custom': 'state'}  # Should use custom state
