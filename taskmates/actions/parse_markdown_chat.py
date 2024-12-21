@@ -202,7 +202,7 @@ async def test_multiple_participants_and_recipient(taskmates_dir, markdown_path)
 async def test_empty_participants(markdown_path, taskmates_dir):
     markdown_chat_content = """\
     ---
-    participants:
+    participants: {}
     ---
 
     Please search for the latest news on ai

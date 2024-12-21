@@ -1,3 +1,5 @@
+from typeguard import typechecked
+
 from taskmates.config.load_participant_config import load_participant_config
 from taskmates.formats.markdown.participants.compute_and_reassign_roles import compute_and_reassign_roles
 from taskmates.formats.markdown.participants.compute_recipient import compute_recipient
@@ -5,6 +7,7 @@ from taskmates.formats.markdown.participants.process_participants import process
 from taskmates.logging import logger
 
 
+@typechecked
 async def compute_participants(taskmates_dirs, front_matter, messages) -> tuple[str | None, dict, dict]:
     front_matter_participants = front_matter.get("participants") or {}
 
