@@ -57,16 +57,16 @@ def tracer():
             trace.set_tracer_provider(tracer_provider)
 
             # Configure logging
-            logger_provider = LoggerProvider(resource=resource)
-            set_logger_provider(logger_provider)
-            log_exporter = OTLPLogExporter(
-                endpoint="http://localhost:4317",
-                insecure=True,
-                timeout=OTLP_GRPC_TIMEOUT
-            )
-            logger_provider.add_log_record_processor(BatchLogRecordProcessor(log_exporter))
-            logging_handler = LoggingHandler(level=logging.NOTSET, logger_provider=logger_provider)
-            logging.getLogger().addHandler(logging_handler)
+            # logger_provider = LoggerProvider(resource=resource)
+            # set_logger_provider(logger_provider)
+            # log_exporter = OTLPLogExporter(
+            #     endpoint="http://localhost:4317",
+            #     insecure=True,
+            #     timeout=OTLP_GRPC_TIMEOUT
+            # )
+            # logger_provider.add_log_record_processor(BatchLogRecordProcessor(log_exporter))
+            # logging_handler = LoggingHandler(level=logging.NOTSET, logger_provider=logger_provider)
+            # logging.getLogger().addHandler(logging_handler)
         except grpc.RpcError as e:
             print(f"Failed to configure tracing: {e}")
             trace.set_tracer_provider(NoOpTracerProvider())
