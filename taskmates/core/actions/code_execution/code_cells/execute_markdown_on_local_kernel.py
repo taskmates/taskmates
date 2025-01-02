@@ -65,8 +65,27 @@ async def execute_markdown_on_local_kernel(content, markdown_path: str = None, c
             except Empty:
                 await msg_queue.put(None)
 
+    async def handle_control_msg():
+        while True:
+            try:
+                msg = await kernel_client.get_control_msg(timeout=0.1)
+                jupyter_notebook_logger.debug(f"Control message received: {msg['msg_type']}")
+                jupyter_notebook_logger.debug(f"Control message content: {msg}")
+
+                if msg['msg_type'] == 'shutdown_reply':
+                    jupyter_notebook_logger.info("Kernel shutdown acknowledged")
+                    nonlocal notebook_finished
+                    notebook_finished = True
+                    await status.killed.send_async(None)
+                    break
+
+                await msg_queue.put(msg)
+            except Empty:
+                pass
+
     shell_task = asyncio.create_task(handle_shell_msg())
     iopub_task = asyncio.create_task(handle_iopub_msg())
+    control_task = asyncio.create_task(handle_control_msg())
 
     async def interrupt_handler(sender):
         nonlocal notebook_finished
@@ -86,6 +105,7 @@ async def execute_markdown_on_local_kernel(content, markdown_path: str = None, c
         await kernel_manager.signal_kernel(signal.SIGKILL)
         iopub_task.cancel()
         shell_task.cancel()
+        control_task.cancel()
         await status.killed.send_async(None)
         await kernel_manager.shutdown_kernel(now=True)
 
@@ -166,6 +186,7 @@ async def execute_markdown_on_local_kernel(content, markdown_path: str = None, c
             jupyter_notebook_logger.info("Cleaning up kernel resources: started")
             shell_task.cancel()
             iopub_task.cancel()
+            control_task.cancel()
             kernel_client.stop_channels()
             jupyter_notebook_logger.info("Cleaning up kernel resources: done")
 
@@ -342,48 +363,6 @@ async def test_cwd(tmp_path):
 
     # Normalize paths for comparison
     assert os.path.normpath(output_path) == os.path.normpath(expected_path)
-
-
-# TODO: This is unsupported in the current implementation
-# async def test_change_cwd(tmp_path):
-#     run = SIGNALS.get()
-#     chunks = []
-#
-#     new_path = (tmp_path / "test_change_cwd")
-#     new_path.mkdir()
-#
-#     async def capture_chunk(chunk):
-#         chunks.append(chunk)
-#
-#     run.states["output_streams"].code_cell_output.connect(capture_chunk)
-#
-#     # Markdown content that gets the current working directory
-#     input_md = textwrap.dedent(f"""\
-#         ```python .eval
-#         %cd {new_path}
-#         ```
-#     """)
-#
-#     # Execute the markdown with cwd set to the temporary directory
-#     await execute_markdown_on_local_kernel(input_md, markdown_path="test_change_cwd", cwd=str(tmp_path))
-#
-#     # Markdown content that gets the current working directory
-#     input_md = textwrap.dedent(f"""\
-#         ```python .eval
-#         import os
-#         print(os.getcwd())
-#         ```
-#     """)
-#
-#     # Execute the markdown with cwd set to the temporary directory
-#     await execute_markdown_on_local_kernel(input_md, markdown_path="test_change_cwd", cwd=str(tmp_path))
-#
-#     # Check if the output contains the expected directory path
-#     output_path = chunks[-1]['msg']['content']['text'].strip()
-#     expected_path = str(new_path)
-#
-#     # Normalize paths for comparison
-#     assert os.path.normpath(output_path) == os.path.normpath(expected_path)
 
 
 async def test_interrupt(capsys):
