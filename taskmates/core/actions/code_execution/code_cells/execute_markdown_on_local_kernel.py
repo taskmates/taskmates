@@ -30,7 +30,7 @@ async def execute_markdown_on_local_kernel(content, markdown_path: str = None, c
     control = run.signals["control"]
     output_streams = run.signals["output_streams"]
 
-    jupyter_notebook_logger.info(f"Starting execution for markdown_path={markdown_path}, cwd={cwd}")
+    jupyter_notebook_logger.debug(f"Starting execution for markdown_path={markdown_path}, cwd={cwd}")
 
     notebook: NotebookNode
     code_cells: list[NotebookNode]
@@ -72,7 +72,7 @@ async def execute_markdown_on_local_kernel(content, markdown_path: str = None, c
                 jupyter_notebook_logger.debug(f"Control message content: {msg}")
 
                 if msg['msg_type'] == 'shutdown_reply':
-                    jupyter_notebook_logger.info("Kernel shutdown acknowledged")
+                    jupyter_notebook_logger.debug("Kernel shutdown acknowledged")
                     nonlocal notebook_finished
                     notebook_finished = True
                     await status.killed.send_async(None)
@@ -88,7 +88,7 @@ async def execute_markdown_on_local_kernel(content, markdown_path: str = None, c
 
     async def interrupt_handler(sender):
         nonlocal notebook_finished
-        jupyter_notebook_logger.info("Interrupt signal received")
+        jupyter_notebook_logger.debug("Interrupt signal received")
         notebook_finished = True
         await kernel_manager.interrupt_kernel()
         await status.interrupted.send_async(None)
@@ -96,7 +96,7 @@ async def execute_markdown_on_local_kernel(content, markdown_path: str = None, c
     async def kill_handler(sender):
         nonlocal notebook_finished
         nonlocal cell_finished
-        jupyter_notebook_logger.info("Kill signal received")
+        jupyter_notebook_logger.debug("Kill signal received")
         notebook_finished = True
         cell_finished = True
         await msg_queue.put(None)
@@ -119,7 +119,7 @@ async def execute_markdown_on_local_kernel(content, markdown_path: str = None, c
                 cell_finished = False
 
                 source: str = cell.source
-                jupyter_notebook_logger.info(f"Executing cell {cell_index + 1}/{len(code_cells)}")
+                jupyter_notebook_logger.debug(f"Executing cell {cell_index + 1}/{len(code_cells)}")
                 jupyter_notebook_logger.debug(f"Cell source:\n{source}")
 
                 # see https://stackoverflow.com/questions/57984815/whats-the-difference-between-bash-and-bang
@@ -142,6 +142,7 @@ async def execute_markdown_on_local_kernel(content, markdown_path: str = None, c
 
                 msg_id = kernel_client.execute(source)
                 jupyter_notebook_logger.debug(f"Execution request sent with msg_id: {msg_id}")
+                jupyter_notebook_logger.debug(f"Will wait for messages with parent_header.msg_id = {msg_id}")
 
                 while True:
                     if cell_finished:
@@ -160,7 +161,7 @@ async def execute_markdown_on_local_kernel(content, markdown_path: str = None, c
                         continue
 
                     if msg['parent_header'].get('msg_id') != msg_id and msg["msg_type"] != "error":
-                        jupyter_notebook_logger.debug("Skipping message from different cell")
+                        jupyter_notebook_logger.debug(f"Skipping message from different cell. Got {msg['parent_header'].get('msg_id')}, expecting {msg_id}")
                         continue
 
                     if msg['msg_type'] == 'error':
@@ -184,23 +185,23 @@ async def execute_markdown_on_local_kernel(content, markdown_path: str = None, c
                         "msg": msg
                     })
         finally:
-            jupyter_notebook_logger.info("Cleaning up kernel resources: started")
+            jupyter_notebook_logger.debug("Cleaning up kernel resources: started")
             shell_task.cancel()
             iopub_task.cancel()
             control_task.cancel()
             kernel_client.stop_channels()
-            jupyter_notebook_logger.info("Cleaning up kernel resources: done")
+            jupyter_notebook_logger.debug("Cleaning up kernel resources: done")
 
 
 async def get_or_start_kernel(cwd, markdown_path, env=None):
     ignored = []
     # Get or create a kernel manager for the given path
     if markdown_path in kernel_pool and (await kernel_pool[(cwd, markdown_path)].is_alive()):
-        jupyter_notebook_logger.info(f"Reusing kernel for {(cwd, markdown_path)}")
+        jupyter_notebook_logger.debug(f"Reusing kernel for {(cwd, markdown_path)}")
         is_new_kernel = False
         kernel_manager = kernel_pool[(cwd, markdown_path)]
     else:
-        jupyter_notebook_logger.info(f"Starting new kernel for {(cwd, markdown_path)}")
+        jupyter_notebook_logger.debug(f"Starting new kernel for {(cwd, markdown_path)}")
         is_new_kernel = True
         kernel_manager = AsyncKernelManager(kernel_name='python3')
         kernel_args = {}
@@ -222,9 +223,13 @@ async def get_or_start_kernel(cwd, markdown_path, env=None):
     if is_new_kernel:
         jupyter_notebook_logger.debug("Setting up new kernel")
         package_path = root_path()
-        ignored.append(kernel_client.execute(f"import sys; sys.path.append('{package_path}')"))
-        ignored.append(kernel_client.execute("%load_ext taskmates.magics.file_editing_magics"))
-        ignored.append(kernel_client.execute("%matplotlib inline"))
+        setup_msg_1 = kernel_client.execute(f"import sys; sys.path.append('{package_path}')")
+        jupyter_notebook_logger.debug(f"Setup message 1 sent with msg_id: {setup_msg_1}")
+        setup_msg_2 = kernel_client.execute("%load_ext taskmates.magics.file_editing_magics")
+        jupyter_notebook_logger.debug(f"Setup message 2 sent with msg_id: {setup_msg_2}")
+        setup_msg_3 = kernel_client.execute("%matplotlib inline")
+        jupyter_notebook_logger.debug(f"Setup message 3 sent with msg_id: {setup_msg_3}")
+        ignored = [setup_msg_1, setup_msg_2, setup_msg_3]
 
     return kernel_manager, kernel_client, ignored
 
