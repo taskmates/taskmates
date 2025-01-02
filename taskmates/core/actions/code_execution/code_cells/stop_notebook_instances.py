@@ -3,7 +3,7 @@ import subprocess
 
 def kill_jupyter_instances():
     try:
-        subprocess.run("kill $(ps aux | grep jupyter-notebook | grep -v grep | awk '{print $2}')", shell=True,
+        subprocess.run("kill $(ps aux | grep jupyterlab | grep -v grep | awk '{print $2}')", shell=True,
                        check=True)
         print("Jupyter instance stopped successfully.")
     except subprocess.CalledProcessError as e:

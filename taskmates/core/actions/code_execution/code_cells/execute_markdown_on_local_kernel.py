@@ -168,6 +168,7 @@ async def get_or_start_kernel(cwd, markdown_path, env=None):
             kernel_args["cwd"] = cwd
 
         await kernel_manager.start_kernel(**kernel_args)
+        # kernel_pool[(cwd, markdown_path)] = kernel_manager
         kernel_pool[(cwd, markdown_path)] = kernel_manager
     kernel_client: AsyncKernelClient = kernel_manager.client()
     kernel_client.start_channels()

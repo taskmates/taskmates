@@ -22,4 +22,5 @@ def list_jupyter_instances(base_path=None):
 
 
 if __name__ == '__main__':
-    print(list_jupyter_instances('/'))
+    print(list_jupyter_instances('/Users/ralphus/Development/taskmates-project/taskmates'))
+    print(list_jupyter_instances('/Users/ralphus/Development/taskmates-project/taskmates-extras'))
