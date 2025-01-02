@@ -62,7 +62,7 @@ async def execute_markdown_on_local_kernel(content, markdown_path: str = None, c
                 jupyter_notebook_logger.debug(f"IOPub message content: {msg}")
                 await msg_queue.put(msg)
             except Empty:
-                await msg_queue.put(None)
+                pass
 
     async def handle_control_msg():
         while True:
