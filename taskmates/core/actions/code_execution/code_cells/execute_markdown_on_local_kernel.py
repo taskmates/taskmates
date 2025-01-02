@@ -15,7 +15,6 @@ from nbformat import NotebookNode
 from taskmates.core.actions.code_execution.code_cells.jupyter_notebook_logger import jupyter_notebook_logger
 from taskmates.core.actions.code_execution.code_cells.parse_notebook import parse_notebook
 from taskmates.lib.root_path.root_path import root_path
-from taskmates.logging import logger
 from taskmates.workflow_engine.run import RUN, Run
 from taskmates.workflows.contexts.context import Context
 
@@ -145,14 +144,15 @@ async def execute_markdown_on_local_kernel(content, markdown_path: str = None, c
                 jupyter_notebook_logger.debug(f"Execution request sent with msg_id: {msg_id}")
 
                 while True:
+                    if cell_finished:
+                        break
                     msg = await msg_queue.get()
                     if msg is None:
                         jupyter_notebook_logger.debug("Received None message")
-                        if cell_finished:
-                            break
                         continue
 
-                    jupyter_notebook_logger.debug(f"Processing message: {msg['msg_type']}, msg_id={msg['parent_header'].get('msg_id')}")
+                    jupyter_notebook_logger.debug(
+                        f"Processing message: {msg['msg_type']}, msg_id={msg['parent_header'].get('msg_id')}")
                     jupyter_notebook_logger.debug(f"Message content: {msg}")
 
                     if msg['parent_header'].get('msg_id') in setup_msgs and msg["msg_type"] != "error":
@@ -165,6 +165,7 @@ async def execute_markdown_on_local_kernel(content, markdown_path: str = None, c
 
                     if msg['msg_type'] == 'error':
                         jupyter_notebook_logger.error(f"Error in cell execution: {msg['content']}")
+                        cell_finished = True
                         notebook_finished = True
 
                     if msg['msg_type'] == 'execute_reply':
