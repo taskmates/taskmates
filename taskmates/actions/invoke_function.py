@@ -11,7 +11,7 @@ from taskmates.types import RunnerEnvironment
 
 
 # TODO: review this and the duplication with run_shell_command
-async def stream_output(stream_name, stream, run: Run[Context]):
+async def stream_output(stream_name, stream, run: Run):
     while True:
         line = stream.readline()
         if not line:
@@ -20,7 +20,7 @@ async def stream_output(stream_name, stream, run: Run[Context]):
             await run.signals["output_streams"].response.send_async(line)
 
 
-async def invoke_function(function, arguments, context: RunnerEnvironment, run: Run[Context]):
+async def invoke_function(function, arguments, context: RunnerEnvironment, run: Run):
     stdout_stream = StringIO()
     stderr_stream = StringIO()
 

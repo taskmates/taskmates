@@ -11,7 +11,7 @@ from taskmates.workflow_engine.run import Run
 
 
 class CodeCellsEditorCompletion:
-    def __init__(self, project_dir, chat_file, run: Run[Context]):
+    def __init__(self, project_dir, chat_file, run: Run):
         self.state = {}
         self.project_dir = project_dir
         self.chat_file: Path = Path(chat_file)

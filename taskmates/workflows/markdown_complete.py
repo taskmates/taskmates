@@ -46,7 +46,6 @@ class MarkdownComplete(Workflow):
     @fulfills(outcome="signals")
     async def create_signals(self):
         return {
-            "max_steps_check": MaxStepsCheck(),
         }
 
     @fulfills(outcome="state")
@@ -57,6 +56,7 @@ class MarkdownComplete(Workflow):
             "return_value": ReturnValue(),
             "markdown_chat": MarkdownChat(),
             "current_step": CurrentStep(),
+            "max_steps_check": MaxStepsCheck(),
         }
 
     @fulfills(outcome="context")
@@ -133,7 +133,7 @@ class MarkdownComplete(Workflow):
     async def check_finished(self):
         run = RUN.get()
         finished = False
-        if run.signals["max_steps_check"].should_break():
+        if run.state["max_steps_check"].should_break():
             finished = True
         if run.state["return_value"].get() is not NOT_SET:
             logger.debug(f"Return value is set to: {run.state['return_value'].get()}")
@@ -145,7 +145,7 @@ class MarkdownComplete(Workflow):
 
     @typechecked
     async def get_markdown_chat(self, markdown_chat: str):
-        run: Run[Context] = RUN.get()
+        run: Run = RUN.get()
         chat: Chat = await parse_markdown_chat(
             markdown_chat=markdown_chat,
             markdown_path=(run.context["runner_environment"]["markdown_path"]),
@@ -153,7 +153,7 @@ class MarkdownComplete(Workflow):
             inputs=run.objective.inputs)
         return chat
 
-    async def end_markdown_completion(self, chat: Chat, contexts: Context, run: Run[Context]):
+    async def end_markdown_completion(self, chat: Chat, contexts: Context, run: Run):
 
         await self.append_trailing_newlines(chat, run)
 

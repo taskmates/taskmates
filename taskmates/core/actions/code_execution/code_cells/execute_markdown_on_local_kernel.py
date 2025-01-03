@@ -25,7 +25,7 @@ pytestmark = pytest.mark.slow
 
 # Main execution function
 async def execute_markdown_on_local_kernel(content, markdown_path: str = None, cwd: str = None, env: Mapping = None):
-    run: Run[Context] = RUN.get()
+    run: Run = RUN.get()
     status = run.signals["status"]
     control = run.signals["control"]
     output_streams = run.signals["output_streams"]

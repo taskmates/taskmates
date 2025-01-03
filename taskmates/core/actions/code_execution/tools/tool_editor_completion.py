@@ -5,7 +5,7 @@ from taskmates.workflow_engine.run import Run
 
 
 class ToolEditorCompletion:
-    def __init__(self, project_dir: str, chat_file: str, run: Run[Context]):
+    def __init__(self, project_dir: str, chat_file: str, run: Run):
         self.editor_appender = EditorAppender(project_dir, chat_file, run)
 
     async def append(self, text: str):

@@ -4,7 +4,7 @@ from taskmates.workflow_engine.run import Run
 
 # TODO: Remove this class
 class EditorAppender:
-    def __init__(self, project_dir: str, chat_file: str, run: Run[Context]):
+    def __init__(self, project_dir: str, chat_file: str, run: Run):
         self.chat_file = chat_file
         self.project_dir = project_dir
         self.run = run
