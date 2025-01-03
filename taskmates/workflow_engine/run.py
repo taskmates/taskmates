@@ -1,3 +1,4 @@
+import contextlib
 import contextvars
 from typing import Any, Generic, TypeVar, Mapping
 
@@ -23,7 +24,7 @@ TContext = TypeVar('TContext', bound=Mapping)
 
 
 @typechecked
-class Run(Generic[TContext], Daemon):
+class Run(Generic[TContext]):
     def __init__(self,
                  objective: Objective,
                  context: TContext,
@@ -34,6 +35,7 @@ class Run(Generic[TContext], Daemon):
                  ):
         super().__init__()
         self.namespace = Namespace()
+        self.exit_stack = contextlib.ExitStack()
 
         self.objective = objective
 
@@ -65,6 +67,9 @@ class Run(Generic[TContext], Daemon):
         self.exit_stack.enter_context(stacked_contexts(list(self.daemons.values())))
 
         return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.exit_stack.close()
 
     def __repr__(self):
         return f"{self.__class__.__name__}(outcome={self.objective.outcome})"
