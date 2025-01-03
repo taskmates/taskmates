@@ -140,13 +140,7 @@ class Run(BaseModel, Generic[TContext]):
         }
 
         # Create a serializable version of the data
-        data = self.model_dump(exclude={"signals", "daemons", "namespace", "exit_stack", "objective"})
-
-        # Add objective data
-        data["objective"] = {
-            "outcome": self.objective.outcome,
-            "inputs": self.objective.inputs
-        }
+        data = self.model_dump(exclude={"signals", "daemons", "namespace", "exit_stack"})
 
         # Convert to JSON
         from pydantic.json import pydantic_encoder
@@ -160,12 +154,6 @@ class Run(BaseModel, Generic[TContext]):
         """
         import json
         data = json.loads(json_data)
-
-        # Recreate objective
-        objective = Objective(
-            outcome=data["objective"]["outcome"],
-            inputs=data["objective"]["inputs"]
-        )
 
         # Recreate signals
         signals = {}
@@ -185,7 +173,7 @@ class Run(BaseModel, Generic[TContext]):
 
         # Create a new instance with both serialized and reconstructed data
         return cls(
-            objective=objective,
+            objective=data["objective"],  # Pydantic will handle the conversion
             context=data["context"],
             signals=signals,
             state=data["state"],

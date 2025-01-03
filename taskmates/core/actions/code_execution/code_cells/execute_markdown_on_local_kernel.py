@@ -218,7 +218,9 @@ async def get_or_start_kernel(cwd, markdown_path, env=None):
     kernel_client: AsyncKernelClient = kernel_manager.client()
     jupyter_notebook_logger.debug("Starting kernel channels")
     kernel_client.start_channels()
+    jupyter_notebook_logger.debug("Awaiting kernel to be ready")
     await kernel_client.wait_for_ready()
+    jupyter_notebook_logger.debug("Kernel is ready")
 
     if is_new_kernel:
         jupyter_notebook_logger.debug("Setting up new kernel")
