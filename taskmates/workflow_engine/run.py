@@ -161,66 +161,6 @@ class Run(BaseModel, Generic[TContext]):
                 runner.start()
                 return await runner.get_result()
 
-    def model_dump_json(self, **kwargs) -> str:
-        """
-        Serialize to JSON, handling non-serializable components
-        """
-        # Store signal names for reconstruction
-        self.signal_names = {}
-        for group_name, signal_group in self.signals.items():
-            if isinstance(signal_group, BaseSignals):
-                self.signal_names[group_name] = list(signal_group.namespace.keys())
-
-        # Store daemon class paths for reconstruction
-        self.daemon_classes = {
-            name: f"{daemon.__class__.__module__}.{daemon.__class__.__name__}"
-            for name, daemon in self.daemons.items()
-        }
-
-        # Create a serializable version of the data
-        data = self.model_dump(exclude={"signals", "daemons", "namespace", "exit_stack"})
-
-        # Convert to JSON
-        from pydantic.json import pydantic_encoder
-        import json
-        return json.dumps(data, default=pydantic_encoder)
-
-    @classmethod
-    def model_validate_json(cls, json_data: str, **kwargs) -> 'Run':
-        """
-        Deserialize from JSON, reconstructing non-serializable components
-        """
-        import json
-        data = json.loads(json_data)
-
-        # Recreate signals
-        signals = {}
-        for group_name, signal_list in data["signal_names"].items():
-            signal_group = BaseSignals()
-            for signal_name in signal_list:
-                signal_group.namespace[signal_name] = signal_group.namespace.signal(signal_name)
-            signals[group_name] = signal_group
-
-        # Recreate daemons
-        daemons = {}
-        for name, class_path in data["daemon_classes"].items():
-            module_path, class_name = class_path.rsplit('.', 1)
-            module = importlib.import_module(module_path)
-            daemon_class = getattr(module, class_name)
-            daemons[name] = daemon_class()
-
-        # Create a new instance with both serialized and reconstructed data
-        return cls(
-            objective=data["objective"],  # Pydantic will handle the conversion
-            context=data["context"],
-            signals=signals,
-            state=data["state"],
-            results=data["results"],
-            daemons=daemons,
-            signal_names=data["signal_names"],
-            daemon_classes=data["daemon_classes"]
-        )
-
 
 RUN: contextvars.ContextVar[Run] = contextvars.ContextVar(Run.__class__.__name__)
 
