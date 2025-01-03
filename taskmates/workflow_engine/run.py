@@ -61,7 +61,7 @@ class Run(BaseModel, Generic[TContext]):
     exit_stack: contextlib.ExitStack = Field(default_factory=contextlib.ExitStack, exclude=True)
 
     @model_validator(mode='before')
-    def convert_daemons(cls, data: dict) -> dict:
+    def convert_daemons(self, data: dict) -> dict:
         if 'daemons' in data and not isinstance(data['daemons'], dict):
             data['daemons'] = to_daemons_dict(data['daemons'])
         return data
