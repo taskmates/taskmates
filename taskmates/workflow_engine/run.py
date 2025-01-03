@@ -1,7 +1,7 @@
 import contextlib
 import contextvars
 import importlib
-from typing import Any, Generic, TypeVar, Mapping, Dict, Optional, List
+from typing import Any, Generic, TypeVar, Mapping, Dict, Optional, List, Union, Self
 
 from blinker import Namespace, Signal
 from opentelemetry import trace
@@ -22,10 +22,10 @@ from taskmates.workflow_engine.runner import Runner
 
 Signal.set_class = OrderedSet
 
-TContext = TypeVar('TContext', bound=Mapping)
+TContext = TypeVar('TContext', bound=Mapping[str, Any])
 
 
-def to_daemons_dict(jobs):
+def to_daemons_dict(jobs: Optional[Union['Run[Any]', List['Run[Any]'], Dict[str, Daemon], None]]) -> Dict[str, Daemon]:
     if jobs is None:
         return {}
     if isinstance(jobs, Run):
@@ -34,6 +34,7 @@ def to_daemons_dict(jobs):
         return jobs
     if isinstance(jobs, list):
         return {to_snake_case(job.__class__.__name__): job for job in jobs}
+    raise ValueError(f"Invalid type {jobs!r}")
 
 
 class ObjectiveDict(BaseModel):
@@ -60,13 +61,14 @@ class Run(BaseModel, Generic[TContext]):
     namespace: Namespace = Field(default_factory=Namespace, exclude=True)
     exit_stack: contextlib.ExitStack = Field(default_factory=contextlib.ExitStack, exclude=True)
 
-    @model_validator(mode='before')
-    def convert_daemons(self, data: dict) -> dict:
-        if 'daemons' in data and not isinstance(data['daemons'], dict):
+    @model_validator(mode='before')  # type: ignore[no-untyped-decorator]
+    @classmethod
+    def convert_daemons(cls, data: Any) -> Any:
+        if isinstance(data, dict) and 'daemons' in data and not isinstance(data['daemons'], dict):
             data['daemons'] = to_daemons_dict(data['daemons'])
         return data
 
-    @field_serializer('signals')
+    @field_serializer('signals')  # type: ignore[no-untyped-decorator]
     def serialize_signals(self, signals: Dict[str, BaseSignals]) -> Dict[str, List[str]]:
         """Serialize signals by storing their names"""
         return {
@@ -75,8 +77,9 @@ class Run(BaseModel, Generic[TContext]):
             if isinstance(signal_group, BaseSignals)
         }
 
-    @field_validator('signals', mode='before')
-    def deserialize_signals(cls, value: Dict[str, List[str]]) -> Dict[str, BaseSignals]:
+    @field_validator('signals', mode='before')  # type: ignore[no-untyped-decorator]
+    @classmethod
+    def deserialize_signals(cls, value: Any) -> Dict[str, BaseSignals]:
         """Reconstruct signals from their names"""
         if isinstance(value, dict) and all(isinstance(v, list) for v in value.values()):
             signals = {}
@@ -88,7 +91,7 @@ class Run(BaseModel, Generic[TContext]):
             return signals
         return value
 
-    @field_serializer('daemons')
+    @field_serializer('daemons')  # type: ignore[no-untyped-decorator]
     def serialize_daemons(self, daemons: Dict[str, Daemon]) -> Dict[str, str]:
         """Serialize daemons by storing their class paths"""
         return {
@@ -96,8 +99,9 @@ class Run(BaseModel, Generic[TContext]):
             for name, daemon in daemons.items()
         }
 
-    @field_validator('daemons', mode='before')
-    def deserialize_daemons(cls, value: Dict[str, str]) -> Dict[str, Daemon]:
+    @field_validator('daemons', mode='before')  # type: ignore[misc, no-untyped-decorator]
+    @classmethod
+    def deserialize_daemons(cls, value: Any) -> Dict[str, Daemon]:
         """Reconstruct daemons from their class paths"""
         if isinstance(value, dict) and all(isinstance(v, str) for v in value.values()):
             daemons = {}
@@ -109,12 +113,12 @@ class Run(BaseModel, Generic[TContext]):
             return daemons
         return value
 
-    def request(self, outcome: str | None = None, inputs: dict | None = None) -> Objective:
+    def request(self, outcome: Optional[str] = None, inputs: Optional[Dict[str, Any]] = None) -> Objective:
         return Objective(outcome=outcome,
                          inputs=inputs,
                          requester=self)
 
-    def __enter__(self):
+    def __enter__(self) -> Self:
         TASKMATES_RUNTIME.get().initialize()
 
         # Sets the current execution context
@@ -125,13 +129,13 @@ class Run(BaseModel, Generic[TContext]):
 
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(self, exc_type: Optional[type], exc_val: Optional[Exception], exc_tb: Optional[Any]) -> None:
         self.exit_stack.close()
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"{self.__class__.__name__}(outcome={self.objective.outcome})"
 
-    def set_result(self, outcome: str, args_key: dict | None, result: Any):
+    def set_result(self, outcome: str, args_key: Optional[Dict[str, Any]], result: Any) -> None:
         if args_key is None:
             self.results[outcome] = result
         else:
@@ -139,7 +143,7 @@ class Run(BaseModel, Generic[TContext]):
                 self.results[outcome] = {}
             self.results[outcome][str(args_key)] = result
 
-    def get_result(self, outcome: str, args_key: dict | None) -> Any | None:
+    def get_result(self, outcome: str, args_key: Optional[Dict[str, Any]]) -> Any:
         if outcome not in self.results:
             return None
 
@@ -148,7 +152,7 @@ class Run(BaseModel, Generic[TContext]):
 
         return self.results[outcome]
 
-    async def run_steps(self, steps):
+    async def run_steps(self, steps: Any) -> Any:
         self.objective.runs.append(self)
 
         runner = Runner(func=steps, inputs=self.objective.inputs)
@@ -162,26 +166,25 @@ class Run(BaseModel, Generic[TContext]):
                 return await runner.get_result()
 
 
-RUN: contextvars.ContextVar[Run] = contextvars.ContextVar(Run.__class__.__name__)
+RUN: contextvars.ContextVar[Run[Any]] = contextvars.ContextVar(Run.__class__.__name__)
 
 # Tests
 from taskmates.workflows.contexts.context import Context
 
 
-# Test daemon classes defined at module level
-class MockDaemon(Daemon):
+class MockDaemon(Daemon):  # type: ignore[misc, type-arg]
     pass
 
 
-class MockDaemon1(Daemon):
+class MockDaemon1(Daemon):  # type: ignore[misc, type-arg]
     pass
 
 
-class MockDaemon2(Daemon):
+class MockDaemon2(Daemon):  # type: ignore[misc, type-arg]
     pass
 
 
-def test_run_serialization():
+def test_run_serialization() -> None:
     # Create a simple objective
     objective = Objective(outcome="test_outcome", inputs={"key": "value"})
 
@@ -193,7 +196,7 @@ def test_run_serialization():
     signals["test_group"].namespace.signal("test_signal")
 
     # Create a Run instance
-    run = Run(
+    run: Run[Context] = Run(
         objective=objective,
         context=context,
         signals=signals,
@@ -217,7 +220,7 @@ def test_run_serialization():
     assert "test_signal" in list(deserialized_run.signals.values())[0].namespace
 
 
-def test_run_serialization_with_complex_data():
+def test_run_serialization_with_complex_data() -> None:
     objective = Objective(
         outcome="complex_test",
         inputs={
@@ -228,7 +231,7 @@ def test_run_serialization_with_complex_data():
 
     context = Context()
 
-    run = Run(
+    run: Run[Context] = Run(
         objective=objective,
         context=context,
         signals={},
@@ -245,11 +248,11 @@ def test_run_serialization_with_complex_data():
     assert deserialized_run.results == run.results
 
 
-def test_run_serialization_with_multiple_daemons():
+def test_run_serialization_with_multiple_daemons() -> None:
     objective = Objective(outcome="multi_daemon_test")
     context = Context()
 
-    run = Run(
+    run: Run[Context] = Run(
         objective=objective,
         context=context,
         signals={},
@@ -268,7 +271,7 @@ def test_run_serialization_with_multiple_daemons():
     assert isinstance(deserialized_run.daemons["daemon2"], MockDaemon2)
 
 
-def test_run_serialization_with_multiple_signal_groups():
+def test_run_serialization_with_multiple_signal_groups() -> None:
     signals = {
         "group1": BaseSignals(),
         "group2": BaseSignals()
@@ -281,7 +284,7 @@ def test_run_serialization_with_multiple_signal_groups():
     objective = Objective(outcome="multi_signal_test")
     context = Context()
 
-    run = Run(
+    run: Run[Context] = Run(
         objective=objective,
         context=context,
         signals=signals,

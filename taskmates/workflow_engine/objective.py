@@ -21,8 +21,9 @@ class Objective(BaseModel):
     runs: List[Any] = Field(default_factory=list, exclude=True)  # exclude from serialization
 
     @model_validator(mode='before')
-    def convert_inputs(self, data: dict) -> dict:
-        if 'inputs' in data and data['inputs'] is None:
+    @classmethod
+    def convert_inputs(cls, data: Any) -> Any:
+        if isinstance(data, dict) and 'inputs' in data and data['inputs'] is None:
             data['inputs'] = {}
         return data
 
