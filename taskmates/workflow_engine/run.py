@@ -6,7 +6,7 @@ from typing import Any, Generic, TypeVar, Mapping, Dict, Optional, List
 from blinker import Namespace, Signal
 from opentelemetry import trace
 from ordered_set import OrderedSet
-from pydantic import BaseModel, Field, ConfigDict, model_validator
+from pydantic import BaseModel, Field, ConfigDict, model_validator, field_serializer, field_validator
 from typeguard import typechecked
 
 from taskmates.lib.context_.temp_context import temp_context
@@ -56,20 +56,58 @@ class Run(BaseModel, Generic[TContext]):
     results: Dict[str, Any] = Field(default_factory=dict)
     daemons: Dict[str, Daemon] = Field(default_factory=dict)
 
-    # Serialization fields
-    signal_names: Dict[str, List[str]] = Field(default_factory=dict)
-    daemon_classes: Dict[str, str] = Field(default_factory=dict)
-
     # Runtime-only fields, excluded from serialization
     namespace: Namespace = Field(default_factory=Namespace, exclude=True)
     exit_stack: contextlib.ExitStack = Field(default_factory=contextlib.ExitStack, exclude=True)
 
     @model_validator(mode='before')
-    @classmethod
     def convert_daemons(cls, data: dict) -> dict:
         if 'daemons' in data and not isinstance(data['daemons'], dict):
             data['daemons'] = to_daemons_dict(data['daemons'])
         return data
+
+    @field_serializer('signals')
+    def serialize_signals(self, signals: Dict[str, BaseSignals]) -> Dict[str, List[str]]:
+        """Serialize signals by storing their names"""
+        return {
+            group_name: list(signal_group.namespace.keys())
+            for group_name, signal_group in signals.items()
+            if isinstance(signal_group, BaseSignals)
+        }
+
+    @field_validator('signals', mode='before')
+    def deserialize_signals(cls, value: Dict[str, List[str]]) -> Dict[str, BaseSignals]:
+        """Reconstruct signals from their names"""
+        if isinstance(value, dict) and all(isinstance(v, list) for v in value.values()):
+            signals = {}
+            for group_name, signal_list in value.items():
+                signal_group = BaseSignals()
+                for signal_name in signal_list:
+                    signal_group.namespace[signal_name] = signal_group.namespace.signal(signal_name)
+                signals[group_name] = signal_group
+            return signals
+        return value
+
+    @field_serializer('daemons')
+    def serialize_daemons(self, daemons: Dict[str, Daemon]) -> Dict[str, str]:
+        """Serialize daemons by storing their class paths"""
+        return {
+            name: f"{daemon.__class__.__module__}.{daemon.__class__.__name__}"
+            for name, daemon in daemons.items()
+        }
+
+    @field_validator('daemons', mode='before')
+    def deserialize_daemons(cls, value: Dict[str, str]) -> Dict[str, Daemon]:
+        """Reconstruct daemons from their class paths"""
+        if isinstance(value, dict) and all(isinstance(v, str) for v in value.values()):
+            daemons = {}
+            for name, class_path in value.items():
+                module_path, class_name = class_path.rsplit('.', 1)
+                module = importlib.import_module(module_path)
+                daemon_class = getattr(module, class_name)
+                daemons[name] = daemon_class()
+            return daemons
+        return value
 
     def request(self, outcome: str | None = None, inputs: dict | None = None) -> Objective:
         return Objective(outcome=outcome,
