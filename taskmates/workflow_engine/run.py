@@ -213,7 +213,7 @@ class Run(BaseModel, Generic[TContext]):
                 return await runner.get_result()
 
 
-def to_daemons_dict(jobs: Optional[Union['Run[Any]', List['Run[Any]'], Dict[str, Daemon], None]]) -> Dict[str, Daemon]:
+def to_daemons_dict(jobs: Optional[Union[List[Daemon], Dict[str, Daemon], None]]) -> Dict[str, Daemon]:
     if jobs is None:
         return {}
     if isinstance(jobs, Run):
