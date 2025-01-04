@@ -74,7 +74,7 @@ class Objective(BaseModel):
         context = coalesce(context, self.requester.context)
         signals = {**self.requester.signals, **signals}
         state = {**self.requester.state, **state}
-        results = results or self.requester.results
+        results = {**self.requester.results, **(results or {})}
 
         return Run(
             objective=self,
