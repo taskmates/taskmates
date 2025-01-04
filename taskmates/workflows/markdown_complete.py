@@ -30,6 +30,15 @@ class CompletionRunEnvironment(TypedDict):
     max_steps: int
 
 
+class MarkdownCompleteState(TypedDict):
+    interrupted: Interrupted
+    interrupted_or_killed: InterruptedOrKilled
+    return_value: ReturnValue
+    markdown_chat: MarkdownChat
+    current_step: CurrentStep
+    max_steps_check: MaxStepsCheck
+
+
 class MarkdownComplete(Workflow):
     def __init__(self):
         super().__init__()
@@ -49,7 +58,7 @@ class MarkdownComplete(Workflow):
         }
 
     @fulfills(outcome="state")
-    async def create_state(self) -> dict[str, Any]:
+    async def create_state(self) -> MarkdownCompleteState:
         return {
             "interrupted": Interrupted(),
             "interrupted_or_killed": InterruptedOrKilled(),
