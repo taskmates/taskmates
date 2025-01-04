@@ -117,5 +117,5 @@ async def teardown_after_all_tests(taskmates_runtime):
     yield
 
     for path, kernel in kernel_pool.items():
-        kernel.shutdown_kernel(now=True)
+        await kernel.shutdown_kernel(now=True)
     kernel_pool.clear()
