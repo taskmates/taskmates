@@ -38,7 +38,7 @@ class Objective(BaseModel):
     inputs: Optional[Dict[str, Any]] = Field(default_factory=dict)
     requester: Optional['Run'] = Field(default=None, exclude=True)  # exclude from serialization
     runs: List[Any] = Field(default_factory=list, exclude=True)  # exclude from serialization
-    futures: Dict[str, Dict[str, asyncio.Future]] = Field(default_factory=dict, exclude=True)
+    sub_objectives: Dict[str, Dict[str, asyncio.Future]] = Field(default_factory=dict, exclude=True)
 
     @model_validator(mode='before')
     @classmethod
@@ -49,11 +49,11 @@ class Objective(BaseModel):
 
     def get_or_create_future(self, outcome: str, args_key: Optional[Dict[str, Any]] = None) -> asyncio.Future:
         key = str(args_key) if args_key is not None else ''
-        if outcome not in self.futures:
-            self.futures[outcome] = {}
-        if key not in self.futures[outcome]:
-            self.futures[outcome][key] = asyncio.Future()
-        return self.futures[outcome][key]
+        if outcome not in self.sub_objectives:
+            self.sub_objectives[outcome] = {}
+        if key not in self.sub_objectives[outcome]:
+            self.sub_objectives[outcome][key] = asyncio.Future()
+        return self.sub_objectives[outcome][key]
 
     def set_future_result(self, outcome: str, args_key: Optional[Dict[str, Any]], result: Any) -> None:
         future = self.get_or_create_future(outcome, args_key)
