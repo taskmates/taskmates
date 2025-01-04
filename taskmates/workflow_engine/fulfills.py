@@ -16,7 +16,7 @@ def fulfills(outcome: str):
 
             # Check result in parent run
             args_key = {"args": args, "kwargs": kwargs} if args or kwargs else None
-            existing_result = run.get_result(outcome, args_key)
+            existing_result = run.get_result(outcome, args_key, use_fallback=True)
             if existing_result is not None:
                 return existing_result
 

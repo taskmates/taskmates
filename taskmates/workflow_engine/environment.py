@@ -23,7 +23,6 @@ def environment(fulfillers: Dict[str, Callable] | None = None):
                 'state': lambda: RUN.get().state,
                 'signals': lambda: RUN.get().signals,
                 'daemons': lambda: {},
-                'results': lambda: RUN.get().results
             }
 
             # Merge provided fulfillers with defaults
@@ -34,13 +33,11 @@ def environment(fulfillers: Dict[str, Callable] | None = None):
             state = await ensure_async(effective_fulfillers['state']())
             signals = await ensure_async(effective_fulfillers['signals']())
             daemons = await ensure_async(effective_fulfillers['daemons']())
-            results = await ensure_async(effective_fulfillers['results']())
 
             forked_run = Run(
                 objective=objective,
                 context=context,
                 state=state,
-                results=results,
                 signals=signals,
                 daemons=daemons
             )

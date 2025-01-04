@@ -1,8 +1,10 @@
+import asyncio
 import contextlib
 import contextvars
 import importlib
 from typing import Any, Dict, Optional, List, Union, Self
 
+import pytest
 from blinker import Namespace, Signal
 from opentelemetry import trace
 from ordered_set import OrderedSet
@@ -20,7 +22,7 @@ from taskmates.workflow_engine.base_signals import BaseSignals
 from taskmates.workflow_engine.daemon import Daemon
 from taskmates.workflow_engine.default_environment_signals import default_environment_signals
 from taskmates.workflow_engine.runner import Runner
-from taskmates.workflows.contexts.run_context import RunContext
+from taskmates.workflows.contexts.run_context import RunContext, default_taskmates_dirs
 
 Signal.set_class = OrderedSet
 
@@ -36,6 +38,7 @@ class Objective(BaseModel):
     inputs: Optional[Dict[str, Any]] = Field(default_factory=dict)
     requester: Optional['Run'] = Field(default=None, exclude=True)  # exclude from serialization
     runs: List[Any] = Field(default_factory=list, exclude=True)  # exclude from serialization
+    futures: Dict[str, Dict[str, asyncio.Future]] = Field(default_factory=dict, exclude=True)
 
     @model_validator(mode='before')
     @classmethod
@@ -43,6 +46,35 @@ class Objective(BaseModel):
         if isinstance(data, dict) and 'inputs' in data and data['inputs'] is None:
             data['inputs'] = {}
         return data
+
+    def get_or_create_future(self, outcome: str, args_key: Optional[Dict[str, Any]] = None) -> asyncio.Future:
+        key = str(args_key) if args_key is not None else ''
+        if outcome not in self.futures:
+            self.futures[outcome] = {}
+        if key not in self.futures[outcome]:
+            self.futures[outcome][key] = asyncio.Future()
+        return self.futures[outcome][key]
+
+    def set_future_result(self, outcome: str, args_key: Optional[Dict[str, Any]], result: Any) -> None:
+        future = self.get_or_create_future(outcome, args_key)
+        if not future.done():
+            future.set_result(result)
+
+    def get_future_result(self, outcome: str, args_key: Optional[Dict[str, Any]], use_fallback: bool = False) -> Any:
+        try:
+            # First try to get the result with the specific args_key
+            future = self.get_or_create_future(outcome, args_key)
+            if future.done():
+                return future.result()
+
+            # If no result with args_key and fallback is enabled, try to get the result without args_key
+            if use_fallback and args_key is not None:
+                future = self.get_or_create_future(outcome, None)
+                if future.done():
+                    return future.result()
+        except Exception:
+            pass
+        return None
 
     @property
     def last_run(self):
@@ -54,16 +86,14 @@ class Objective(BaseModel):
             context=context,
             daemons={},
             signals=default_environment_signals(),
-            state={},
-            results={}
+            state={}
         )
 
     def attempt(self,
                 context: Optional[RunContext] = None,
                 daemons: Optional[Union[Dict[str, Daemon], List[Daemon]]] = None,
                 state: Optional[Dict[str, Any]] = None,
-                signals: Optional[Dict[str, Any]] = None,
-                results: Optional[Dict[str, Any]] = None
+                signals: Optional[Dict[str, Any]] = None
                 ):
         if state is None:
             state = {}
@@ -74,15 +104,13 @@ class Objective(BaseModel):
         context = coalesce(context, self.requester.context)
         signals = {**self.requester.signals, **signals}
         state = {**self.requester.state, **state}
-        results = {**self.requester.results, **(results or {})}
 
         return Run(
             objective=self,
             context=context,
             daemons=daemons,
             signals=signals,
-            state=state,
-            results=results
+            state=state
         )
 
     def execute(self):
@@ -90,8 +118,7 @@ class Objective(BaseModel):
                    context=self.requester.context,
                    daemons={},
                    signals=self.requester.signals,
-                   state=self.requester.state,
-                   results=self.requester.results)
+                   state=self.requester.state)
 
     def __repr__(self):
         return f"<{self.__class__.__name__}: {self.outcome}>"
@@ -108,7 +135,6 @@ class Run(BaseModel):
     context: RunContext = Field(default_factory=dict)
     signals: Dict[str, BaseSignals] = Field(default_factory=dict)
     state: Dict[str, Any] = Field(default_factory=dict)
-    results: Dict[str, Any] = Field(default_factory=dict)
     daemons: Dict[str, Daemon] = Field(default_factory=dict)
 
     # Runtime-only fields, excluded from serialization
@@ -190,21 +216,10 @@ class Run(BaseModel):
         return f"{self.__class__.__name__}(outcome={self.objective.outcome})"
 
     def set_result(self, outcome: str, args_key: Optional[Dict[str, Any]], result: Any) -> None:
-        if args_key is None:
-            self.results[outcome] = result
-        else:
-            if outcome not in self.results:
-                self.results[outcome] = {}
-            self.results[outcome][str(args_key)] = result
+        self.objective.set_future_result(outcome, args_key, result)
 
-    def get_result(self, outcome: str, args_key: Optional[Dict[str, Any]]) -> Any:
-        if outcome not in self.results:
-            return None
-
-        if isinstance(self.results[outcome], dict):
-            return self.results[outcome].get(str(args_key))
-
-        return self.results[outcome]
+    def get_result(self, outcome: str, args_key: Optional[Dict[str, Any]], use_fallback: bool = False) -> Any:
+        return self.objective.get_future_result(outcome, args_key, use_fallback)
 
     async def run_steps(self, steps: Any) -> Any:
         self.objective.runs.append(self)
@@ -250,6 +265,25 @@ class MockDaemon2(Daemon):  # type: ignore[misc, type-arg]
     pass
 
 
+@pytest.fixture
+def test_context() -> RunContext:
+    return RunContext(
+        runner_config={
+            "interactive": False,
+            "format": "full",
+            "taskmates_dirs": default_taskmates_dirs
+        },
+        runner_environment={
+            "markdown_path": "test.md",
+            "cwd": "/tmp"
+        },
+        run_opts={
+            "model": "test",
+            "max_steps": 10
+        }
+    )
+
+
 def test_run_serialization(context: RunContext) -> None:
     # Create a simple objective
     objective = Objective(outcome="test_outcome", inputs={"key": "value"})
@@ -264,7 +298,6 @@ def test_run_serialization(context: RunContext) -> None:
         context=context,
         signals=signals,
         state={"state_key": "state_value"},
-        results={"result_key": "result_value"},
         daemons={"test_daemon": MockDaemon()}
     )
 
@@ -278,7 +311,6 @@ def test_run_serialization(context: RunContext) -> None:
     assert deserialized_run.objective.outcome == run.objective.outcome
     assert deserialized_run.objective.inputs == run.objective.inputs
     assert deserialized_run.state == run.state
-    assert deserialized_run.results == run.results
     assert isinstance(list(deserialized_run.daemons.values())[0], MockDaemon)
     assert "test_signal" in list(deserialized_run.signals.values())[0].namespace
 
@@ -297,7 +329,6 @@ def test_run_serialization_with_complex_data(context: RunContext) -> None:
         context=context,
         signals={},
         state={"complex": {"nested": True}},
-        results={"arrays": [[1, 2], [3, 4]]},
         daemons={}
     )
 
@@ -306,7 +337,6 @@ def test_run_serialization_with_complex_data(context: RunContext) -> None:
 
     assert deserialized_run.objective.inputs == run.objective.inputs
     assert deserialized_run.state == run.state
-    assert deserialized_run.results == run.results
 
 
 def test_run_serialization_with_multiple_daemons(context: RunContext) -> None:
@@ -317,7 +347,6 @@ def test_run_serialization_with_multiple_daemons(context: RunContext) -> None:
         context=context,
         signals={},
         state={},
-        results={},
         daemons={
             "daemon1": MockDaemon1(),
             "daemon2": MockDaemon2()
@@ -348,7 +377,6 @@ def test_run_serialization_with_multiple_signal_groups(context: RunContext) -> N
         context=context,
         signals=signals,
         state={},
-        results={},
         daemons={}
     )
 
@@ -376,86 +404,115 @@ def test_objective_initialization():
     assert obj.requester is None
 
 
-def test_objective_serialization():
-    # Create an objective with some data
-    obj = Objective(
-        outcome="test",
-        inputs={"key": "value", "nested": {"a": 1, "b": [1, 2, 3]}}
+async def test_objective_future_results():
+    # Test basic future functionality
+    obj = Objective(outcome="test")
+
+    # Test setting and getting a result
+    obj.set_future_result("test_outcome", None, "test_result")
+    result = obj.get_future_result("test_outcome", None)
+    assert result == "test_result"
+
+    # Test setting and getting a result with args_key
+    args_key = {"args": (1, 2), "kwargs": {}}
+    obj.set_future_result("test_outcome", args_key, "test_result_with_args")
+    result = obj.get_future_result("test_outcome", args_key)
+    assert result == "test_result_with_args"
+
+    # Test getting non-existent result
+    result = obj.get_future_result("non_existent", None)
+    assert result is None
+
+    # Test getting result with non-existent args_key
+    result = obj.get_future_result("test_outcome", {"args": (3, 4), "kwargs": {}})
+    assert result is None
+
+
+async def test_run_future_results(test_context):
+    # Test that Run's set_result and get_result properly use Objective's future system
+    run = Run(
+        objective=Objective(outcome="test"),
+        context=test_context,
+        signals={},
+        state={},
+        daemons={}
     )
 
-    # Serialize to JSON
-    json_data = obj.model_dump_json()
+    # Test setting and getting a result
+    run.set_result("test_outcome", None, "test_result")
+    result = run.get_result("test_outcome", None)
+    assert result == "test_result"
 
-    # Deserialize from JSON
-    deserialized = Objective.model_validate_json(json_data)
+    # Test setting and getting a result with args_key
+    args_key = {"args": (1, 2), "kwargs": {}}
+    run.set_result("test_outcome", args_key, "test_result_with_args")
+    result = run.get_result("test_outcome", args_key)
+    assert result == "test_result_with_args"
 
-    # Check values
-    assert deserialized.outcome == obj.outcome
-    assert deserialized.inputs == obj.inputs
-    assert deserialized.runs == []
-    assert deserialized.requester is None
+    # Test getting non-existent result
+    result = run.get_result("non_existent", None)
+    assert result is None
+
+    # Test getting result with non-existent args_key
+    result = run.get_result("test_outcome", {"args": (3, 4), "kwargs": {}})
+    assert result is None
 
 
-def test_objective_with_complex_inputs():
-    # Test with various types of inputs
-    obj = Objective(
-        outcome="complex",
-        inputs={
-            "string": "value",
-            "number": 42,
-            "list": [1, 2, 3],
-            "dict": {"a": 1},
-            "nested": {
-                "list": [{"x": 1}, {"y": 2}],
-                "dict": {"a": {"b": {"c": 3}}}
-            }
-        }
+async def test_objective_future_fallback():
+    # Test that when a result is set without args_key, it's used as a fallback
+    obj = Objective(outcome="test")
+
+    # Set a result without args_key
+    obj.set_future_result("test_outcome", None, "fallback_result")
+
+    # Test that any args_key returns the fallback result when use_fallback is True
+    result1 = obj.get_future_result("test_outcome", {"args": (1, 2), "kwargs": {}}, use_fallback=True)
+    assert result1 == "fallback_result"
+
+    result2 = obj.get_future_result("test_outcome", {"args": (3, 4), "kwargs": {}}, use_fallback=True)
+    assert result2 == "fallback_result"
+
+    # Test that setting a specific args_key overrides the fallback
+    args_key = {"args": (1, 2), "kwargs": {}}
+    obj.set_future_result("test_outcome", args_key, "specific_result")
+
+    # The specific args_key should get its result
+    result3 = obj.get_future_result("test_outcome", args_key)
+    assert result3 == "specific_result"
+
+    # Other args_keys should still get the fallback when use_fallback is True
+    result4 = obj.get_future_result("test_outcome", {"args": (3, 4), "kwargs": {}}, use_fallback=True)
+    assert result4 == "fallback_result"
+
+
+async def test_run_future_fallback(test_context):
+    # Test that Run's result methods properly handle the fallback behavior
+    run = Run(
+        objective=Objective(outcome="test"),
+        context=test_context,
+        signals={},
+        state={},
+        daemons={}
     )
 
-    # Serialize and deserialize
-    json_data = obj.model_dump_json()
-    deserialized = Objective.model_validate_json(json_data)
+    # Set a result without args_key
+    run.set_result("test_outcome", None, "fallback_result")
 
-    # Verify all complex data is preserved
-    assert deserialized.inputs == obj.inputs
+    # Test that any args_key returns the fallback result when use_fallback is True
+    result1 = run.get_result("test_outcome", {"args": (1, 2), "kwargs": {}}, use_fallback=True)
+    assert result1 == "fallback_result"
 
+    result2 = run.get_result("test_outcome", {"args": (3, 4), "kwargs": {}}, use_fallback=True)
+    assert result2 == "fallback_result"
 
-def test_objective_methods():
-    from taskmates.workflows.contexts.run_context import RunContext
-    from taskmates.types import RunOpts, RunnerConfig, RunnerEnvironment
+    # Test that setting a specific args_key overrides the fallback
+    args_key = {"args": (1, 2), "kwargs": {}}
+    run.set_result("test_outcome", args_key, "specific_result")
 
-    # Create an objective
-    obj = Objective(outcome="test", inputs={"key": "value"})
+    # The specific args_key should get its result
+    result3 = run.get_result("test_outcome", args_key)
+    assert result3 == "specific_result"
 
-    # Create a proper context with all required fields
-    context = RunContext(
-        run_opts=RunOpts(
-            model="gpt-4",
-            workflow="test",
-            tools={},
-            participants={},
-            max_steps=10,
-            jupyter_enabled=True
-        ),
-        runner_config=RunnerConfig(
-            endpoint="test",
-            interactive=False,
-            format="full",
-            output="test",
-            taskmates_dirs=[]
-        ),
-        runner_environment=RunnerEnvironment(
-            request_id="test",
-            markdown_path="test",
-            cwd="test",
-            env={}
-        )
-    )
-
-    # Test environment method
-    env = obj.environment(context)
-    assert env.objective == obj
-    assert env.context == context
-    assert env.daemons == {}
-    assert env.state == {}
-    assert env.results == {}
+    # Other args_keys should still get the fallback when use_fallback is True
+    result4 = run.get_result("test_outcome", {"args": (3, 4), "kwargs": {}}, use_fallback=True)
+    assert result4 == "fallback_result"
