@@ -12,7 +12,7 @@ class SigIntAndSigTermController(Daemon):
         super().__init__()
         self.received_signal = None
         self.task = None
-        self.run: Run[Context]
+        self.run: Run
 
     def __enter__(self):
         self.run = RUN.get()

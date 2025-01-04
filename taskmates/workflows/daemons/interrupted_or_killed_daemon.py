@@ -1,7 +1,7 @@
 import functools
 
 from taskmates.workflow_engine.daemon import Daemon
-from taskmates.workflow_engine.run import RUN, Run
+from taskmates.workflow_engine.run import RUN, Run, Objective
 from taskmates.lib.contextlib_.stacked_contexts import stacked_contexts
 
 
@@ -23,7 +23,6 @@ class InterruptedOrKilledDaemon(Daemon):
 
 
 async def test_interrupted_or_killed():
-    from taskmates.workflow_engine.objective import Objective
     from taskmates.workflows.signals.status_signals import StatusSignals
     from taskmates.workflows.states.interrupted_or_killed import InterruptedOrKilled as InterruptedOrKilledTopic
 

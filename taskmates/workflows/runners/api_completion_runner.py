@@ -6,8 +6,7 @@ from typeguard import typechecked
 from taskmates.types import ApiRequest
 from taskmates.workflow_engine.default_environment_signals import default_environment_signals
 from taskmates.workflow_engine.environment import environment
-from taskmates.workflow_engine.objective import Objective
-from taskmates.workflow_engine.run import to_daemons_dict, RUN
+from taskmates.workflow_engine.run import to_daemons_dict, RUN, Objective
 from taskmates.workflows.context_builders.api_context_builder import ApiContextBuilder
 from taskmates.workflows.markdown_complete import MarkdownComplete
 from taskmates.workflows.signals.sinks.web_socket_completion_streamer import WebSocketCompletionStreamer

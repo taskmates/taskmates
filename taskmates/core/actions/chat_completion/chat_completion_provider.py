@@ -25,7 +25,7 @@ class ChatCompletionProvider(CompletionProvider):
     @typechecked
     async def perform_completion(self, chat: Chat):
         contexts = RUN.get().context
-        run: Run[Context] = RUN.get()
+        run: Run = RUN.get()
         output_streams = run.signals["output_streams"]
 
         chat_completion_editor_completion = ChatCompletionEditorCompletion(chat, run)

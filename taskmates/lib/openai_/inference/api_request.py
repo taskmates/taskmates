@@ -19,7 +19,7 @@ from taskmates.server.streamed_response import StreamedResponse
 
 @typechecked
 async def api_request(client, messages: list, model_conf: dict, model_params: dict,
-                      run: Run[Context]) -> dict:
+                      run: Run) -> dict:
     streamed_response = StreamedResponse()
     output_streams = run.signals["output_streams"]
     control = run.signals["control"]

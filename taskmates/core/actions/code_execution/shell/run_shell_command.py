@@ -15,7 +15,7 @@ from taskmates.lib.restore_stdout_and_stderr import restore_stdout_and_stderr
 
 
 # TODO: review this and the duplication with invoke_function
-async def stream_output(fd, stream: TextIO, run: Run[Context]):
+async def stream_output(fd, stream: TextIO, run: Run):
     while True:
         line = await asyncio.get_event_loop().run_in_executor(None, stream.readline)
         if not line:
@@ -32,7 +32,7 @@ async def run_shell_command(cmd: str) -> str:
     :return: the output of the command
     """
 
-    run: Run[Context] = RUN.get()
+    run: Run = RUN.get()
 
     if platform.system() == "Windows":
         process = subprocess.Popen(

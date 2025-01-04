@@ -1,7 +1,7 @@
 import functools
 
 from taskmates.workflow_engine.daemon import Daemon
-from taskmates.workflow_engine.run import RUN, Run
+from taskmates.workflow_engine.run import RUN, Run, Objective
 from taskmates.lib.contextlib_.stacked_contexts import stacked_contexts
 from taskmates.workflows.signals.status_signals import StatusSignals
 
@@ -25,7 +25,6 @@ class ReturnValueDaemon(Daemon):
 
 
 async def test_return_value():
-    from taskmates.workflow_engine.objective import Objective
     from taskmates.workflows.states.return_value import ReturnValue as ReturnValueTopic
 
     # Create a real Run with real signals

@@ -65,7 +65,7 @@ class ToolExecutionCompletionProvider(CompletionProvider):
 
     @staticmethod
     @typechecked
-    async def execute_task(context: RunnerEnvironment, tool_call: ToolCall, run: Run[Context]):
+    async def execute_task(context: RunnerEnvironment, tool_call: ToolCall, run: Run):
         tool_call_id = tool_call.id
         function_name = tool_call.function.name
         arguments = tool_call.function.arguments

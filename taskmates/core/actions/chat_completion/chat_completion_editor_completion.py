@@ -10,7 +10,7 @@ def snake_case_to_title_case(text: str) -> str:
 
 
 class ChatCompletionEditorCompletion:
-    def __init__(self, chat, run: Run[Context]):
+    def __init__(self, chat, run: Run):
         self.chat = chat
         self.output_streams = run.signals["output_streams"]
         self.recipient = None

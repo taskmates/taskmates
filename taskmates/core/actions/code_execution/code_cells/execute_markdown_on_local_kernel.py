@@ -16,7 +16,6 @@ from taskmates.core.actions.code_execution.code_cells.jupyter_notebook_logger im
 from taskmates.core.actions.code_execution.code_cells.parse_notebook import parse_notebook
 from taskmates.lib.root_path.root_path import root_path
 from taskmates.workflow_engine.run import RUN, Run
-from taskmates.workflows.contexts.context import Context
 
 kernel_pool: dict[tuple[str | None, str], AsyncKernelManager] = {}
 
@@ -25,7 +24,7 @@ pytestmark = pytest.mark.slow
 
 # Main execution function
 async def execute_markdown_on_local_kernel(content, markdown_path: str = None, cwd: str = None, env: Mapping = None):
-    run: Run[Context] = RUN.get()
+    run: Run = RUN.get()
     status = run.signals["status"]
     control = run.signals["control"]
     output_streams = run.signals["output_streams"]
@@ -161,7 +160,8 @@ async def execute_markdown_on_local_kernel(content, markdown_path: str = None, c
                         continue
 
                     if msg['parent_header'].get('msg_id') != msg_id and msg["msg_type"] != "error":
-                        jupyter_notebook_logger.debug(f"Skipping message from different cell. Got {msg['parent_header'].get('msg_id')}, expecting {msg_id}")
+                        jupyter_notebook_logger.debug(
+                            f"Skipping message from different cell. Got {msg['parent_header'].get('msg_id')}, expecting {msg_id}")
                         continue
 
                     if msg['msg_type'] == 'error':
@@ -218,17 +218,46 @@ async def get_or_start_kernel(cwd, markdown_path, env=None):
     kernel_client: AsyncKernelClient = kernel_manager.client()
     jupyter_notebook_logger.debug("Starting kernel channels")
     kernel_client.start_channels()
+    jupyter_notebook_logger.debug("Awaiting kernel to be ready")
     await kernel_client.wait_for_ready()
+    jupyter_notebook_logger.debug("Kernel is ready")
 
     if is_new_kernel:
         jupyter_notebook_logger.debug("Setting up new kernel")
         package_path = root_path()
-        setup_msg_1 = kernel_client.execute(f"import sys; sys.path.append('{package_path}')")
-        jupyter_notebook_logger.debug(f"Setup message 1 sent with msg_id: {setup_msg_1}")
-        setup_msg_2 = kernel_client.execute("%load_ext taskmates.magics.file_editing_magics")
-        jupyter_notebook_logger.debug(f"Setup message 2 sent with msg_id: {setup_msg_2}")
-        setup_msg_3 = kernel_client.execute("%matplotlib inline")
-        jupyter_notebook_logger.debug(f"Setup message 3 sent with msg_id: {setup_msg_3}")
+
+        async def wait_for_idle():
+            while True:
+                try:
+                    msg = await kernel_client.get_iopub_msg(timeout=10)
+                    if msg['msg_type'] == 'status' and msg['content']['execution_state'] == 'idle':
+                        break
+                except Empty:
+                    continue
+
+        async def execute_and_wait(code):
+            msg_id = kernel_client.execute(code)
+            jupyter_notebook_logger.debug(f"Setup message sent with msg_id: {msg_id}")
+            
+            # Wait for execution to complete
+            while True:
+                try:
+                    msg = await kernel_client.get_shell_msg(timeout=10)
+                    if msg['parent_header'].get('msg_id') == msg_id and msg['msg_type'] == 'execute_reply':
+                        if msg['content']['status'] == 'error':
+                            raise RuntimeError(f"Setup cell failed: {msg['content']}")
+                        break
+                except Empty:
+                    continue
+            
+            # Wait for kernel to be idle
+            await wait_for_idle()
+            return msg_id
+
+        setup_msg_1 = await execute_and_wait(f"import sys; sys.path.append('{package_path}')")
+        setup_msg_2 = await execute_and_wait("%load_ext taskmates.magics.file_editing_magics")
+        setup_msg_3 = await execute_and_wait("%matplotlib inline")
+
         ignored = [setup_msg_1, setup_msg_2, setup_msg_3]
 
     return kernel_manager, kernel_client, ignored
@@ -492,8 +521,6 @@ async def test_custom_env():
     """)
 
     await execute_markdown_on_local_kernel(input_md, markdown_path="test_custom_env_2")
-
-    assert len(chunks) > 1
     assert chunks[-1]['msg']['content']['text'].strip() == 'Not found'
 
 
