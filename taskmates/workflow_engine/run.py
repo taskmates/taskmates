@@ -194,6 +194,7 @@ class Run(BaseModel):
         return value
 
     def request(self, outcome: Optional[str] = None, inputs: Optional[Dict[str, Any]] = None) -> Objective:
+        # TODO: Here's the problem. We don't keep reference to child objectives, so we can't traverse them
         return Objective(outcome=outcome,
                          inputs=inputs,
                          requester=self)
@@ -214,12 +215,6 @@ class Run(BaseModel):
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}(outcome={self.objective.outcome})"
-
-    def set_result(self, outcome: str, args_key: Optional[Dict[str, Any]], result: Any) -> None:
-        self.objective.set_future_result(outcome, args_key, result)
-
-    def get_result(self, outcome: str, args_key: Optional[Dict[str, Any]], use_fallback: bool = False) -> Any:
-        return self.objective.get_future_result(outcome, args_key, use_fallback)
 
     async def run_steps(self, steps: Any) -> Any:
         self.objective.runs.append(self)
@@ -439,22 +434,23 @@ async def test_run_future_results(test_context):
     )
 
     # Test setting and getting a result
-    run.set_result("test_outcome", None, "test_result")
-    result = run.get_result("test_outcome", None)
+    run.objective.set_future_result("test_outcome", None, "test_result")
+    result = run.objective.get_future_result("test_outcome", None, False)
     assert result == "test_result"
 
     # Test setting and getting a result with args_key
     args_key = {"args": (1, 2), "kwargs": {}}
-    run.set_result("test_outcome", args_key, "test_result_with_args")
-    result = run.get_result("test_outcome", args_key)
+    run.objective.set_future_result("test_outcome", args_key, "test_result_with_args")
+    result = run.objective.get_future_result("test_outcome", args_key, False)
     assert result == "test_result_with_args"
 
     # Test getting non-existent result
-    result = run.get_result("non_existent", None)
+    result = run.objective.get_future_result("non_existent", None, False)
     assert result is None
 
     # Test getting result with non-existent args_key
-    result = run.get_result("test_outcome", {"args": (3, 4), "kwargs": {}})
+    key = {"args": (3, 4), "kwargs": {}}
+    result = run.objective.get_future_result("test_outcome", key, False)
     assert result is None
 
 
@@ -496,23 +492,26 @@ async def test_run_future_fallback(test_context):
     )
 
     # Set a result without args_key
-    run.set_result("test_outcome", None, "fallback_result")
+    run.objective.set_future_result("test_outcome", None, "fallback_result")
 
     # Test that any args_key returns the fallback result when use_fallback is True
-    result1 = run.get_result("test_outcome", {"args": (1, 2), "kwargs": {}}, use_fallback=True)
+    key = {"args": (1, 2), "kwargs": {}}
+    result1 = run.objective.get_future_result("test_outcome", key, True)
     assert result1 == "fallback_result"
 
-    result2 = run.get_result("test_outcome", {"args": (3, 4), "kwargs": {}}, use_fallback=True)
+    key1 = {"args": (3, 4), "kwargs": {}}
+    result2 = run.objective.get_future_result("test_outcome", key1, True)
     assert result2 == "fallback_result"
 
     # Test that setting a specific args_key overrides the fallback
     args_key = {"args": (1, 2), "kwargs": {}}
-    run.set_result("test_outcome", args_key, "specific_result")
+    run.objective.set_future_result("test_outcome", args_key, "specific_result")
 
     # The specific args_key should get its result
-    result3 = run.get_result("test_outcome", args_key)
+    result3 = run.objective.get_future_result("test_outcome", args_key, False)
     assert result3 == "specific_result"
 
     # Other args_keys should still get the fallback when use_fallback is True
-    result4 = run.get_result("test_outcome", {"args": (3, 4), "kwargs": {}}, use_fallback=True)
+    key2 = {"args": (3, 4), "kwargs": {}}
+    result4 = run.objective.get_future_result("test_outcome", key2, True)
     assert result4 == "fallback_result"

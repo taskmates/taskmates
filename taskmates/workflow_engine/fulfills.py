@@ -16,14 +16,14 @@ def fulfills(outcome: str):
 
             # Check result in parent run
             args_key = {"args": args, "kwargs": kwargs} if args or kwargs else None
-            existing_result = run.get_result(outcome, args_key, use_fallback=True)
+            existing_result = run.objective.get_future_result(outcome, args_key, True)
             if existing_result is not None:
                 return existing_result
 
             with run.request(outcome=outcome).execute():
                 # Execute and store result in parent run
                 result = await ensure_async(fn(*args, **kwargs))
-                run.set_result(outcome, args_key, result)
+                run.objective.set_future_result(outcome, args_key, result)
                 return result
 
         return _fulfills_wrapper
@@ -99,7 +99,7 @@ async def test_fulfills_decorator_manual_cache_set(run):
         return arg1 + arg2
 
     # Set a cached value for specific args
-    run.set_result("manual_cache", {"args": (1, 2), "kwargs": {}}, 42)
+    run.objective.set_future_result("manual_cache", {"args": (1, 2), "kwargs": {}}, 42)
 
     # Function call should return the cached value
     result = await cached_function(1, 2)
@@ -112,7 +112,7 @@ async def test_fulfills_decorator_purpose_only_cache(run):
         return arg1 + arg2
 
     # Set a cached value for the outcome only
-    run.set_result("purpose_cache", None, 42)
+    run.objective.set_future_result("purpose_cache", None, 42)
 
     # Any call to the function should return the cached value
     result1 = await cached_function(1, 2)
