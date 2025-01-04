@@ -9,6 +9,7 @@ from ordered_set import OrderedSet
 from pydantic import BaseModel, Field, ConfigDict, model_validator, field_serializer, field_validator
 from typeguard import typechecked
 
+from taskmates.core.coalesce import coalesce
 from taskmates.lib.context_.temp_context import temp_context
 from taskmates.lib.contextlib_.stacked_contexts import stacked_contexts
 from taskmates.lib.opentelemetry_.format_span_name import format_span_name
@@ -70,7 +71,7 @@ class Objective(BaseModel):
         if signals is None:
             signals = {}
 
-        context = self.requester.context
+        context = coalesce(context, self.requester.context)
         signals = {**self.requester.signals, **signals}
         state = {**self.requester.state, **state}
         results = results or self.requester.results
@@ -96,7 +97,7 @@ class Run(BaseModel):
     )
 
     objective: Objective
-    context: Dict[str, Any] = Field(default_factory=dict)
+    context: RunContext = Field(default_factory=dict)
     signals: Dict[str, BaseSignals] = Field(default_factory=dict)
     state: Dict[str, Any] = Field(default_factory=dict)
     results: Dict[str, Any] = Field(default_factory=dict)
@@ -241,12 +242,9 @@ class MockDaemon2(Daemon):  # type: ignore[misc, type-arg]
     pass
 
 
-def test_run_serialization() -> None:
+def test_run_serialization(context: RunContext) -> None:
     # Create a simple objective
     objective = Objective(outcome="test_outcome", inputs={"key": "value"})
-
-    # Create a simple context
-    context = RunContext()
 
     # Create signals
     signals = {"test_group": BaseSignals()}
@@ -277,7 +275,7 @@ def test_run_serialization() -> None:
     assert "test_signal" in list(deserialized_run.signals.values())[0].namespace
 
 
-def test_run_serialization_with_complex_data() -> None:
+def test_run_serialization_with_complex_data(context: RunContext) -> None:
     objective = Objective(
         outcome="complex_test",
         inputs={
@@ -285,8 +283,6 @@ def test_run_serialization_with_complex_data() -> None:
             "list": [1, "two", {"three": 3}]
         }
     )
-
-    context = RunContext()
 
     run: Run = Run(
         objective=objective,
@@ -305,9 +301,8 @@ def test_run_serialization_with_complex_data() -> None:
     assert deserialized_run.results == run.results
 
 
-def test_run_serialization_with_multiple_daemons() -> None:
+def test_run_serialization_with_multiple_daemons(context: RunContext) -> None:
     objective = Objective(outcome="multi_daemon_test")
-    context = RunContext()
 
     run: Run = Run(
         objective=objective,
@@ -328,7 +323,7 @@ def test_run_serialization_with_multiple_daemons() -> None:
     assert isinstance(deserialized_run.daemons["daemon2"], MockDaemon2)
 
 
-def test_run_serialization_with_multiple_signal_groups() -> None:
+def test_run_serialization_with_multiple_signal_groups(context: RunContext) -> None:
     signals = {
         "group1": BaseSignals(),
         "group2": BaseSignals()
@@ -339,7 +334,6 @@ def test_run_serialization_with_multiple_signal_groups() -> None:
     signals["group2"].namespace.signal("signal3")
 
     objective = Objective(outcome="multi_signal_test")
-    context = RunContext()
 
     run: Run = Run(
         objective=objective,

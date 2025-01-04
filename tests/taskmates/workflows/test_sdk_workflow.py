@@ -5,7 +5,7 @@ from taskmates.workflows.runners.sdk_completion_runner import SdkCompletionRunne
 
 
 @pytest.fixture(autouse=True)
-def contexts(taskmates_runtime):
+def context(taskmates_runtime):
     contexts = SdkContextBuilder({
         "model": "quote",
     }).build()
@@ -13,10 +13,10 @@ def contexts(taskmates_runtime):
 
 
 @pytest.mark.asyncio
-async def test_sdk_workflow(tmp_path, contexts):
+async def test_sdk_workflow(tmp_path, context):
     markdown = "Test markdown for SDK workflow"
 
-    workflow = SdkCompletionRunner(run_opts=contexts["run_opts"])
+    workflow = SdkCompletionRunner(run_opts=context["run_opts"])
     result = await workflow.run(markdown_chat=markdown)
 
     assert result == '\n> Test markdown for SDK workflow\n\n'
