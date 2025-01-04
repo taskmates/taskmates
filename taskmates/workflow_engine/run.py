@@ -1,7 +1,7 @@
 import contextlib
 import contextvars
 import importlib
-from typing import Any, Generic, TypeVar, Mapping, Dict, Optional, List, Union, Self
+from typing import Any, Dict, Optional, List, Union, Self
 
 from blinker import Namespace, Signal
 from opentelemetry import trace
@@ -22,8 +22,6 @@ from taskmates.workflow_engine.runner import Runner
 from taskmates.workflows.contexts.context import Context
 
 Signal.set_class = OrderedSet
-
-TContext = TypeVar('TContext', bound=Mapping[str, Any])
 
 
 @typechecked
@@ -91,14 +89,14 @@ class Objective(BaseModel):
 
 
 @typechecked
-class Run(BaseModel, Generic[TContext]):
+class Run(BaseModel):
     model_config = ConfigDict(
         arbitrary_types_allowed=True,
         extra='allow'  # Allow extra fields that aren't serialized
     )
 
     objective: Objective
-    context: TContext
+    context: Dict[str, Any] = Field(default_factory=dict)
     signals: Dict[str, BaseSignals] = Field(default_factory=dict)
     state: Dict[str, Any] = Field(default_factory=dict)
     results: Dict[str, Any] = Field(default_factory=dict)
@@ -225,7 +223,7 @@ def to_daemons_dict(jobs: Optional[Union[List[Daemon], Dict[str, Daemon], None]]
     raise ValueError(f"Invalid type {jobs!r}")
 
 
-RUN: contextvars.ContextVar[Run[Any]] = contextvars.ContextVar(Run.__class__.__name__)
+RUN: contextvars.ContextVar[Run] = contextvars.ContextVar(Run.__class__.__name__)
 
 
 # Tests
@@ -255,7 +253,7 @@ def test_run_serialization() -> None:
     signals["test_group"].namespace.signal("test_signal")
 
     # Create a Run instance
-    run: Run[Context] = Run(
+    run: Run = Run(
         objective=objective,
         context=context,
         signals=signals,
@@ -290,7 +288,7 @@ def test_run_serialization_with_complex_data() -> None:
 
     context = Context()
 
-    run: Run[Context] = Run(
+    run: Run = Run(
         objective=objective,
         context=context,
         signals={},
@@ -311,7 +309,7 @@ def test_run_serialization_with_multiple_daemons() -> None:
     objective = Objective(outcome="multi_daemon_test")
     context = Context()
 
-    run: Run[Context] = Run(
+    run: Run = Run(
         objective=objective,
         context=context,
         signals={},
@@ -343,7 +341,7 @@ def test_run_serialization_with_multiple_signal_groups() -> None:
     objective = Objective(outcome="multi_signal_test")
     context = Context()
 
-    run: Run[Context] = Run(
+    run: Run = Run(
         objective=objective,
         context=context,
         signals=signals,
