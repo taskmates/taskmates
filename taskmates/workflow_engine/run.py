@@ -26,24 +26,6 @@ Signal.set_class = OrderedSet
 TContext = TypeVar('TContext', bound=Mapping[str, Any])
 
 
-def to_daemons_dict(jobs: Optional[Union['Run[Any]', List['Run[Any]'], Dict[str, Daemon], None]]) -> Dict[str, Daemon]:
-    if jobs is None:
-        return {}
-    if isinstance(jobs, Run):
-        return to_daemons_dict([jobs])
-    if isinstance(jobs, dict):
-        return jobs
-    if isinstance(jobs, list):
-        return {to_snake_case(job.__class__.__name__): job for job in jobs}
-    raise ValueError(f"Invalid type {jobs!r}")
-
-
-class ObjectiveDict(BaseModel):
-    """Helper model for serializing Objective instances"""
-    outcome: Optional[str] = None
-    inputs: Dict[str, Any] = Field(default_factory=dict)
-
-
 @typechecked
 class Objective(BaseModel):
     model_config = ConfigDict(
@@ -229,6 +211,18 @@ class Run(BaseModel, Generic[TContext]):
             with self:
                 runner.start()
                 return await runner.get_result()
+
+
+def to_daemons_dict(jobs: Optional[Union['Run[Any]', List['Run[Any]'], Dict[str, Daemon], None]]) -> Dict[str, Daemon]:
+    if jobs is None:
+        return {}
+    if isinstance(jobs, Run):
+        return to_daemons_dict([jobs])
+    if isinstance(jobs, dict):
+        return jobs
+    if isinstance(jobs, list):
+        return {to_snake_case(job.__class__.__name__): job for job in jobs}
+    raise ValueError(f"Invalid type {jobs!r}")
 
 
 RUN: contextvars.ContextVar[Run[Any]] = contextvars.ContextVar(Run.__class__.__name__)
