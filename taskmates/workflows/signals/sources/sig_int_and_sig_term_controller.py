@@ -2,7 +2,7 @@ import asyncio
 import signal
 
 from taskmates.workflow_engine.daemon import Daemon
-from taskmates.workflows.contexts.context import Context
+from taskmates.workflows.contexts.run_context import RunContext
 from taskmates.workflow_engine.run import RUN
 from taskmates.workflow_engine.run import Run
 

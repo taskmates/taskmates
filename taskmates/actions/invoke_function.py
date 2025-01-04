@@ -2,7 +2,7 @@ import asyncio
 from contextlib import redirect_stdout, redirect_stderr
 from io import StringIO
 
-from taskmates.workflows.contexts.context import Context
+from taskmates.workflows.contexts.run_context import RunContext
 from taskmates.workflow_engine.run import Run
 from taskmates.lib.context_.temp_cwd import temp_cwd
 from taskmates.lib.context_.temp_environ import temp_environ

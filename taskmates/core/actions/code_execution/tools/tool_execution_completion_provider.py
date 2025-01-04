@@ -7,7 +7,7 @@ from taskmates.actions.invoke_function import invoke_function
 from taskmates.core.actions.code_execution.code_cells.code_execution import CodeExecution
 from taskmates.core.actions.code_execution.tools.tool_editor_completion import ToolEditorCompletion
 from taskmates.core.completion_provider import CompletionProvider
-from taskmates.workflows.contexts.context import Context
+from taskmates.workflows.contexts.run_context import RunContext
 from taskmates.workflow_engine.run import RUN
 from taskmates.workflow_engine.run import Run
 from taskmates.core.tools_registry import tools_registry

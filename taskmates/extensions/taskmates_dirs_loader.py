@@ -3,7 +3,7 @@ from pathlib import Path
 from taskmates.sdk import TaskmatesExtension
 from taskmates.sdk.experimental.weave_interface_method import weave_interface_method
 from taskmates.workflows.context_builders.context_builder import ContextBuilder
-from taskmates.workflows.contexts.context import default_taskmates_dirs
+from taskmates.workflows.contexts.run_context import default_taskmates_dirs
 
 
 class TaskmatesDirsLoader(TaskmatesExtension):

@@ -6,7 +6,7 @@ import pytest
 from jupyter_core.utils import ensure_async
 
 from taskmates.workflow_engine.run import RUN, Run, Objective
-from taskmates.workflows.contexts.context import Context, default_taskmates_dirs
+from taskmates.workflows.contexts.run_context import RunContext, default_taskmates_dirs
 
 
 def environment(fulfillers: Dict[str, Callable] | None = None):
@@ -56,8 +56,8 @@ def environment(fulfillers: Dict[str, Callable] | None = None):
 
 
 @pytest.fixture
-def test_context() -> Context:
-    return Context(
+def test_context() -> RunContext:
+    return RunContext(
         runner_config={
             "interactive": False,
             "format": "full",
@@ -94,7 +94,7 @@ async def test_environment_decorator_basic_functionality(run):
 
 
 async def test_environment_decorator_with_custom_fulfillers(run):
-    custom_context = Context(
+    custom_context = RunContext(
         runner_config={"interactive": True},
         runner_environment={},
         run_opts={}

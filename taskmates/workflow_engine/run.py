@@ -19,7 +19,7 @@ from taskmates.workflow_engine.base_signals import BaseSignals
 from taskmates.workflow_engine.daemon import Daemon
 from taskmates.workflow_engine.default_environment_signals import default_environment_signals
 from taskmates.workflow_engine.runner import Runner
-from taskmates.workflows.contexts.context import Context
+from taskmates.workflows.contexts.run_context import RunContext
 
 Signal.set_class = OrderedSet
 
@@ -47,7 +47,7 @@ class Objective(BaseModel):
     def last_run(self):
         return self.runs[-1]
 
-    def environment(self, context: Context):
+    def environment(self, context: RunContext):
         return Run(
             objective=self,
             context=context,
@@ -58,7 +58,7 @@ class Objective(BaseModel):
         )
 
     def attempt(self,
-                context: Optional[Context] = None,
+                context: Optional[RunContext] = None,
                 daemons: Optional[Union[Dict[str, Daemon], List[Daemon]]] = None,
                 state: Optional[Dict[str, Any]] = None,
                 signals: Optional[Dict[str, Any]] = None,
@@ -246,7 +246,7 @@ def test_run_serialization() -> None:
     objective = Objective(outcome="test_outcome", inputs={"key": "value"})
 
     # Create a simple context
-    context = Context()
+    context = RunContext()
 
     # Create signals
     signals = {"test_group": BaseSignals()}
@@ -286,7 +286,7 @@ def test_run_serialization_with_complex_data() -> None:
         }
     )
 
-    context = Context()
+    context = RunContext()
 
     run: Run = Run(
         objective=objective,
@@ -307,7 +307,7 @@ def test_run_serialization_with_complex_data() -> None:
 
 def test_run_serialization_with_multiple_daemons() -> None:
     objective = Objective(outcome="multi_daemon_test")
-    context = Context()
+    context = RunContext()
 
     run: Run = Run(
         objective=objective,
@@ -339,7 +339,7 @@ def test_run_serialization_with_multiple_signal_groups() -> None:
     signals["group2"].namespace.signal("signal3")
 
     objective = Objective(outcome="multi_signal_test")
-    context = Context()
+    context = RunContext()
 
     run: Run = Run(
         objective=objective,
@@ -419,14 +419,14 @@ def test_objective_with_complex_inputs():
 
 
 def test_objective_methods():
-    from taskmates.workflows.contexts.context import Context
+    from taskmates.workflows.contexts.run_context import RunContext
     from taskmates.types import RunOpts, RunnerConfig, RunnerEnvironment
 
     # Create an objective
     obj = Objective(outcome="test", inputs={"key": "value"})
 
     # Create a proper context with all required fields
-    context = Context(
+    context = RunContext(
         run_opts=RunOpts(
             model="gpt-4",
             workflow="test",

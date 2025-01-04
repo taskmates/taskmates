@@ -12,7 +12,7 @@ from taskmates.workflow_engine.fulfills import fulfills
 from taskmates.workflow_engine.run import RUN, Run
 from taskmates.workflow_engine.workflow import Workflow
 from taskmates.workflows.actions.markdown_completion_action import MarkdownCompletionAction
-from taskmates.workflows.contexts.context import Context
+from taskmates.workflows.contexts.run_context import RunContext
 from taskmates.workflows.daemons.interrupt_request_daemon import InterruptRequestDaemon
 from taskmates.workflows.daemons.interrupted_or_killed_daemon import InterruptedOrKilledDaemon
 from taskmates.workflows.daemons.markdown_chat_daemon import MarkdownChatDaemon
@@ -60,9 +60,9 @@ class MarkdownComplete(Workflow):
         }
 
     @fulfills(outcome="context")
-    async def create_context(self, markdown_chat) -> Context:
+    async def create_context(self, markdown_chat) -> RunContext:
         caller_run = RUN.get()
-        forked_context: Context = caller_run.context.copy()
+        forked_context: RunContext = caller_run.context.copy()
 
         caller_run_opts = forked_context["run_opts"]
 
@@ -153,7 +153,7 @@ class MarkdownComplete(Workflow):
             inputs=run.objective.inputs)
         return chat
 
-    async def end_markdown_completion(self, chat: Chat, contexts: Context, run: Run):
+    async def end_markdown_completion(self, chat: Chat, contexts: RunContext, run: Run):
 
         await self.append_trailing_newlines(chat, run)
 

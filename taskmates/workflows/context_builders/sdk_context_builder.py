@@ -3,7 +3,7 @@ from uuid import uuid4
 
 from taskmates.workflows.context_builders.context_builder import ContextBuilder
 from taskmates.defaults.context_defaults import ContextDefaults
-from taskmates.workflows.contexts.context import Context
+from taskmates.workflows.contexts.run_context import RunContext
 from taskmates.types import RunOpts
 
 
@@ -11,7 +11,7 @@ class SdkContextBuilder(ContextBuilder):
     def __init__(self, run_opts: RunOpts):
         self.run_opts = run_opts
 
-    def build(self) -> Context:
+    def build(self) -> RunContext:
         contexts = ContextDefaults().build()
         request_id = str(uuid4())
 

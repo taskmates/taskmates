@@ -4,7 +4,7 @@ from typeguard import typechecked
 
 from taskmates.core.actions.chat_completion.chat_completion_editor_completion import ChatCompletionEditorCompletion
 from taskmates.core.completion_provider import CompletionProvider
-from taskmates.workflows.contexts.context import Context
+from taskmates.workflows.contexts.run_context import RunContext
 from taskmates.workflow_engine.run import RUN
 from taskmates.workflow_engine.run import Run
 from taskmates.core.tools_registry import tools_registry

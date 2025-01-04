@@ -1,9 +1,9 @@
-from taskmates.workflows.contexts.context import Context
+from taskmates.workflows.contexts.run_context import RunContext
 
 
 class ContextDefaults:
     @staticmethod
-    def build(run_opts=None) -> Context:
+    def build(run_opts=None) -> RunContext:
         default_run_opts = {
             "model": 'claude-3-5-sonnet-20241022',
             "max_steps": 10000,

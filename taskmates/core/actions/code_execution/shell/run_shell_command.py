@@ -8,7 +8,7 @@ from typing import TextIO
 
 import pytest
 
-from taskmates.workflows.contexts.context import Context
+from taskmates.workflows.contexts.run_context import RunContext
 from taskmates.workflow_engine.run import Run
 from taskmates.workflow_engine.run import RUN
 from taskmates.lib.restore_stdout_and_stderr import restore_stdout_and_stderr

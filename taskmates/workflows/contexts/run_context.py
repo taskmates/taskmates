@@ -7,7 +7,7 @@ from taskmates.lib.root_path.root_path import root_path
 from taskmates.types import RunOpts, RunnerEnvironment, RunnerConfig
 
 
-class Context(TypedDict):
+class RunContext(TypedDict):
     runner_config: RunnerConfig
     runner_environment: RunnerEnvironment
     run_opts: RunOpts

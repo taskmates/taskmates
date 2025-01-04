@@ -5,7 +5,7 @@ import pytest
 from jupyter_core.utils import ensure_async
 
 from taskmates.workflow_engine.run import RUN, Objective
-from taskmates.workflows.contexts.context import Context, default_taskmates_dirs
+from taskmates.workflows.contexts.run_context import RunContext, default_taskmates_dirs
 
 
 def fulfills(outcome: str):
@@ -32,8 +32,8 @@ def fulfills(outcome: str):
 
 
 @pytest.fixture
-def test_context() -> Context:
-    return Context(
+def test_context() -> RunContext:
+    return RunContext(
         runner_config={
             "interactive": False,
             "format": "full",

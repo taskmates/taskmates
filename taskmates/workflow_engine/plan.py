@@ -3,11 +3,11 @@ from typing import Any
 
 from taskmates.workflow_engine.daemon import Daemon
 from taskmates.workflow_engine.run import RUN
-from taskmates.workflows.contexts.context import Context
+from taskmates.workflows.contexts.run_context import RunContext
 
 
 class Plan:
-    async def create_context(self, **kwargs) -> Context:
+    async def create_context(self, **kwargs) -> RunContext:
         return RUN.get().context.copy()
 
     async def create_signals(self) -> dict[str, Any]:

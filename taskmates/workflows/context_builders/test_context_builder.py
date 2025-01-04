@@ -2,14 +2,14 @@ from uuid import uuid4
 
 from taskmates.workflows.context_builders.context_builder import ContextBuilder
 from taskmates.defaults.context_defaults import ContextDefaults
-from taskmates.workflows.contexts.context import Context
+from taskmates.workflows.contexts.run_context import RunContext
 
 
 class TestContextBuilder(ContextBuilder):
     def __init__(self, tmp_path):
         self.tmp_path = tmp_path
 
-    def build(self, run_opts=None) -> Context:
+    def build(self, run_opts=None) -> RunContext:
         contexts = ContextDefaults().build(run_opts=run_opts)
         request_id = str(uuid4())
 
