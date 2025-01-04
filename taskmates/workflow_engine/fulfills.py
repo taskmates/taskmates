@@ -20,7 +20,7 @@ def fulfills(outcome: str):
             if existing_result is not None:
                 return existing_result
 
-            with run.request(outcome=outcome).attempt():
+            with run.request(outcome=outcome).execute():
                 # Execute and store result in parent run
                 result = await ensure_async(fn(*args, **kwargs))
                 run.set_result(outcome, args_key, result)

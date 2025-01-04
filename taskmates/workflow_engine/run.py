@@ -85,6 +85,14 @@ class Objective(BaseModel):
             results=results
         )
 
+    def execute(self):
+        return Run(objective=self,
+                   context=self.requester.context,
+                   daemons={},
+                   signals=self.requester.signals,
+                   state=self.requester.state,
+                   results=self.requester.results)
+
     def __repr__(self):
         return f"<{self.__class__.__name__}: {self.outcome}>"
 
