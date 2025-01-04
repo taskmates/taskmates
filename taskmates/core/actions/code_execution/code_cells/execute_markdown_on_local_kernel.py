@@ -225,12 +225,39 @@ async def get_or_start_kernel(cwd, markdown_path, env=None):
     if is_new_kernel:
         jupyter_notebook_logger.debug("Setting up new kernel")
         package_path = root_path()
-        setup_msg_1 = kernel_client.execute(f"import sys; sys.path.append('{package_path}')")
-        jupyter_notebook_logger.debug(f"Setup message 1 sent with msg_id: {setup_msg_1}")
-        setup_msg_2 = kernel_client.execute("%load_ext taskmates.magics.file_editing_magics")
-        jupyter_notebook_logger.debug(f"Setup message 2 sent with msg_id: {setup_msg_2}")
-        setup_msg_3 = kernel_client.execute("%matplotlib inline")
-        jupyter_notebook_logger.debug(f"Setup message 3 sent with msg_id: {setup_msg_3}")
+
+        async def wait_for_idle():
+            while True:
+                try:
+                    msg = await kernel_client.get_iopub_msg(timeout=10)
+                    if msg['msg_type'] == 'status' and msg['content']['execution_state'] == 'idle':
+                        break
+                except Empty:
+                    continue
+
+        async def execute_and_wait(code):
+            msg_id = kernel_client.execute(code)
+            jupyter_notebook_logger.debug(f"Setup message sent with msg_id: {msg_id}")
+            
+            # Wait for execution to complete
+            while True:
+                try:
+                    msg = await kernel_client.get_shell_msg(timeout=10)
+                    if msg['parent_header'].get('msg_id') == msg_id and msg['msg_type'] == 'execute_reply':
+                        if msg['content']['status'] == 'error':
+                            raise RuntimeError(f"Setup cell failed: {msg['content']}")
+                        break
+                except Empty:
+                    continue
+            
+            # Wait for kernel to be idle
+            await wait_for_idle()
+            return msg_id
+
+        setup_msg_1 = await execute_and_wait(f"import sys; sys.path.append('{package_path}')")
+        setup_msg_2 = await execute_and_wait("%load_ext taskmates.magics.file_editing_magics")
+        setup_msg_3 = await execute_and_wait("%matplotlib inline")
+
         ignored = [setup_msg_1, setup_msg_2, setup_msg_3]
 
     return kernel_manager, kernel_client, ignored
