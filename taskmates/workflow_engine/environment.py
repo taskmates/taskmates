@@ -5,8 +5,7 @@ from typing import Callable, Dict
 import pytest
 from jupyter_core.utils import ensure_async
 
-from taskmates.workflow_engine.objective import Objective
-from taskmates.workflow_engine.run import RUN, Run
+from taskmates.workflow_engine.run import RUN, Run, Objective
 from taskmates.workflows.contexts.context import Context, default_taskmates_dirs
 
 

@@ -7,8 +7,7 @@ from typeguard import typechecked
 from taskmates.cli.lib.merge_inputs import merge_inputs
 from taskmates.workflow_engine.environment import environment
 from taskmates.workflow_engine.fulfills import fulfills
-from taskmates.workflow_engine.objective import Objective
-from taskmates.workflow_engine.run import to_daemons_dict
+from taskmates.workflow_engine.run import to_daemons_dict, Objective
 from taskmates.workflow_engine.workflow_registry import workflow_registry
 from taskmates.workflows.context_builders.cli_context_builder import CliContextBuilder
 from taskmates.workflows.signals.sinks.history_sink import HistorySink

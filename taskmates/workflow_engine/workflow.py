@@ -5,7 +5,7 @@ import pytest
 
 from taskmates.lib.str_.to_snake_case import to_snake_case
 from taskmates.workflow_engine.plan import Plan
-from taskmates.workflow_engine.run import RUN, Run
+from taskmates.workflow_engine.run import RUN, Run, Objective
 
 
 class Workflow(Plan, ABC):
@@ -30,7 +30,6 @@ class Workflow(Plan, ABC):
 @pytest.mark.asyncio
 async def test_workflow_execution(context):
     from taskmates.workflow_engine.run import Run
-    from taskmates.workflow_engine.objective import Objective
 
     class TestWorkflow(Workflow):
         async def create_context(self, **kwargs):

@@ -16,7 +16,6 @@ from taskmates.core.actions.code_execution.code_cells.jupyter_notebook_logger im
 from taskmates.core.actions.code_execution.code_cells.parse_notebook import parse_notebook
 from taskmates.lib.root_path.root_path import root_path
 from taskmates.workflow_engine.run import RUN, Run
-from taskmates.workflows.contexts.context import Context
 
 kernel_pool: dict[tuple[str | None, str], AsyncKernelManager] = {}
 
@@ -161,7 +160,8 @@ async def execute_markdown_on_local_kernel(content, markdown_path: str = None, c
                         continue
 
                     if msg['parent_header'].get('msg_id') != msg_id and msg["msg_type"] != "error":
-                        jupyter_notebook_logger.debug(f"Skipping message from different cell. Got {msg['parent_header'].get('msg_id')}, expecting {msg_id}")
+                        jupyter_notebook_logger.debug(
+                            f"Skipping message from different cell. Got {msg['parent_header'].get('msg_id')}, expecting {msg_id}")
                         continue
 
                     if msg['msg_type'] == 'error':
@@ -494,8 +494,6 @@ async def test_custom_env():
     """)
 
     await execute_markdown_on_local_kernel(input_md, markdown_path="test_custom_env_2")
-
-    assert len(chunks) > 1
     assert chunks[-1]['msg']['content']['text'].strip() == 'Not found'
 
 

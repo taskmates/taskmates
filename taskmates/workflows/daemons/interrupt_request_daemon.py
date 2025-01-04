@@ -4,7 +4,7 @@ from loguru import logger
 
 from taskmates.lib.contextlib_.stacked_contexts import stacked_contexts
 from taskmates.workflow_engine.daemon import Daemon
-from taskmates.workflow_engine.run import RUN, Run
+from taskmates.workflow_engine.run import RUN, Run, Objective
 from taskmates.workflows.signals.control_signals import ControlSignals
 from taskmates.workflows.states.interrupted import Interrupted
 
@@ -32,8 +32,6 @@ class InterruptRequestDaemon(Daemon):
 
 
 async def test_interrupt_request_mediator():
-    from taskmates.workflow_engine.objective import Objective
-
     # Create a real Run with real signals
     request = Objective(outcome="test")
 

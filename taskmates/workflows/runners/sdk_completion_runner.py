@@ -1,7 +1,7 @@
 from typeguard import typechecked
 
 from taskmates.types import RunOpts
-from taskmates.workflow_engine.objective import Objective
+from taskmates.workflow_engine.run import Objective
 from taskmates.workflows.context_builders.sdk_context_builder import SdkContextBuilder
 from taskmates.workflows.markdown_complete import MarkdownComplete
 

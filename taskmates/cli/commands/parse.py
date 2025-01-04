@@ -6,7 +6,7 @@ from io import StringIO
 from taskmates.actions.parse_markdown_chat import parse_markdown_chat
 from taskmates.cli.commands.base import Command
 from taskmates.workflows.context_builders.cli_context_builder import CliContextBuilder
-from taskmates.workflow_engine.objective import Objective
+from taskmates.workflow_engine.run import Objective
 
 
 class ParseCommand(Command):

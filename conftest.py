@@ -10,8 +10,7 @@ from taskmates.core.actions.code_execution.code_cells.execute_markdown_on_local_
 from taskmates.load_env_files import load_env_for_environment
 from taskmates.taskmates_runtime import TASKMATES_RUNTIME
 from taskmates.workflow_engine.default_environment_signals import default_environment_signals
-from taskmates.workflow_engine.objective import Objective
-from taskmates.workflow_engine.run import Run, to_daemons_dict
+from taskmates.workflow_engine.run import Run, to_daemons_dict, Objective
 from taskmates.workflows.context_builders.test_context_builder import TestContextBuilder
 from taskmates.workflows.daemons.captured_signals_daemon import CapturedSignalsDaemon
 from taskmates.workflows.signals.sinks.write_markdown_chat_to_stdout import WriteMarkdownChatToStdout
