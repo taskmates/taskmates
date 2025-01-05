@@ -5,7 +5,7 @@ import pytest
 
 from taskmates.lib.str_.to_snake_case import to_snake_case
 from taskmates.workflow_engine.plan import Plan
-from taskmates.workflow_engine.run import RUN, Objective
+from taskmates.workflow_engine.run import RUN, Objective, ObjectiveKey
 
 
 class Workflow(Plan, ABC):
@@ -49,11 +49,10 @@ async def test_workflow_execution(context):
 
     workflow = TestWorkflow()
     parent_run = Run(
-        objective=Objective(outcome="test"),
+        objective=Objective(key=ObjectiveKey(outcome="test")),
         context=context,
         signals={},
-        state={},
-        results={}
+        state={}
     )
 
     with parent_run:

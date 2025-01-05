@@ -1,7 +1,7 @@
 import functools
 
 from taskmates.workflow_engine.daemon import Daemon
-from taskmates.workflow_engine.run import RUN, Run, Objective
+from taskmates.workflow_engine.run import RUN, Run, Objective, ObjectiveKey
 from taskmates.lib.contextlib_.stacked_contexts import stacked_contexts
 from taskmates.workflows.contexts.run_context import RunContext
 
@@ -28,7 +28,7 @@ async def test_interrupted_or_killed(context: RunContext):
     from taskmates.workflows.states.interrupted_or_killed import InterruptedOrKilled as InterruptedOrKilledTopic
 
     # Create a real Run with real signals
-    request = Objective(outcome="test")
+    request = Objective(key=ObjectiveKey(outcome="test"))
 
     # Create a real Run
     run = Run(
@@ -36,7 +36,6 @@ async def test_interrupted_or_killed(context: RunContext):
         context=context,
         signals={"status": StatusSignals()},
         state={"interrupted_or_killed": InterruptedOrKilledTopic()},
-        results={},
     )
 
     # Use context manager to properly initialize the run

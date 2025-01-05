@@ -4,7 +4,7 @@ from typing import Callable
 import pytest
 from jupyter_core.utils import ensure_async
 
-from taskmates.workflow_engine.run import RUN, Objective
+from taskmates.workflow_engine.run import RUN, Objective, ObjectiveKey
 from taskmates.workflows.contexts.run_context import RunContext, default_taskmates_dirs
 
 
@@ -54,7 +54,7 @@ def test_context() -> RunContext:
 
 @pytest.fixture
 def run(test_context):
-    run = Objective(outcome="test_runner").environment(context=test_context)
+    run = Objective(key=ObjectiveKey(outcome="test_runner")).environment(context=test_context)
     token = RUN.set(run)
     yield run
     RUN.reset(token)

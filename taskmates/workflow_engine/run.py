@@ -33,7 +33,7 @@ class ObjectiveKey(BaseModel, Mapping):
     model_config = ConfigDict(frozen=True)  # Make it immutable for hashing
 
     outcome: Optional[str] = None
-    inputs: Optional[Dict[str, Any]] = Field(default_factory=dict)
+    inputs: Dict[str, Any] = Field(default_factory=dict)  # Remove Optional, always return a dict
     requesting_run: Optional['Run'] = Field(default=None, exclude=True)
 
     def __getitem__(self, key: str) -> Any:
@@ -59,25 +59,27 @@ class ObjectiveKey(BaseModel, Mapping):
 class Objective(BaseModel):
     model_config = ConfigDict(
         arbitrary_types_allowed=True,
-        extra='allow'  # Allow extra fields that aren't serialized
+        # extra='allow',  # Allow extra fields that aren't serialized
+        validate_assignment=True,
+        from_attributes=True
     )
 
-    outcome: Optional[str] = None
-    inputs: Optional[Dict[str, Any]] = Field(default_factory=dict)
-    requesting_run: Optional['Run'] = Field(default=None, exclude=True)  # exclude from serialization
+    key: ObjectiveKey
     runs: List[Any] = Field(default_factory=list, exclude=True)  # exclude from serialization
-
-    # New fields
     result_future: Optional[asyncio.Future] = Field(default=None, exclude=True)
     sub_objectives: Dict[ObjectiveKey, 'Objective'] = Field(default_factory=dict, exclude=True)
 
     @property
-    def key(self) -> ObjectiveKey:
-        return ObjectiveKey(
-            outcome=self.outcome,
-            inputs=self.inputs,
-            requesting_run=self.requesting_run
-        )
+    def outcome(self) -> Optional[str]:
+        return self.key.outcome
+
+    @property
+    def inputs(self) -> Dict[str, Any]:
+        return self.key.inputs
+
+    @property
+    def requesting_run(self) -> Optional['Run']:
+        return self.key.requesting_run
 
     @model_validator(mode='before')
     @classmethod
@@ -89,7 +91,7 @@ class Objective(BaseModel):
     def get_or_create_sub_objective(self, outcome: str, args_key: Optional[Dict[str, Any]] = None) -> 'Objective':
         key = ObjectiveKey(outcome=outcome, inputs=args_key or {})
         if key not in self.sub_objectives:
-            sub_objective = Objective(outcome=outcome, inputs=self.inputs)
+            sub_objective = Objective(key=ObjectiveKey(outcome=outcome, inputs=self.key.inputs))
             sub_objective.result_future = asyncio.Future()
             self.sub_objectives[key] = sub_objective
         return self.sub_objectives[key]
@@ -130,9 +132,9 @@ class Objective(BaseModel):
         if signals is None:
             signals = {}
 
-        context = coalesce(context, self.requesting_run.context)
-        signals = {**self.requesting_run.signals, **signals}
-        state = {**self.requesting_run.state, **state}
+        context = coalesce(context, self.key.requesting_run.context)
+        signals = {**self.key.requesting_run.signals, **signals}
+        state = {**self.key.requesting_run.state, **state}
 
         return Run(
             objective=self,
@@ -144,13 +146,13 @@ class Objective(BaseModel):
 
     def execute(self):
         return Run(objective=self,
-                   context=self.requesting_run.context,
+                   context=self.key.requesting_run.context,
                    daemons={},
-                   signals=self.requesting_run.signals,
-                   state=self.requesting_run.state)
+                   signals=self.key.requesting_run.signals,
+                   state=self.key.requesting_run.state)
 
     def __repr__(self):
-        return f"<{self.__class__.__name__}: {self.outcome}>"
+        return f"<{self.__class__.__name__}: {self.key.outcome}>"
 
 
 @typechecked
@@ -224,9 +226,11 @@ class Run(BaseModel):
 
     def request(self, outcome: Optional[str] = None, inputs: Optional[Dict[str, Any]] = None) -> Objective:
         # TODO: add child objective to parent's sub_objectives
-        return Objective(outcome=outcome,
-                         inputs=inputs,
-                         requesting_run=self)
+        return Objective(key=ObjectiveKey(
+            outcome=outcome,
+            inputs=inputs or {},  # Use empty dict if inputs is None
+            requesting_run=self
+        ))
 
     def __enter__(self) -> Self:
         TASKMATES_RUNTIME.get().initialize()
@@ -243,12 +247,12 @@ class Run(BaseModel):
         self.exit_stack.close()
 
     def __repr__(self) -> str:
-        return f"{self.__class__.__name__}(outcome={self.objective.outcome})"
+        return f"{self.__class__.__name__}(outcome={self.objective.key.outcome})"
 
     async def run_steps(self, steps: Any) -> Any:
         self.objective.runs.append(self)
 
-        runner = Runner(func=steps, inputs=self.objective.inputs)
+        runner = Runner(func=steps, inputs=self.objective.key.inputs)
 
         with tracer().start_as_current_span(
                 format_span_name(steps, self.objective),
@@ -330,27 +334,28 @@ def test_objective_key():
 
 
 def test_objective_with_key():
-    # Test that Objective properly creates and uses keys
-    obj = Objective(outcome="test", inputs={"key": "value"})
+    # Test that Objective properly uses ObjectiveKey
+    key = ObjectiveKey(outcome="test", inputs={"key": "value"})
+    obj = Objective(key=key)
 
-    # Test key creation
-    key = obj.key
-    assert isinstance(key, ObjectiveKey)
-    assert key.outcome == obj.outcome
-    assert key.inputs == obj.inputs
+    assert obj.key is key  # Should be the same instance
+    assert obj.key.outcome == "test"
+    assert obj.key.inputs == {"key": "value"}
 
     # Test sub_objectives with keys
-    sub_obj = obj.get_or_create_sub_objective("sub_test", {"arg": "value"})
+    sub_key = ObjectiveKey(outcome="sub_test", inputs={"arg": "value"})
+    sub_obj = obj.get_or_create_sub_objective(sub_key.outcome, sub_key.inputs)
     assert isinstance(sub_obj, Objective)
 
     # Test that the same key returns the same sub_objective
-    sub_obj2 = obj.get_or_create_sub_objective("sub_test", {"arg": "value"})
+    sub_obj2 = obj.get_or_create_sub_objective(sub_key.outcome, sub_key.inputs)
     assert sub_obj2 is sub_obj
 
 
 def test_run_serialization(context: RunContext) -> None:
-    # Create a simple objective
-    objective = Objective(outcome="test_outcome", inputs={"key": "value"})
+    # Create a simple objective with ObjectiveKey
+    key = ObjectiveKey(outcome="test_outcome", inputs={"key": "value"})
+    objective = Objective(key=key)
 
     # Create signals
     signals = {"test_group": BaseSignals()}
@@ -372,21 +377,21 @@ def test_run_serialization(context: RunContext) -> None:
     deserialized_run = Run.model_validate_json(json_str)
 
     # Verify the deserialized run
-    assert deserialized_run.objective.outcome == run.objective.outcome
-    assert deserialized_run.objective.inputs == run.objective.inputs
+    assert deserialized_run.objective.key == run.objective.key
     assert deserialized_run.state == run.state
     assert isinstance(list(deserialized_run.daemons.values())[0], MockDaemon)
     assert "test_signal" in list(deserialized_run.signals.values())[0].namespace
 
 
 def test_run_serialization_with_complex_data(context: RunContext) -> None:
-    objective = Objective(
+    key = ObjectiveKey(
         outcome="complex_test",
         inputs={
             "nested": {"a": 1, "b": [1, 2, 3]},
             "list": [1, "two", {"three": 3}]
         }
     )
+    objective = Objective(key=key)
 
     run: Run = Run(
         objective=objective,
@@ -399,12 +404,13 @@ def test_run_serialization_with_complex_data(context: RunContext) -> None:
     json_str = run.model_dump_json()
     deserialized_run = Run.model_validate_json(json_str)
 
-    assert deserialized_run.objective.inputs == run.objective.inputs
+    assert deserialized_run.objective.key == run.objective.key
     assert deserialized_run.state == run.state
 
 
 def test_run_serialization_with_multiple_daemons(context: RunContext) -> None:
-    objective = Objective(outcome="multi_daemon_test")
+    key = ObjectiveKey(outcome="multi_daemon_test")
+    objective = Objective(key=key)
 
     run: Run = Run(
         objective=objective,
@@ -434,7 +440,8 @@ def test_run_serialization_with_multiple_signal_groups(context: RunContext) -> N
     signals["group1"].namespace.signal("signal2")
     signals["group2"].namespace.signal("signal3")
 
-    objective = Objective(outcome="multi_signal_test")
+    key = ObjectiveKey(outcome="multi_signal_test")
+    objective = Objective(key=key)
 
     run: Run = Run(
         objective=objective,
@@ -453,24 +460,25 @@ def test_run_serialization_with_multiple_signal_groups(context: RunContext) -> N
 
 
 def test_objective_initialization():
-    # Test basic initialization
-    obj = Objective(outcome="test", inputs={"key": "value"})
-    assert obj.outcome == "test"
-    assert obj.inputs == {"key": "value"}
+    # Test initialization with ObjectiveKey
+    obj = Objective(key=ObjectiveKey(outcome="test", inputs={"key": "value"}))
+    assert obj.key.outcome == "test"
+    assert obj.key.inputs == {"key": "value"}
     assert obj.runs == []
-    assert obj.requesting_run is None
+    assert obj.key.requesting_run is None
 
     # Test with default values
-    obj = Objective()
-    assert obj.outcome is None
-    assert obj.inputs == {}
+    obj = Objective(key=ObjectiveKey())
+    assert obj.key.outcome is None
+    assert obj.key.inputs == {}
     assert obj.runs == []
-    assert obj.requesting_run is None
+    assert obj.key.requesting_run is None
 
 
 async def test_objective_future_results():
     # Test basic future functionality
-    obj = Objective(outcome="test")
+    key = ObjectiveKey(outcome="test")
+    obj = Objective(key=key)
 
     # Test setting and getting a result
     obj.set_future_result("test_outcome", None, "test_result")
@@ -494,8 +502,9 @@ async def test_objective_future_results():
 
 async def test_run_future_results(test_context):
     # Test that Run's set_result and get_result properly use Objective's future system
+    key = ObjectiveKey(outcome="test")
     run = Run(
-        objective=Objective(outcome="test"),
+        objective=Objective(key=key),
         context=test_context,
         signals={},
         state={},
@@ -526,7 +535,7 @@ async def test_run_future_results(test_context):
 @pytest.mark.skip
 async def test_objective_future_fallback():
     # Test that when a result is set without args_key, it's used as a fallback
-    obj = Objective(outcome="test")
+    obj = Objective(key=ObjectiveKey(outcome="test"))
 
     # Set a result without args_key
     obj.set_future_result("test_outcome", None, "fallback_result")
@@ -555,7 +564,7 @@ async def test_objective_future_fallback():
 async def test_run_future_fallback(test_context):
     # Test that Run's result methods properly handle the fallback behavior
     run = Run(
-        objective=Objective(outcome="test"),
+        objective=Objective(key=ObjectiveKey(outcome="test")),
         context=test_context,
         signals={},
         state={},

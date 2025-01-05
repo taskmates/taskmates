@@ -7,7 +7,7 @@ from typeguard import typechecked
 from taskmates.cli.lib.merge_inputs import merge_inputs
 from taskmates.workflow_engine.environment import environment
 from taskmates.workflow_engine.fulfills import fulfills
-from taskmates.workflow_engine.run import to_daemons_dict, Objective
+from taskmates.workflow_engine.run import to_daemons_dict, Objective, ObjectiveKey
 from taskmates.workflow_engine.workflow_registry import workflow_registry
 from taskmates.workflows.context_builders.cli_context_builder import CliContextBuilder
 from taskmates.workflows.signals.sinks.history_sink import HistorySink
@@ -36,7 +36,7 @@ class CliCompletionRunner:
     @typechecked
     async def run(self):
         async def attempt_cli_completion(context):
-            with Objective(outcome="cli_completion_runner").environment(context=context) as run:
+            with Objective(key=ObjectiveKey(outcome="cli_completion_runner")).environment(context=context) as run:
                 await run.signals["status"].start.send_async({})
 
                 inputs = await self.get_args_inputs()
