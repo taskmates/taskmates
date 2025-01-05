@@ -12,18 +12,20 @@ def fulfills(outcome: str):
     def decorator(fn: Callable):
         @wraps(fn)
         async def _fulfills_wrapper(*args, **kwargs):
-            run = RUN.get()
+            current_run = RUN.get()
 
             # Check result in parent run
             args_key = {"args": args, "kwargs": kwargs} if args or kwargs else None
-            existing_result = run.objective.get_future_result(outcome, args_key, True)
+            existing_result = current_run.objective.get_future_result(outcome, args_key, True)
             if existing_result is not None:
                 return existing_result
 
-            with run.request(outcome=outcome).execute():
+            with (current_run
+                          .request(outcome=outcome)
+                          .execute()):
                 # Execute and store result in parent run
                 result = await ensure_async(fn(*args, **kwargs))
-                run.objective.set_future_result(outcome, args_key, result)
+                current_run.objective.set_future_result(outcome, args_key, result)
                 return result
 
         return _fulfills_wrapper

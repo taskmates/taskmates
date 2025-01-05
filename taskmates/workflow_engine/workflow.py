@@ -5,23 +5,23 @@ import pytest
 
 from taskmates.lib.str_.to_snake_case import to_snake_case
 from taskmates.workflow_engine.plan import Plan
-from taskmates.workflow_engine.run import RUN, Run, Objective
+from taskmates.workflow_engine.run import RUN, Objective
 
 
 class Workflow(Plan, ABC):
     async def fulfill(self, **kwargs) -> Any:
-        objective = RUN.get().request(
+        current_run = RUN.get()
+
+        return await (current_run
+        .request(
             outcome=to_snake_case(self.__class__.__name__),
             inputs=kwargs)
-
-        run: Run = objective.attempt(
+        .attempt(
             context=await self.create_context(**kwargs),
             daemons=await self.create_daemons(),
             state=await self.create_state(),
             signals=await self.create_signals(),
-        )
-
-        return await run.run_steps(self.steps)
+        )).run_steps(self.steps)
 
     def __repr__(self):
         return f"{self.__class__.__name__}()"
