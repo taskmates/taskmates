@@ -38,7 +38,10 @@ class Objective(BaseModel):
     inputs: Optional[Dict[str, Any]] = Field(default_factory=dict)
     requester: Optional['Run'] = Field(default=None, exclude=True)  # exclude from serialization
     runs: List[Any] = Field(default_factory=list, exclude=True)  # exclude from serialization
-    sub_objectives: Dict[str, Dict[str, asyncio.Future]] = Field(default_factory=dict, exclude=True)
+
+    # New fields
+    result_future: Optional[asyncio.Future] = Field(default=None, exclude=True)
+    sub_objectives: Dict[str, Dict[str, 'Objective']] = Field(default_factory=dict, exclude=True)
 
     @model_validator(mode='before')
     @classmethod
@@ -47,31 +50,33 @@ class Objective(BaseModel):
             data['inputs'] = {}
         return data
 
-    def get_or_create_future(self, outcome: str, args_key: Optional[Dict[str, Any]] = None) -> asyncio.Future:
+    def get_or_create_sub_objective(self, outcome: str, args_key: Optional[Dict[str, Any]] = None) -> 'Objective':
         key = str(args_key) if args_key is not None else ''
         if outcome not in self.sub_objectives:
             self.sub_objectives[outcome] = {}
         if key not in self.sub_objectives[outcome]:
-            self.sub_objectives[outcome][key] = asyncio.Future()
+            sub_objective = Objective(outcome=outcome, inputs=self.inputs)
+            sub_objective.result_future = asyncio.Future()
+            self.sub_objectives[outcome][key] = sub_objective
         return self.sub_objectives[outcome][key]
 
     def set_future_result(self, outcome: str, args_key: Optional[Dict[str, Any]], result: Any) -> None:
-        future = self.get_or_create_future(outcome, args_key)
-        if not future.done():
-            future.set_result(result)
+        sub_objective = self.get_or_create_sub_objective(outcome, args_key)
+        if not sub_objective.result_future.done():
+            sub_objective.result_future.set_result(result)
 
     def get_future_result(self, outcome: str, args_key: Optional[Dict[str, Any]], use_fallback: bool = False) -> Any:
         try:
             # First try to get the result with the specific args_key
-            future = self.get_or_create_future(outcome, args_key)
-            if future.done():
-                return future.result()
+            sub_objective = self.get_or_create_sub_objective(outcome, args_key)
+            if sub_objective.result_future.done():
+                return sub_objective.result_future.result()
 
             # If no result with args_key and fallback is enabled, try to get the result without args_key
             if use_fallback and args_key is not None:
-                future = self.get_or_create_future(outcome, None)
-                if future.done():
-                    return future.result()
+                fallback_objective = self.get_or_create_sub_objective(outcome, None)
+                if fallback_objective.result_future.done():
+                    return fallback_objective.result_future.result()
         except Exception:
             pass
         return None
@@ -194,7 +199,6 @@ class Run(BaseModel):
         return value
 
     def request(self, outcome: Optional[str] = None, inputs: Optional[Dict[str, Any]] = None) -> Objective:
-        # TODO: Here's the problem. We don't keep reference to child objectives, so we can't traverse them
         return Objective(outcome=outcome,
                          inputs=inputs,
                          requester=self)
