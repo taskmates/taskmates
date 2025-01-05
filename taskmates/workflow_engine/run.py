@@ -196,6 +196,9 @@ class Run(BaseModel):
         return value
 
     def request(self, outcome: Optional[str] = None, inputs: Optional[Dict[str, Any]] = None) -> Objective:
+        # TODO: add child objective to parent's sub_objectives
+        # TODO: make current run part of Objective
+
         return Objective(outcome=outcome,
                          inputs=inputs,
                          requester=self)
