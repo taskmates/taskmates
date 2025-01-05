@@ -36,7 +36,7 @@ class Objective(BaseModel):
 
     outcome: Optional[str] = None
     inputs: Optional[Dict[str, Any]] = Field(default_factory=dict)
-    requester: Optional['Run'] = Field(default=None, exclude=True)  # exclude from serialization
+    requesting_run: Optional['Run'] = Field(default=None, exclude=True)  # exclude from serialization
     runs: List[Any] = Field(default_factory=list, exclude=True)  # exclude from serialization
 
     # New fields
@@ -103,9 +103,9 @@ class Objective(BaseModel):
         if signals is None:
             signals = {}
 
-        context = coalesce(context, self.requester.context)
-        signals = {**self.requester.signals, **signals}
-        state = {**self.requester.state, **state}
+        context = coalesce(context, self.requesting_run.context)
+        signals = {**self.requesting_run.signals, **signals}
+        state = {**self.requesting_run.state, **state}
 
         return Run(
             objective=self,
@@ -117,10 +117,10 @@ class Objective(BaseModel):
 
     def execute(self):
         return Run(objective=self,
-                   context=self.requester.context,
+                   context=self.requesting_run.context,
                    daemons={},
-                   signals=self.requester.signals,
-                   state=self.requester.state)
+                   signals=self.requesting_run.signals,
+                   state=self.requesting_run.state)
 
     def __repr__(self):
         return f"<{self.__class__.__name__}: {self.outcome}>"
@@ -197,11 +197,10 @@ class Run(BaseModel):
 
     def request(self, outcome: Optional[str] = None, inputs: Optional[Dict[str, Any]] = None) -> Objective:
         # TODO: add child objective to parent's sub_objectives
-        # TODO: make current run part of Objective
 
         return Objective(outcome=outcome,
                          inputs=inputs,
-                         requester=self)
+                         requesting_run=self)
 
     def __enter__(self) -> Self:
         TASKMATES_RUNTIME.get().initialize()
@@ -393,14 +392,14 @@ def test_objective_initialization():
     assert obj.outcome == "test"
     assert obj.inputs == {"key": "value"}
     assert obj.runs == []
-    assert obj.requester is None
+    assert obj.requesting_run is None
 
     # Test with default values
     obj = Objective()
     assert obj.outcome is None
     assert obj.inputs == {}
     assert obj.runs == []
-    assert obj.requester is None
+    assert obj.requesting_run is None
 
 
 async def test_objective_future_results():
