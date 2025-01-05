@@ -66,19 +66,16 @@ class Objective(BaseModel):
             sub_objective.result_future.set_result(result)
 
     def get_future_result(self, outcome: str, args_key: Optional[Dict[str, Any]], use_fallback: bool = False) -> Any:
-        try:
-            # First try to get the result with the specific args_key
-            sub_objective = self.get_or_create_sub_objective(outcome, args_key)
-            if sub_objective.result_future.done():
-                return sub_objective.result_future.result()
+        # First try to get the result with the specific args_key
+        sub_objective = self.get_or_create_sub_objective(outcome, args_key)
+        if sub_objective.result_future.done():
+            return sub_objective.result_future.result()
 
-            # If no result with args_key and fallback is enabled, try to get the result without args_key
-            if use_fallback and args_key is not None:
-                fallback_objective = self.get_or_create_sub_objective(outcome, None)
-                if fallback_objective.result_future.done():
-                    return fallback_objective.result_future.result()
-        except Exception:
-            pass
+        # If no result with args_key and fallback is enabled, try to get the result without args_key
+        if use_fallback and args_key is not None:
+            fallback_objective = self.get_or_create_sub_objective(outcome, None)
+            if fallback_objective.result_future.done():
+                return fallback_objective.result_future.result()
         return None
 
     @property
