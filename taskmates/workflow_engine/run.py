@@ -2,7 +2,8 @@ import asyncio
 import contextlib
 import contextvars
 import importlib
-from typing import Any, Dict, Optional, List, Union, Self
+from collections.abc import Mapping
+from typing import Any, Dict, Optional, List, Union, Self, Iterator
 
 import pytest
 from blinker import Namespace, Signal
@@ -28,6 +29,33 @@ Signal.set_class = OrderedSet
 
 
 @typechecked
+class ObjectiveKey(BaseModel, Mapping):
+    model_config = ConfigDict(frozen=True)  # Make it immutable for hashing
+
+    outcome: Optional[str] = None
+    inputs: Optional[Dict[str, Any]] = Field(default_factory=dict)
+    requesting_run: Optional['Run'] = Field(default=None, exclude=True)
+
+    def __getitem__(self, key: str) -> Any:
+        return getattr(self, key)
+
+    def __iter__(self) -> Iterator[str]:
+        return iter(['outcome', 'inputs', 'requesting_run'])
+
+    def __len__(self) -> int:
+        return 3
+
+    def __hash__(self) -> int:
+        return hash((self.outcome, str(self.inputs)))
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, ObjectiveKey):
+            return NotImplemented
+        return (self.outcome == other.outcome and
+                self.inputs == other.inputs)
+
+
+@typechecked
 class Objective(BaseModel):
     model_config = ConfigDict(
         arbitrary_types_allowed=True,
@@ -41,7 +69,15 @@ class Objective(BaseModel):
 
     # New fields
     result_future: Optional[asyncio.Future] = Field(default=None, exclude=True)
-    sub_objectives: Dict[str, Dict[str, 'Objective']] = Field(default_factory=dict, exclude=True)
+    sub_objectives: Dict[ObjectiveKey, 'Objective'] = Field(default_factory=dict, exclude=True)
+
+    @property
+    def key(self) -> ObjectiveKey:
+        return ObjectiveKey(
+            outcome=self.outcome,
+            inputs=self.inputs,
+            requesting_run=self.requesting_run
+        )
 
     @model_validator(mode='before')
     @classmethod
@@ -51,35 +87,22 @@ class Objective(BaseModel):
         return data
 
     def get_or_create_sub_objective(self, outcome: str, args_key: Optional[Dict[str, Any]] = None) -> 'Objective':
-        key = str(args_key) if args_key is not None else ''
-        if outcome not in self.sub_objectives:
-            self.sub_objectives[outcome] = {}
-        if key not in self.sub_objectives[outcome]:
+        key = ObjectiveKey(outcome=outcome, inputs=args_key or {})
+        if key not in self.sub_objectives:
             sub_objective = Objective(outcome=outcome, inputs=self.inputs)
             sub_objective.result_future = asyncio.Future()
-            self.sub_objectives[outcome][key] = sub_objective
-        return self.sub_objectives[outcome][key]
+            self.sub_objectives[key] = sub_objective
+        return self.sub_objectives[key]
 
     def set_future_result(self, outcome: str, args_key: Optional[Dict[str, Any]], result: Any) -> None:
         sub_objective = self.get_or_create_sub_objective(outcome, args_key)
         if not sub_objective.result_future.done():
             sub_objective.result_future.set_result(result)
 
-    def get_future_result(self, outcome: str, args_key: Optional[Dict[str, Any]], use_fallback: bool = False) -> Any:
-
-        if use_fallback:
-            raise ValueError("deprecated")
-
-        # First try to get the result with the specific args_key
+    def get_future_result(self, outcome: str, args_key: Optional[Dict[str, Any]]) -> Any:
         sub_objective = self.get_or_create_sub_objective(outcome, args_key)
         if sub_objective.result_future.done():
             return sub_objective.result_future.result()
-
-        # If no result with args_key and fallback is enabled, try to get the result without args_key
-        if use_fallback and args_key is not None:
-            fallback_objective = self.get_or_create_sub_objective(outcome, None)
-            if fallback_objective.result_future.done():
-                return fallback_objective.result_future.result()
         return None
 
     @property
@@ -201,7 +224,6 @@ class Run(BaseModel):
 
     def request(self, outcome: Optional[str] = None, inputs: Optional[Dict[str, Any]] = None) -> Objective:
         # TODO: add child objective to parent's sub_objectives
-
         return Objective(outcome=outcome,
                          inputs=inputs,
                          requesting_run=self)
@@ -284,6 +306,46 @@ def test_context() -> RunContext:
             "max_steps": 10
         }
     )
+
+
+def test_objective_key():
+    # Test basic key creation
+    key1 = ObjectiveKey(outcome="test", inputs={"key": "value"})
+    key2 = ObjectiveKey(outcome="test", inputs={"key": "value"})
+    key3 = ObjectiveKey(outcome="test", inputs={"key": "different"})
+
+    # Test equality
+    assert key1 == key2
+    assert key1 != key3
+
+    # Test hashing
+    d = {key1: "value1", key3: "value3"}
+    assert d[key2] == "value1"  # key2 should hash to the same value as key1
+
+    # Test mapping interface
+    assert key1["outcome"] == "test"
+    assert key1["inputs"] == {"key": "value"}
+    assert len(key1) == 3
+    assert set(key1.keys()) == {"outcome", "inputs", "requesting_run"}
+
+
+def test_objective_with_key():
+    # Test that Objective properly creates and uses keys
+    obj = Objective(outcome="test", inputs={"key": "value"})
+
+    # Test key creation
+    key = obj.key
+    assert isinstance(key, ObjectiveKey)
+    assert key.outcome == obj.outcome
+    assert key.inputs == obj.inputs
+
+    # Test sub_objectives with keys
+    sub_obj = obj.get_or_create_sub_objective("sub_test", {"arg": "value"})
+    assert isinstance(sub_obj, Objective)
+
+    # Test that the same key returns the same sub_objective
+    sub_obj2 = obj.get_or_create_sub_objective("sub_test", {"arg": "value"})
+    assert sub_obj2 is sub_obj
 
 
 def test_run_serialization(context: RunContext) -> None:
@@ -442,22 +504,22 @@ async def test_run_future_results(test_context):
 
     # Test setting and getting a result
     run.objective.set_future_result("test_outcome", None, "test_result")
-    result = run.objective.get_future_result("test_outcome", None, False)
+    result = run.objective.get_future_result("test_outcome", None)
     assert result == "test_result"
 
     # Test setting and getting a result with args_key
     args_key = {"args": (1, 2), "kwargs": {}}
     run.objective.set_future_result("test_outcome", args_key, "test_result_with_args")
-    result = run.objective.get_future_result("test_outcome", args_key, False)
+    result = run.objective.get_future_result("test_outcome", args_key)
     assert result == "test_result_with_args"
 
     # Test getting non-existent result
-    result = run.objective.get_future_result("non_existent", None, False)
+    result = run.objective.get_future_result("non_existent", None)
     assert result is None
 
     # Test getting result with non-existent args_key
     key = {"args": (3, 4), "kwargs": {}}
-    result = run.objective.get_future_result("test_outcome", key, False)
+    result = run.objective.get_future_result("test_outcome", key)
     assert result is None
 
 
