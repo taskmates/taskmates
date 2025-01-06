@@ -4,7 +4,7 @@ from typing import Callable
 import pytest
 from jupyter_core.utils import ensure_async
 
-from taskmates.workflow_engine.run import RUN, Objective, ObjectiveKey
+from taskmates.workflow_engine.run import RUN, Objective, ObjectiveKey, Run
 from taskmates.workflows.contexts.run_context import RunContext, default_taskmates_dirs
 
 
@@ -13,19 +13,30 @@ def fulfills(outcome: str):
         @wraps(fn)
         async def _fulfills_wrapper(*args, **kwargs):
             current_run = RUN.get()
+            current_objective = current_run.objective
 
             # Check result in parent run
             args_key = {"args": args, "kwargs": kwargs} if args or kwargs else None
-            existing_result = current_run.objective.get_future_result(outcome, args_key)
+            existing_result = current_objective.get_future_result(outcome, args_key)
             if existing_result is not None:
                 return existing_result
 
-            with (current_run
-                          .request(outcome=outcome)
-                          .execute()):
+            sub_objective = Objective(key=ObjectiveKey(
+                outcome=outcome,
+                inputs={},  # TODO: review
+                requesting_run=current_run
+            ))
+
+            sub_run = Run(objective=sub_objective,
+                          context=current_run.context,
+                          daemons={},
+                          signals=current_run.signals,
+                          state=current_run.state)
+
+            with sub_run:
                 # Execute and store result in parent run
                 result = await ensure_async(fn(*args, **kwargs))
-                current_run.objective.set_future_result(outcome, args_key, result)
+                current_objective.set_future_result(outcome, args_key, result)
                 return result
 
         return _fulfills_wrapper

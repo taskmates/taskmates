@@ -12,10 +12,13 @@ class Workflow(Plan, ABC):
     async def fulfill(self, **kwargs) -> Any:
         current_run = RUN.get()
 
-        return await (current_run
-        .request(
-            outcome=to_snake_case(self.__class__.__name__),
-            inputs=kwargs)
+        outcome = to_snake_case(self.__class__.__name__)
+        sub_objective = Objective(key=ObjectiveKey(
+            outcome=outcome,
+            inputs=kwargs or {},  # Use empty dict if inputs is None
+            requesting_run=current_run
+        ))
+        return await (sub_objective
         .attempt(
             context=await self.create_context(**kwargs),
             daemons=await self.create_daemons(),

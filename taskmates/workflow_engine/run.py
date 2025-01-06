@@ -144,13 +144,6 @@ class Objective(BaseModel):
             state=state
         )
 
-    def execute(self):
-        return Run(objective=self,
-                   context=self.key.requesting_run.context,
-                   daemons={},
-                   signals=self.key.requesting_run.signals,
-                   state=self.key.requesting_run.state)
-
     def __repr__(self):
         return f"<{self.__class__.__name__}: {self.key.outcome}>"
 
@@ -223,14 +216,6 @@ class Run(BaseModel):
                 daemons[name] = daemon_class()
             return daemons
         return value
-
-    def request(self, outcome: Optional[str] = None, inputs: Optional[Dict[str, Any]] = None) -> Objective:
-        # TODO: add child objective to parent's sub_objectives
-        return Objective(key=ObjectiveKey(
-            outcome=outcome,
-            inputs=inputs or {},  # Use empty dict if inputs is None
-            requesting_run=self
-        ))
 
     def __enter__(self) -> Self:
         TASKMATES_RUNTIME.get().initialize()
