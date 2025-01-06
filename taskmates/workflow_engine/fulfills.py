@@ -21,6 +21,7 @@ def fulfills(outcome: str):
             if existing_result is not None:
                 return existing_result
 
+            # TODO: bind to current
             sub_objective = Objective(key=ObjectiveKey(
                 outcome=outcome,
                 inputs={},  # TODO: review

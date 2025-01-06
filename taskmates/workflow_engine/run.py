@@ -12,7 +12,6 @@ from ordered_set import OrderedSet
 from pydantic import BaseModel, Field, ConfigDict, model_validator, field_serializer, field_validator
 from typeguard import typechecked
 
-from taskmates.core.coalesce import coalesce
 from taskmates.lib.context_.temp_context import temp_context
 from taskmates.lib.contextlib_.stacked_contexts import stacked_contexts
 from taskmates.lib.opentelemetry_.format_span_name import format_span_name
@@ -118,30 +117,6 @@ class Objective(BaseModel):
             daemons={},
             signals=default_environment_signals(),
             state={}
-        )
-
-    def attempt(self,
-                context: Optional[RunContext] = None,
-                daemons: Optional[Union[Dict[str, Daemon], List[Daemon]]] = None,
-                state: Optional[Dict[str, Any]] = None,
-                signals: Optional[Dict[str, Any]] = None
-                ):
-        if state is None:
-            state = {}
-
-        if signals is None:
-            signals = {}
-
-        context = coalesce(context, self.key.requesting_run.context)
-        signals = {**self.key.requesting_run.signals, **signals}
-        state = {**self.key.requesting_run.state, **state}
-
-        return Run(
-            objective=self,
-            context=context,
-            daemons=daemons,
-            signals=signals,
-            state=state
         )
 
     def __repr__(self):
