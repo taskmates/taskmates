@@ -238,18 +238,24 @@ async def get_or_start_kernel(cwd, markdown_path, env=None):
         async def execute_and_wait(code):
             msg_id = kernel_client.execute(code)
             jupyter_notebook_logger.debug(f"Setup message sent with msg_id: {msg_id}")
-            
+
             # Wait for execution to complete
             while True:
                 try:
                     msg = await kernel_client.get_shell_msg(timeout=10)
+
+                    jupyter_notebook_logger.debug(
+                        f"Processing setup message: {msg['msg_type']}, msg_id={msg['parent_header'].get('msg_id')}")
+                    jupyter_notebook_logger.debug(f"Setup message content: {msg}")
+
                     if msg['parent_header'].get('msg_id') == msg_id and msg['msg_type'] == 'execute_reply':
                         if msg['content']['status'] == 'error':
                             raise RuntimeError(f"Setup cell failed: {msg['content']}")
+                        jupyter_notebook_logger.debug(f"Finished setup of message {msg_id}")
                         break
                 except Empty:
                     continue
-            
+
             # Wait for kernel to be idle
             await wait_for_idle()
             return msg_id
