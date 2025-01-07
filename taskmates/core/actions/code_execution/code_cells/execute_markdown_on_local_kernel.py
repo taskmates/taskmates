@@ -228,7 +228,8 @@ async def get_or_start_kernel(cwd, markdown_path, env=None):
     kernel_client: AsyncKernelClient = kernel_manager.client()
     jupyter_notebook_logger.debug(f"Created kernel client for kernel_id={kernel_manager.kernel_id}")
     jupyter_notebook_logger.debug(f"Connection file: {kernel_client.connection_file}")
-    jupyter_notebook_logger.debug(f"Channel ports - shell:{kernel_client.shell_port}, iopub:{kernel_client.iopub_port}, control:{kernel_client.control_port}")
+    jupyter_notebook_logger.debug(
+        f"Channel ports - shell:{kernel_client.shell_port}, iopub:{kernel_client.iopub_port}, control:{kernel_client.control_port}")
 
     jupyter_notebook_logger.debug("Starting kernel channels")
     kernel_client.start_channels()
@@ -240,58 +241,18 @@ async def get_or_start_kernel(cwd, markdown_path, env=None):
         jupyter_notebook_logger.debug("Setting up new kernel")
         package_path = root_path()
 
-        async def wait_for_idle():
-            jupyter_notebook_logger.debug("Waiting for kernel idle state")
-            while True:
-                try:
-                    msg = await kernel_client.get_iopub_msg(timeout=10)
-                    jupyter_notebook_logger.debug(f"IOPub message while waiting for idle: {msg['msg_type']}")
-                    if msg['msg_type'] == 'status' and msg['content']['execution_state'] == 'idle':
-                        jupyter_notebook_logger.debug("Kernel reached idle state")
-                        break
-                except Empty:
-                    jupyter_notebook_logger.debug("No IOPub messages received while waiting for idle")
-                    continue
-
-        async def execute_and_wait(code):
+        async def execute_setup_code(code):
             jupyter_notebook_logger.debug(f"Executing setup code:\n{code}")
             msg_id = kernel_client.execute(code)
             jupyter_notebook_logger.debug(f"Setup message sent with msg_id: {msg_id}")
-
-            # Wait for execution to complete
-            while True:
-                try:
-                    msg = await kernel_client.get_shell_msg(timeout=10)
-                    jupyter_notebook_logger.debug(f"Shell message received while waiting for execute_reply: {msg['msg_type']}")
-                    jupyter_notebook_logger.debug(f"Message parent_header: {msg['parent_header']}")
-                    jupyter_notebook_logger.debug(f"Message content: {msg['content']}")
-
-                    if msg['parent_header'].get('msg_id') == msg_id:
-                        jupyter_notebook_logger.debug(f"Message matches our execute request {msg_id}")
-                        if msg['msg_type'] == 'execute_reply':
-                            if msg['content']['status'] == 'error':
-                                jupyter_notebook_logger.error(f"Execute reply indicated error: {msg['content']}")
-                                raise RuntimeError(f"Setup cell failed: {msg['content']}")
-                            jupyter_notebook_logger.debug(f"Execute reply successful for {msg_id}")
-                            break
-                        else:
-                            jupyter_notebook_logger.debug(f"Got message type {msg['msg_type']} instead of execute_reply")
-                    else:
-                        jupyter_notebook_logger.debug(f"Message from different request. Got {msg['parent_header'].get('msg_id')}, expecting {msg_id}")
-                except Empty:
-                    jupyter_notebook_logger.debug(f"No shell messages available for {msg_id}")
-                    continue
-
-            # Wait for kernel to be idle
-            await wait_for_idle()
             return msg_id
 
         jupyter_notebook_logger.debug("Starting kernel setup sequence")
-        setup_msg_1 = await execute_and_wait(f"import sys; sys.path.append('{package_path}')")
+        setup_msg_1 = await execute_setup_code(f"import sys; sys.path.append('{package_path}')")
         jupyter_notebook_logger.debug("sys.path setup completed")
-        setup_msg_2 = await execute_and_wait("%load_ext taskmates.magics.file_editing_magics")
+        setup_msg_2 = await execute_setup_code("%load_ext taskmates.magics.file_editing_magics")
         jupyter_notebook_logger.debug("magics extension loaded")
-        setup_msg_3 = await execute_and_wait("%matplotlib inline")
+        setup_msg_3 = await execute_setup_code("%matplotlib inline")
         jupyter_notebook_logger.debug("matplotlib setup completed")
 
         ignored = [setup_msg_1, setup_msg_2, setup_msg_3]
