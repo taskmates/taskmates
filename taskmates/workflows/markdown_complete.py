@@ -1,4 +1,4 @@
-from typing import TypedDict, Any
+from typing import TypedDict
 
 from typeguard import typechecked
 
@@ -99,10 +99,6 @@ class MarkdownComplete(Workflow):
         state = markdown_complete_run.state
 
         while True:
-            # TODO: we need to be able to check the progress of outcome="markdown_completion"
-
-            # TODO: we need to isolate outcome="completion"
-            # TODO: we need to check why outcome="completion" is working without being isolated
             result = await self.get_completion(markdown_chat)
             if result is None:
                 break
@@ -119,12 +115,9 @@ class MarkdownComplete(Workflow):
 
         state["current_step"].increment()
         chat = await self.get_markdown_chat(markdown_chat)
+
         next_completion = await self.compute_next_completion(chat)
-
         if not next_completion:
-            if state["current_step"].get() == 1:
-                raise ValueError("No available completion")
-
             await self.end_markdown_completion(chat, completion_run.context, completion_run)
             return None
 
@@ -168,13 +161,9 @@ class MarkdownComplete(Workflow):
         return chat
 
     async def end_markdown_completion(self, chat: Chat, contexts: RunContext, run: Run):
-
         await self.append_trailing_newlines(chat, run)
-
         await self.append_next_responder(chat, contexts, run)
-
         await run.signals["status"].success.send_async({})
-
         logger.debug(f"Finished completion assistance")
 
     async def append_next_responder(self, chat, contexts, run):

@@ -1,12 +1,18 @@
 def compute_and_reassign_roles(messages, recipient):
     for message in messages:
-        if message.get("name") == recipient:
-            message["role"] = "assistant"
-        elif message.get("role") != "tool":
-            message["role"] = "user"
-
+        # Don't override roles that are already set based on the message name
+        if "role" in message and message["role"] in ("system", "tool"):
+            continue
+            
+        # For messages with tool calls, they're always from the assistant
         if message.get("tool_calls") is not None:
             message["role"] = "assistant"
+            continue
+            
+        # For all other messages, use the name as the role
+        name = message.get("name", "user")
+        if name in ("user", "assistant", "system", "tool"):
+            message["role"] = name
 
 
 # TODO

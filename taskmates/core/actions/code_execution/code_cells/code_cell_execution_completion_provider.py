@@ -12,6 +12,9 @@ from taskmates.types import Chat, RunnerEnvironment
 
 class CodeCellExecutionCompletionProvider(CompletionProvider):
     def can_complete(self, chat):
+        if self.is_resume_request(chat):
+            return False
+
         is_jupyter_enabled = chat.get("run_opts", {}).get("jupyter_enabled", True)
         last_message = chat['messages'][-1]
         code_cells = last_message.get("code_cells", [])

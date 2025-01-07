@@ -93,13 +93,16 @@ async def parse_front_matter_and_messages(source_file: Path,
 
         messages.append(message)
 
-    # set assistant roles
+    # set message roles based on the name
     for message in messages:
         if "role" in message:
             continue
-        if message.get("name") in ("assistant", "user", "system", "tool"):
-            message["role"] = message.get("name")
+        name = message.get("name", "user")
+        # The role should match the name for user/assistant/system/tool messages
+        if name in ("user", "assistant", "system", "tool"):
+            message["role"] = name
         else:
+            # For any other name, default to user role
             message["role"] = "user"
 
     for message in messages:
