@@ -18,9 +18,9 @@ class Workflow(Plan, ABC):
         outcome = to_snake_case(self.__class__.__name__)
         # TODO: bind to current
         sub_objective = Objective(key=ObjectiveKey(
-            outcome=outcome,
-            inputs=kwargs or {},  # Use empty dict if inputs is None
-            requesting_run=current_run
+            outcome=outcome,  # partition of parent outcome
+            inputs=kwargs or {},  # sample of inputs
+            requesting_run=current_run  # sample of all runs
         ))
         sub_run = Run(
             objective=sub_objective,
