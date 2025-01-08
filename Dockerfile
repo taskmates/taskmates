@@ -23,7 +23,7 @@ RUN apt-get update && \
     && ln -s $(which ack-grep) /usr/local/bin/ack
 
 # Install poetry
-RUN pip install --no-cache-dir poetry
+RUN pip install --no-cache-dir "poetry==1.8.3"
 
 # Create directories
 RUN mkdir -p /workspace /opt/taskmates
@@ -36,13 +36,13 @@ COPY pyproject.toml poetry.lock* ./
 
 # Install project dependencies
 RUN poetry config virtualenvs.create false \
-  && poetry install --no-dev --no-interaction --no-ansi --quiet
+  && poetry install --only main --no-interaction --no-ansi --quiet
 
 # Copy project
 COPY . .
 
 # Install the project itself
-RUN poetry install --no-dev --no-interaction --no-ansi --quiet
+RUN poetry install --only main --no-interaction --no-ansi --quiet
 
 # Set the final working directory to /workspace
 WORKDIR /workspace
