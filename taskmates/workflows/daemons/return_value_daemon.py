@@ -2,7 +2,7 @@ import functools
 
 from taskmates.lib.contextlib_.stacked_contexts import stacked_contexts
 from taskmates.workflow_engine.daemon import Daemon
-from taskmates.workflow_engine.run import RUN, Run, Objective
+from taskmates.workflow_engine.run import RUN, Run, Objective, ObjectiveKey
 from taskmates.workflows.contexts.run_context import RunContext
 from taskmates.workflows.signals.status_signals import StatusSignals
 
@@ -29,15 +29,14 @@ async def test_return_value(context: RunContext):
     from taskmates.workflows.states.return_value import ReturnValue as ReturnValueTopic
 
     # Create a real Run with real signals
-    request = Objective(outcome="test")
+    request = Objective(key=ObjectiveKey(outcome="test"))
 
     # Create a real Run
     run = Run(
         objective=request,
         context=context,
         signals={"status": StatusSignals()},
-        state={"return_value": ReturnValueTopic()},
-        results={},
+        state={"return_value": ReturnValueTopic()}
     )
 
     # Use context manager to properly initialize the run

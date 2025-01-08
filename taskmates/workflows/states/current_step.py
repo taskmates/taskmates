@@ -8,3 +8,6 @@ class CurrentStep:
 
     def increment(self):
         self.current_step += 1
+
+    def set(self, value: int):
+        self.current_step = value

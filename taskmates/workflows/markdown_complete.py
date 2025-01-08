@@ -1,4 +1,4 @@
-from typing import TypedDict, Any
+from typing import TypedDict
 
 from typeguard import typechecked
 
@@ -30,6 +30,15 @@ class CompletionRunEnvironment(TypedDict):
     max_steps: int
 
 
+class MarkdownCompleteState(TypedDict):
+    interrupted: Interrupted
+    interrupted_or_killed: InterruptedOrKilled
+    return_value: ReturnValue
+    markdown_chat: MarkdownChat
+    current_step: CurrentStep
+    max_steps_check: MaxStepsCheck
+
+
 class MarkdownComplete(Workflow):
     def __init__(self):
         super().__init__()
@@ -49,7 +58,7 @@ class MarkdownComplete(Workflow):
         }
 
     @fulfills(outcome="state")
-    async def create_state(self) -> dict[str, Any]:
+    async def create_state(self) -> MarkdownCompleteState:
         return {
             "interrupted": Interrupted(),
             "interrupted_or_killed": InterruptedOrKilled(),
@@ -86,38 +95,36 @@ class MarkdownComplete(Workflow):
         logger.debug(f"Starting MarkdownComplete with markdown:\n{markdown_chat}")
 
         markdown_complete_run = RUN.get()
-        while True:
-            # TODO: we need to be able to check the progress of outcome="markdown_completion"
+        context = markdown_complete_run.context
+        state = markdown_complete_run.state
 
-            # TODO: we need to isolate outcome="completion"
-            # TODO: we need to check why outcome="completion" is working without being isolated
+        while True:
             result = await self.get_completion(markdown_chat)
             if result is None:
                 break
             markdown_chat = result
 
-        response_format = markdown_complete_run.context["runner_config"]["format"]
-        response = markdown_complete_run.state["markdown_chat"].get()[response_format]
+        response_format = context["runner_config"]["format"]
+        response = state["markdown_chat"].get()[response_format]
         return response
 
     @fulfills(outcome="completion")
     async def get_completion(self, markdown_chat: str):
         completion_run = RUN.get()
-        completion_run.state["current_step"].increment()
+        state = completion_run.state
+
+        state["current_step"].increment()
         chat = await self.get_markdown_chat(markdown_chat)
+
         next_completion = await self.compute_next_completion(chat)
-
         if not next_completion:
-            if completion_run.state["current_step"].get() == 1:
-                raise ValueError("No available completion")
-
             await self.end_markdown_completion(chat, completion_run.context, completion_run)
             return None
 
         step = MarkdownCompletionAction()
         await step.perform(chat, next_completion)
 
-        return completion_run.state["markdown_chat"].get()["full"]
+        return state["markdown_chat"].get()["full"]
 
     async def compute_next_completion(self, chat):
         finished = await self.check_finished()
@@ -154,13 +161,9 @@ class MarkdownComplete(Workflow):
         return chat
 
     async def end_markdown_completion(self, chat: Chat, contexts: RunContext, run: Run):
-
         await self.append_trailing_newlines(chat, run)
-
         await self.append_next_responder(chat, contexts, run)
-
         await run.signals["status"].success.send_async({})
-
         logger.debug(f"Finished completion assistance")
 
     async def append_next_responder(self, chat, contexts, run):

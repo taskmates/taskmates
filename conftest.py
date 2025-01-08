@@ -10,7 +10,7 @@ from taskmates.core.actions.code_execution.code_cells.execute_markdown_on_local_
 from taskmates.load_env_files import load_env_for_environment
 from taskmates.taskmates_runtime import TASKMATES_RUNTIME
 from taskmates.workflow_engine.default_environment_signals import default_environment_signals
-from taskmates.workflow_engine.run import Run, to_daemons_dict, Objective
+from taskmates.workflow_engine.run import Run, to_daemons_dict, Objective, ObjectiveKey
 from taskmates.workflows.context_builders.test_context_builder import TestContextBuilder
 from taskmates.workflows.daemons.captured_signals_daemon import CapturedSignalsDaemon
 from taskmates.workflows.signals.sinks.write_markdown_chat_to_stdout import WriteMarkdownChatToStdout
@@ -103,12 +103,11 @@ def daemons(request):
 
 @pytest.fixture(autouse=True)
 def run(request, taskmates_runtime, context, daemons) -> Iterable[Run]:
-    with Run(objective=Objective(outcome=request.node.name),
+    with Run(objective=Objective(key=ObjectiveKey(outcome=request.node.name)),
              context=context,
              daemons=to_daemons_dict(daemons),
              signals=default_environment_signals(),
-             state={"captured_signals": CapturedSignals()},
-             results={}) as run:
+             state={"captured_signals": CapturedSignals()}) as run:
         yield run
 
 

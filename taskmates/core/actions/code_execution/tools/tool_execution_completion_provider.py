@@ -17,6 +17,9 @@ from taskmates.types import Chat, RunnerEnvironment
 
 class ToolExecutionCompletionProvider(CompletionProvider):
     def can_complete(self, chat: Dict) -> bool:
+        if self.is_resume_request(chat):
+            return False
+
         messages = chat.get("messages", [])
         last_message = messages[-1] if messages else {}
         tool_calls = last_message.get("tool_calls", [])

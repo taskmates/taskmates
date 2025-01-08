@@ -4,9 +4,6 @@ from typeguard import typechecked
 
 from taskmates.core.actions.chat_completion.chat_completion_editor_completion import ChatCompletionEditorCompletion
 from taskmates.core.completion_provider import CompletionProvider
-from taskmates.workflows.contexts.run_context import RunContext
-from taskmates.workflow_engine.run import RUN
-from taskmates.workflow_engine.run import Run
 from taskmates.core.tools_registry import tools_registry
 from taskmates.formats.markdown.metadata.get_model_client import get_model_client
 from taskmates.formats.markdown.metadata.get_model_conf import get_model_conf
@@ -14,10 +11,15 @@ from taskmates.lib.not_set.not_set import NOT_SET
 from taskmates.lib.openai_.inference.api_request import api_request
 from taskmates.lib.tool_schemas_.tool_schema import tool_schema
 from taskmates.types import Chat
+from taskmates.workflow_engine.run import RUN
+from taskmates.workflow_engine.run import Run
 
 
 class ChatCompletionProvider(CompletionProvider):
     def can_complete(self, chat):
+        if self.is_resume_request(chat):
+            return True
+
         last_message = chat["messages"][-1]
         recipient_role = last_message["recipient_role"]
         return recipient_role is not None and not recipient_role == "user"
@@ -28,7 +30,7 @@ class ChatCompletionProvider(CompletionProvider):
         run: Run = RUN.get()
         output_streams = run.signals["output_streams"]
 
-        chat_completion_editor_completion = ChatCompletionEditorCompletion(chat, run)
+        chat_completion_editor_completion = ChatCompletionEditorCompletion(chat, self.is_resume_request(chat), run)
 
         async def restream_completion_chunk(chat_completion_chunk):
             choice = chat_completion_chunk.model_dump()['choices'][0]

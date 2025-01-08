@@ -5,7 +5,7 @@ from typing import Callable, Dict
 import pytest
 from jupyter_core.utils import ensure_async
 
-from taskmates.workflow_engine.run import RUN, Run, Objective
+from taskmates.workflow_engine.run import RUN, Run, Objective, ObjectiveKey
 from taskmates.workflows.contexts.run_context import RunContext, default_taskmates_dirs
 
 
@@ -23,7 +23,6 @@ def environment(fulfillers: Dict[str, Callable] | None = None):
                 'state': lambda: RUN.get().state,
                 'signals': lambda: RUN.get().signals,
                 'daemons': lambda: {},
-                'results': lambda: RUN.get().results
             }
 
             # Merge provided fulfillers with defaults
@@ -34,13 +33,11 @@ def environment(fulfillers: Dict[str, Callable] | None = None):
             state = await ensure_async(effective_fulfillers['state']())
             signals = await ensure_async(effective_fulfillers['signals']())
             daemons = await ensure_async(effective_fulfillers['daemons']())
-            results = await ensure_async(effective_fulfillers['results']())
 
             forked_run = Run(
                 objective=objective,
                 context=context,
                 state=state,
-                results=results,
                 signals=signals,
                 daemons=daemons
             )
@@ -76,7 +73,7 @@ def test_context() -> RunContext:
 
 @pytest.fixture
 def run(test_context):
-    run = Objective(outcome="test_runner").environment(context=test_context)
+    run = Objective(key=ObjectiveKey(outcome="test_runner")).environment(context=test_context)
     token = RUN.set(run)
     yield run
     RUN.reset(token)

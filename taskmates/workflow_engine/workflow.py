@@ -3,25 +3,34 @@ from typing import Any
 
 import pytest
 
+from taskmates.core.coalesce import coalesce
 from taskmates.lib.str_.to_snake_case import to_snake_case
 from taskmates.workflow_engine.plan import Plan
-from taskmates.workflow_engine.run import RUN, Run, Objective
+from taskmates.workflow_engine.run import RUN, Objective, ObjectiveKey, Run
 
 
 class Workflow(Plan, ABC):
     async def fulfill(self, **kwargs) -> Any:
-        objective = RUN.get().request(
-            outcome=to_snake_case(self.__class__.__name__),
-            inputs=kwargs)
+        current_run = RUN.get()
+        # TODO: bind to children
+        # current_objective = current_run.objective
 
-        run: Run = objective.attempt(
-            context=await self.create_context(**kwargs),
+        outcome = to_snake_case(self.__class__.__name__)
+        # TODO: bind to current
+        sub_objective = Objective(key=ObjectiveKey(
+            outcome=outcome,  # partition of parent outcome
+            inputs=kwargs or {},  # sample of inputs
+            requesting_run=current_run  # sample of all runs
+        ))
+        sub_run = Run(
+            objective=sub_objective,
+            context=coalesce(await self.create_context(**kwargs), current_run.context),
             daemons=await self.create_daemons(),
-            state=await self.create_state(),
-            signals=await self.create_signals(),
+            signals={**current_run.signals, **(await self.create_signals() or {})},
+            state={**current_run.state, **(await self.create_state() or {})}
         )
 
-        return await run.run_steps(self.steps)
+        return await sub_run.run_steps(self.steps)
 
     def __repr__(self):
         return f"{self.__class__.__name__}()"
@@ -49,11 +58,10 @@ async def test_workflow_execution(context):
 
     workflow = TestWorkflow()
     parent_run = Run(
-        objective=Objective(outcome="test"),
+        objective=Objective(key=ObjectiveKey(outcome="test")),
         context=context,
         signals={},
-        state={},
-        results={}
+        state={}
     )
 
     with parent_run:

@@ -252,3 +252,49 @@ async def test_participant_dictionary_format(markdown_path, taskmates_dir):
                                        [taskmates_dir])
 
     assert list(result['participants'].keys()) == ['user', 'my_assistant', 'my_other_assistant']
+
+
+@pytest.mark.asyncio
+async def test_partial_assistant_response(markdown_path, taskmates_dir):
+    markdown_chat_content = """\
+    ---
+    participants: {}
+    ---
+
+    **user>** Hello, how are you?
+
+    **assistant>** I'm doing w
+    """
+    markdown_path.write_text(textwrap.dedent(markdown_chat_content))
+
+    result = await parse_markdown_chat(textwrap.dedent(markdown_chat_content), markdown_path, [taskmates_dir])
+
+    assert len(result['messages']) == 3
+    assert result['messages'][0]['role'] == 'system'
+    assert result['messages'][1]['role'] == 'user'
+    assert result['messages'][1]['content'] == 'Hello, how are you?\n\n'
+    assert result['messages'][2]['role'] == 'assistant'
+    assert result['messages'][2]['content'] == "I'm doing w\n"
+
+
+@pytest.mark.asyncio
+async def test_partial_assistant_response_debug(markdown_path, taskmates_dir):
+    markdown_chat_content = """\
+    ---
+    participants: {}
+    ---
+
+    **user>** Hello, how are you?
+
+    **assistant>** I'm doing w
+    """
+    markdown_path.write_text(textwrap.dedent(markdown_chat_content))
+
+    result = await parse_markdown_chat(textwrap.dedent(markdown_chat_content), markdown_path, [taskmates_dir])
+    
+    import sys
+    # Debug print
+    for i, msg in enumerate(result['messages']):
+        sys.stderr.write(f"Message {i}: {msg}\n")
+        if 'recipient' in msg:
+            sys.stderr.write(f"Message {i} recipient: {msg['recipient']}\n")

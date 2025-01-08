@@ -6,7 +6,7 @@ from io import StringIO
 from taskmates.actions.parse_markdown_chat import parse_markdown_chat
 from taskmates.cli.commands.base import Command
 from taskmates.workflows.context_builders.cli_context_builder import CliContextBuilder
-from taskmates.workflow_engine.run import Objective
+from taskmates.workflow_engine.run import Objective, ObjectiveKey
 
 
 class ParseCommand(Command):
@@ -18,7 +18,7 @@ class ParseCommand(Command):
         contexts = builder.build()
 
         async def attempt_parse_markdown(contexts):
-            with Objective(outcome="cli_parse_markdown_runner").environment(context=contexts):
+            with Objective(key=ObjectiveKey(outcome="cli_parse_markdown_runner")).environment(context=contexts):
                 taskmates_dirs = contexts["runner_config"]["taskmates_dirs"]
 
                 markdown_chat = "".join(sys.stdin.readlines())
