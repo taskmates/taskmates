@@ -18,7 +18,7 @@ def code_cell_parser():
                 - (code_cell_with_language | pp.SkipTo(pp.line_end, include=True)))
 
         ).set_name("code_cell_content") -
-        code_cell_end
+        (code_cell_end | pp.StringEnd())
     )
 
     code_cell_without_language = pp.Forward().set_name("code_cell_without_language")
@@ -33,7 +33,7 @@ def code_cell_parser():
                     pp.line_end,
                     include=True))
         ) -
-        code_cell_end
+        (code_cell_end | pp.StringEnd())
     )
 
     return code_cell_with_language | code_cell_without_language

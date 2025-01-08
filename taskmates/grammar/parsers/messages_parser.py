@@ -574,3 +574,50 @@ def test_messages_parser_with_false_header_in_pre_tag():
     parsed_messages = [m.as_dict() for m in results.messages]
 
     assert parsed_messages == expected_messages
+
+
+def test_messages_parser_with_partial_code_cell():
+    input = textwrap.dedent('''\
+        **user>** First complete message.
+        
+        **assistant>** Incomplete message with unclosed code block
+        
+        ```python
+        def hello():
+        ''')
+
+    results = messages_parser().parseString(input)
+    parsed_messages = [m.as_dict() for m in results.messages]
+
+    assert parsed_messages[0] == {
+        'name': 'user',
+        'content': 'First complete message.\n\n',
+    }
+    assert parsed_messages[1] == {
+        'name': 'assistant',
+        'content': 'Incomplete message with unclosed code block\n\n```python\ndef hello():\n',
+    }
+
+
+def test_messages_parser_with_partial_pre_tag():
+    input = textwrap.dedent('''\
+        **user>** First message
+        
+        **assistant>** Message with unclosed pre tag
+        
+        <pre>
+        some content
+        ''')
+
+    results = messages_parser().parseString(input)
+    parsed_messages = [m.as_dict() for m in results.messages]
+
+    assert len(parsed_messages) == 2
+    assert parsed_messages[0] == {
+        'name': 'user',
+        'content': 'First message\n\n',
+    }
+    assert parsed_messages[1] == {
+        'name': 'assistant',
+        'content': 'Message with unclosed pre tag\n\n<pre>\nsome content\n',
+    }
