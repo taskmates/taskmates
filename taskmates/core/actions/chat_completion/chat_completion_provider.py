@@ -17,7 +17,7 @@ from taskmates.workflow_engine.run import Run
 
 class ChatCompletionProvider(CompletionProvider):
     def can_complete(self, chat):
-        if self.is_resume_request(chat):
+        if self.has_truncated_response(chat):
             return True
 
         last_message = chat["messages"][-1]
@@ -30,7 +30,7 @@ class ChatCompletionProvider(CompletionProvider):
         run: Run = RUN.get()
         output_streams = run.signals["output_streams"]
 
-        chat_completion_editor_completion = ChatCompletionEditorCompletion(chat, self.is_resume_request(chat), run)
+        chat_completion_editor_completion = ChatCompletionEditorCompletion(chat, self.has_truncated_response(chat), run)
 
         async def restream_completion_chunk(chat_completion_chunk):
             choice = chat_completion_chunk.model_dump()['choices'][0]

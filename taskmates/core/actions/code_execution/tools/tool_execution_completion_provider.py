@@ -17,7 +17,7 @@ from taskmates.types import Chat, RunnerEnvironment
 
 class ToolExecutionCompletionProvider(CompletionProvider):
     def can_complete(self, chat: Dict) -> bool:
-        if self.is_resume_request(chat):
+        if self.has_truncated_response(chat):
             return False
 
         messages = chat.get("messages", [])

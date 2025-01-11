@@ -13,6 +13,13 @@ def parse_notebook(content: str) -> (NotebookNode, list[NotebookNode]):
     code_cells = [cell for cell in notebook.cells
                   if cell.cell_type == "code"
                   and ".eval" in cell.metadata]
+
+    if code_cells:
+        # Workaround to prevent nbformat from parsing code cells from partial content (i.e. missing closing ```)
+        if content.rstrip().endswith(code_cells[-1].source.rstrip()):
+            code_cells[-1]["metadata"]["partial"] = True
+            return notebook, code_cells
+
     return notebook, code_cells
 
 

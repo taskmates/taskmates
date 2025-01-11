@@ -110,7 +110,8 @@ async def test_compute_next_completion_incomplete_code_cell(taskmates_dir, tmp_p
     
     ```python .eval
     print(1 + 1)
-    """).rstrip()  # Note: missing closing ```
+    
+    """)  # Note: missing closing ```
 
     chat = await parse_markdown_chat(markdown_chat, tmp_path / "chat.md", [taskmates_dir])
     result = compute_next_completion(chat)

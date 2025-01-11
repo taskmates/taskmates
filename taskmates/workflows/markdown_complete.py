@@ -162,7 +162,7 @@ class MarkdownComplete(Workflow):
         return chat
 
     async def end_markdown_completion(self, chat: Chat, contexts: RunContext, run: Run):
-        if CompletionProvider.is_resume_request(chat):
+        if CompletionProvider.has_truncated_response(chat):
             logger.debug(f"Truncated completion assistance")
             return
 

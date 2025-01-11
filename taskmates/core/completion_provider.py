@@ -13,7 +13,7 @@ class CompletionProvider(ABC):
         pass
 
     @staticmethod
-    def is_resume_request(chat: Chat) -> bool:
+    def has_truncated_response(chat: Chat) -> bool:
         if not chat["messages"]:
             return False
 
@@ -32,5 +32,10 @@ class CompletionProvider(ABC):
             if not text_contents:
                 return False
             content = text_contents[-1]
+
+        code_cells = last_message.get("code_cells", [])
+        if code_cells:
+            if code_cells[-1].get("metadata", {}).get("partial", False):
+                return True
 
         return not content.endswith("\n")

@@ -12,7 +12,7 @@ from taskmates.types import Chat, RunnerEnvironment
 
 class CodeCellExecutionCompletionProvider(CompletionProvider):
     def can_complete(self, chat):
-        if self.is_resume_request(chat):
+        if self.has_truncated_response(chat):
             return False
 
         is_jupyter_enabled = chat.get("run_opts", {}).get("jupyter_enabled", True)
