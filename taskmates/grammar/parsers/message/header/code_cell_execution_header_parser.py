@@ -10,7 +10,7 @@ def code_cell_execution_header_parser():
     execution_header = pp.Regex(CODE_EXECUTION_START_REGEX, re.MULTILINE).suppress()
 
     code_cell_name = pp.Regex(f"[{pp.alphanums} <>]+(?= \[)")("name")
-    code_cell_role = pp.Empty().setParseAction(lambda: "cell_output")("role")
+    code_cell_role = pp.Empty().set_parse_action(lambda: "cell_output")("role")
 
     # noinspection PyTypeChecker
     code_cell_id = (pp.Suppress("[")

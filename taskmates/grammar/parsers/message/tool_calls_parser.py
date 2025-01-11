@@ -45,7 +45,7 @@ def tool_call_parser():
         tool_id +
         pp.Suppress(" ") +
         tool_args
-    ).setParseAction(parse_tool_call)
+    ).set_parse_action(parse_tool_call)
 
     return tool_call
 

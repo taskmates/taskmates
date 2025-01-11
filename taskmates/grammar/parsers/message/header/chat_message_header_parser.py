@@ -7,7 +7,7 @@ def chat_message_header_parser():
     name = pp.Word(pp.printables, excludeChars=" {*>")("name")
 
     json_str = (pp.QuotedString('{', endQuoteChar='}', escChar='\\', unquoteResults=False)
-                .setParseAction(lambda t: json.loads(t[0]))("attributes"))
+                .set_parse_action(lambda t: json.loads(t[0]))("attributes"))
     attributes = (pp.Optional(pp.Suppress(" ") + json_str))
 
     chat_message_header = (

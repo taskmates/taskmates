@@ -45,7 +45,7 @@ def message_content_parser():
 
 def first_message_parser(implicit_role: str = "user"):
     message_content = message_content_parser()
-    implicit_header = (pp.LineStart() + pp.Empty().setParseAction(lambda: implicit_role)("name"))
+    implicit_header = (pp.LineStart() + pp.Empty().set_parse_action(lambda: implicit_role)("name"))
     first_message = pp.Group(
         (headers_parser() | implicit_header)
         + message_content
