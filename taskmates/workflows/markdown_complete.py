@@ -3,6 +3,7 @@ from typing import TypedDict
 from typeguard import typechecked
 
 from taskmates.actions.parse_markdown_chat import parse_markdown_chat
+from taskmates.core.completion_provider import CompletionProvider
 from taskmates.core.compute_next_completion import compute_next_completion
 from taskmates.core.compute_separator import compute_separator
 from taskmates.lib.not_set.not_set import NOT_SET
@@ -161,6 +162,10 @@ class MarkdownComplete(Workflow):
         return chat
 
     async def end_markdown_completion(self, chat: Chat, contexts: RunContext, run: Run):
+        if CompletionProvider.is_resume_request(chat):
+            logger.debug(f"Truncated completion assistance")
+            return
+
         await self.append_trailing_newlines(chat, run)
         await self.append_next_responder(chat, contexts, run)
         await run.signals["status"].success.send_async({})
