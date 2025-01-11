@@ -40,8 +40,11 @@ def compute_recipient(messages, participants_configs) -> str | None:
 
     # code cell/tool caller: resume conversation with requester
     elif len(messages) > 2 and (messages[-2]["role"] == "tool" or messages[-2].get("name") == "cell_output"):
-        tool_calling_message = participant_messages[-2]
-        recipient = tool_calling_message["recipient"]
+        # Find the message that triggered the code cell/tool
+        for msg in reversed(messages[:-1]):  # exclude current message
+            if msg["role"] not in ("tool",) and msg.get("name") not in ("cell_output",):
+                recipient = msg["name"]
+                break
 
     # alternating participants
     elif len(participants) == 2 and "user" in participants:
@@ -133,3 +136,83 @@ def test_unknown():
 
     recipient = compute_recipient(messages, participants_configs)
     assert recipient is None
+
+
+def test_code_cell_reply():
+    messages = [
+        {"role": "user", "name": "user", "content": "Can you write a function that adds two numbers?"},
+        {"role": "assistant", "name": "coder",
+         "content": "Here's a simple function to add two numbers:\n\n```python\ndef add(a, b):\n    return a + b\n```"},
+        {"role": "tool", "name": "cell_output", "content": "Function defined successfully"}
+    ]
+    participants_configs = {"user": {}, "coder": {"role": "assistant"}}
+
+    recipient = compute_recipient(messages, participants_configs)
+    assert recipient == "coder"  # Should return to coder after cell output
+
+
+def test_tool_call_sequence():
+    messages = [
+        {"role": "user", "name": "user", "content": "What is 2 + 2?"},
+        {"role": "assistant", "name": "assistant", "content": "Let me calculate that for you."},
+        {"role": "tool", "content": "4"}
+    ]
+    participants_configs = {"user": {}, "assistant": {"role": "assistant", "tools": {"calculator": {}}}}
+
+    recipient = compute_recipient(messages, participants_configs)
+    assert recipient == "assistant"  # Should return to assistant after tool call
+
+
+def test_tool_call_with_requester():
+    messages = [
+        {"role": "user", "name": "user", "content": "@assistant what is 2 + 2?"},
+        {"role": "assistant", "name": "assistant", "content": "Let me calculate that for you."},
+        {"role": "tool", "content": "4"},
+        {"role": "assistant", "name": "assistant", "content": "The result is 4."},
+        {"role": "user", "name": "user", "content": "Thanks! @coder can you write a function that adds numbers?"}
+    ]
+    participants_configs = {
+        "user": {},
+        "assistant": {"role": "assistant", "tools": {"calculator": {}}},
+        "coder": {"role": "assistant"}
+    }
+
+    recipient = compute_recipient(messages, participants_configs)
+    assert recipient == "coder"  # Should go to coder after mention
+
+
+def test_code_cell_with_mention():
+    messages = [
+        {"role": "user", "name": "user", "content": "@coder write a function"},
+        {"role": "assistant", "name": "coder",
+         "content": "Here's a function:\n\n```python\ndef hello():\n    print('Hello')\n```"},
+        {"role": "tool", "name": "cell_output", "content": "Function defined"},
+        {"role": "assistant", "name": "coder",
+         "content": "The function has been defined. @assistant can you explain what it does?"}
+    ]
+    participants_configs = {
+        "user": {},
+        "coder": {"role": "assistant"},
+        "assistant": {"role": "assistant"}
+    }
+
+    recipient = compute_recipient(messages, participants_configs)
+    assert recipient == "assistant"  # Should go to assistant after mention
+
+
+def test_code_cell_recipient_after_mention():
+    messages = [
+        {"role": "user", "name": "user", "content": "@coder can you write a function?"},
+        {"role": "assistant", "name": "coder",
+         "content": "Here's a function:\n\n```python\ndef hello():\n    print('Hello')\n```"},
+        {"role": "tool", "name": "cell_output", "content": "Function defined"},
+        {"role": "user", "name": "user", "content": "Can you add a parameter to it?"}
+    ]
+    participants_configs = {
+        "user": {},
+        "coder": {"role": "assistant"},
+        "assistant": {"role": "assistant"}
+    }
+
+    recipient = compute_recipient(messages, participants_configs)
+    assert recipient == "coder"  # Should go back to coder after code cell, even without mention
