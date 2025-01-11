@@ -12,7 +12,8 @@ pp.ParserElement.set_default_whitespace_chars("")
 
 def markdown_chat_parser(implicit_role: str = "user"):
     comments = pp.Suppress(LineStart() + pp.Literal("[//]: #") + pp.restOfLine)
-    return (pp.Opt(front_matter_parser()) + messages_parser(implicit_role=implicit_role) + pp.StringEnd()).ignore(comments)
+    return (pp.Opt(front_matter_parser()) + messages_parser(implicit_role=implicit_role) + pp.StringEnd()).ignore(
+        comments)
 
 
 def test_no_line_end():
@@ -26,9 +27,9 @@ def test_no_line_end():
                          {'content': 'Short answer. 1+1=',
                           'name': 'assistant'}]
 
-    results = markdown_chat_parser().parseString(input)
+    results = markdown_chat_parser().parseString(input).as_dict()
 
-    assert [m.as_dict() for m in results.messages] == expected_messages
+    assert results["messages"] == expected_messages
 
 
 def test_markdown_with_tool_execution():
@@ -47,9 +48,9 @@ def test_markdown_with_tool_execution():
         **user>** Here is another message.
         """)
 
-    result = markdown_chat_parser().parseString(input)
-    messages = [m.as_dict() for m in result.messages]
-    assert messages == [
+    results = markdown_chat_parser().parseString(input).as_dict()
+
+    assert results["messages"] == [
         {
             'content': 'Here is a message.\n\n',
             'name': 'assistant',
@@ -99,9 +100,9 @@ def test_markdown_with_code_cell_execution():
 
         """)
 
-    result = markdown_chat_parser().parseString(input)
-    messages = [m.as_dict() for m in result.messages]
-    assert messages == [
+    results = markdown_chat_parser().parseString(input).as_dict()
+
+    assert results["messages"] == [
         {
             'content': 'print(1 + 1)\n\n', 'name': 'user'
         },
@@ -124,5 +125,3 @@ def test_markdown_with_code_cell_execution():
             'content': '\n\n1 + 1 equals 2.\n\n',
             'name': 'assistant'
         }]
-
-
