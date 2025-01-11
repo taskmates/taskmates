@@ -125,7 +125,22 @@ class MarkdownComplete(Workflow):
         step = MarkdownCompletionAction()
         await step.perform(chat, next_completion)
 
+        await self.on_after_step()
+
         return state["markdown_chat"].get()["full"]
+
+    async def on_after_step(self):
+        run = RUN.get()
+        state = run.state
+        chat = await self.get_markdown_chat(state["markdown_chat"].get()["full"])
+
+        if CompletionProvider.has_truncated_response(chat):
+            return
+
+        markdown_completion = run.state["markdown_chat"].outputs["completion"]
+        separator = compute_separator(markdown_completion)
+        if separator:
+            await run.signals["output_streams"].response.send_async(separator)
 
     async def compute_next_completion(self, chat):
         finished = await self.check_finished()

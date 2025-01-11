@@ -37,6 +37,9 @@ class Quote:
             for token in encoded:
                 tokens.append(enc.decode([token]))
 
+            tokens.append("\n")
+            tokens.append("\n")
+
             for token in tokens:
                 yield ChatCompletionChunkModel(
                     id="mock_id",
