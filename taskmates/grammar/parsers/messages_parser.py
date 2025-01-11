@@ -38,9 +38,18 @@ def message_content_parser():
     text_content = pp.Regex(fr"({NOT_BEGINNING_OF_SECTION_AHEAD}.)+", re.DOTALL | re.MULTILINE)
     code_cell = code_cell_parser()
     pre_tag = pre_tag_parser()
-    return pp.Combine(
+
+    def join_and_propagate_partial(tokens):
+        # Extract strings from nested ParseResults
+        content = "".join(str(t[0]) if isinstance(t, pp.ParseResults) else str(t) for t in tokens)
+        result = pp.ParseResults([content])
+        if any(isinstance(t, pp.ParseResults) and t.get("partial", False) for t in tokens):
+            result["partial"] = True
+        return result
+
+    return pp.Group(
         (text_content | code_cell | pre_tag)[...]
-    )("content")
+    ).set_parse_action(join_and_propagate_partial)("content")
 
 
 def first_message_parser(implicit_role: str = "user"):
@@ -596,6 +605,7 @@ def test_messages_parser_with_partial_code_cell():
     assert parsed_messages[1] == {
         'name': 'assistant',
         'content': 'Incomplete message with unclosed code block\n\n```python\ndef hello():\n',
+        'partial': True
     }
 
 
