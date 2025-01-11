@@ -219,7 +219,7 @@ async def get_or_start_kernel(cwd, markdown_path, env=None):
         if cwd is not None:
             kernel_args["cwd"] = cwd
 
-        jupyter_notebook_logger.debug(f"Kernel arguments: {kernel_args}")
+        # jupyter_notebook_logger.debug(f"Kernel arguments: {kernel_args}")
         await kernel_manager.start_kernel(**kernel_args)
         jupyter_notebook_logger.debug(f"Kernel started with id={kernel_manager.kernel_id}")
         # kernel_pool[(cwd, markdown_path)] = kernel_manager
