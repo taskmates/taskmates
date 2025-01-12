@@ -1,73 +1,25 @@
 import argparse
 import asyncio
 import os
-import signal
 import sys
-import tempfile
 import textwrap
-from queue import Empty
 from typing import Mapping
 
 import pytest
-from jupyter_client import AsyncKernelManager, AsyncKernelClient
-from nbformat import NotebookNode
 
 from taskmates.core.actions.code_execution.code_cells.jupyter_notebook_logger import jupyter_notebook_logger
-from taskmates.core.actions.code_execution.code_cells.parse_notebook import parse_notebook
-from taskmates.lib.root_path.root_path import root_path
-from taskmates.workflow_engine.run import RUN, Run
-
-from taskmates.core.actions.code_execution.code_cells.kernel_manager import KernelManager
-from taskmates.core.actions.code_execution.code_cells.message_handler import MessageHandler
-from taskmates.core.actions.code_execution.code_cells.bash_script_handler import BashScriptHandler
-from taskmates.core.actions.code_execution.code_cells.cell_executor import CellExecutor
-from taskmates.core.actions.code_execution.code_cells.signal_handler import SignalHandler
-
-kernel_manager = KernelManager()
-bash_script_handler = BashScriptHandler()
+from taskmates.core.actions.code_execution.code_cells.kernel_manager import get_kernel_manager
+from taskmates.core.actions.code_execution.code_cells.markdown_executor import MarkdownExecutor
+from taskmates.workflow_engine.run import RUN
 
 pytestmark = pytest.mark.slow
 
 
-# Main execution function
 async def execute_markdown_on_local_kernel(content, markdown_path: str = None, cwd: str = None, env: Mapping = None):
-    run: Run = RUN.get()
-    status = run.signals["status"]
-    control = run.signals["control"]
-    output_streams = run.signals["output_streams"]
-
-    jupyter_notebook_logger.debug(f"Starting execution for markdown_path={markdown_path}, cwd={cwd}")
-
-    notebook: NotebookNode
-    code_cells: list[NotebookNode]
-    notebook, code_cells = parse_notebook(content)
-
-    jupyter_notebook_logger.debug(f"Parsed {len(code_cells)} code cells")
-
-    kernel_instance, kernel_client, setup_msgs = await get_or_start_kernel(cwd, markdown_path, env)
-
-    message_handler = MessageHandler(kernel_client, run)
-    await message_handler.start()
-
-    signal_handler = SignalHandler(kernel_instance, message_handler, run)
-
-    with control.interrupt.connected_to(signal_handler.handle_interrupt), \
-            control.kill.connected_to(signal_handler.handle_kill):
-
-        try:
-            cell_executor = CellExecutor(message_handler, bash_script_handler, run)
-            for cell_index, cell in enumerate(code_cells):
-                should_continue = await cell_executor.execute_cell(cell, cell_index, len(code_cells), setup_msgs)
-                if not should_continue:
-                    break
-        finally:
-            jupyter_notebook_logger.debug("Cleaning up resources")
-            message_handler.cancel_tasks()
-            await kernel_manager.cleanup_kernel(kernel_instance)
-
-
-async def get_or_start_kernel(cwd, markdown_path, env=None):
-    return await kernel_manager.get_or_start_kernel(cwd, markdown_path, env)
+    """Main execution function that coordinates the execution of markdown content as Jupyter notebook cells."""
+    run = RUN.get()
+    executor = MarkdownExecutor(run)
+    await executor.execute(content, cwd=cwd, markdown_path=markdown_path, env=env)
 
 
 async def main(argv=None):
@@ -299,6 +251,7 @@ async def test_kill(capsys):
 
     assert stream_chunks == [{'name': 'stdout', 'text': '0\n1\n2\n'}]
 
+    kernel_manager = get_kernel_manager()
     kernel = await kernel_manager.get_kernel(None, "test_kill", None)
     is_alive = await kernel.is_alive() if kernel else False
 

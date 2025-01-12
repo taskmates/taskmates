@@ -4,6 +4,16 @@ from taskmates.lib.root_path.root_path import root_path
 from taskmates.core.actions.code_execution.code_cells.jupyter_notebook_logger import jupyter_notebook_logger
 
 
+_KERNEL_MANAGER = None
+
+
+def get_kernel_manager():
+    global _KERNEL_MANAGER
+    if _KERNEL_MANAGER is None:
+        _KERNEL_MANAGER = KernelManager()
+    return _KERNEL_MANAGER
+
+
 class KernelManager:
     def __init__(self):
         # The key is now (cwd, markdown_path, env_hash)
