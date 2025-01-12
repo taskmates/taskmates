@@ -21,6 +21,7 @@ from taskmates.core.actions.code_execution.code_cells.kernel_manager import Kern
 from taskmates.core.actions.code_execution.code_cells.message_handler import MessageHandler
 from taskmates.core.actions.code_execution.code_cells.bash_script_handler import BashScriptHandler
 from taskmates.core.actions.code_execution.code_cells.cell_executor import CellExecutor
+from taskmates.core.actions.code_execution.code_cells.signal_handler import SignalHandler
 
 kernel_manager = KernelManager()
 bash_script_handler = BashScriptHandler()
@@ -48,25 +49,10 @@ async def execute_markdown_on_local_kernel(content, markdown_path: str = None, c
     message_handler = MessageHandler(kernel_client, run)
     await message_handler.start()
 
-    async def interrupt_handler(sender):
-        jupyter_notebook_logger.debug("Interrupt signal received")
-        message_handler.notebook_finished = True
-        await kernel_manager.interrupt_kernel()
-        await status.interrupted.send_async(None)
+    signal_handler = SignalHandler(kernel_manager, message_handler, run)
 
-    async def kill_handler(sender):
-        jupyter_notebook_logger.debug("Kill signal received")
-        message_handler.notebook_finished = True
-        message_handler.cell_finished = True
-        await message_handler.msg_queue.put(None)
-        # TODO: note sure this works on windows
-        await kernel_manager.signal_kernel(signal.SIGKILL)
-        message_handler.cancel_tasks()
-        await status.killed.send_async(None)
-        await kernel_manager.shutdown_kernel(now=True)
-
-    with control.interrupt.connected_to(interrupt_handler), \
-            control.kill.connected_to(kill_handler):
+    with control.interrupt.connected_to(signal_handler.handle_interrupt), \
+            control.kill.connected_to(signal_handler.handle_kill):
 
         try:
             cell_executor = CellExecutor(message_handler, bash_script_handler, run)
