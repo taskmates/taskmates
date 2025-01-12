@@ -1,3 +1,6 @@
+import textwrap
+
+import pytest
 from loguru import logger
 from typeguard import typechecked
 
@@ -40,11 +43,21 @@ def compute_recipient(messages, participants_configs) -> str | None:
 
     # code cell/tool caller: resume conversation with requester
     elif len(messages) > 2 and (messages[-2]["role"] == "tool" or messages[-2].get("name") == "cell_output"):
-        # Find the message that triggered the code cell/tool
-        for msg in reversed(messages[:-1]):  # exclude current message
+        output_message = messages[-2]
+
+        requesting_message = None
+        for msg in reversed(messages[:-2]):  # exclude current message
             if msg["role"] not in ("tool",) and msg.get("name") not in ("cell_output",):
-                recipient = msg["name"]
+                requesting_message = msg
                 break
+
+        if not requesting_message:
+            raise ValueError()
+
+        if messages[-1]["name"] != output_message["recipient"]:
+            recipient = output_message["recipient"]
+        else:
+            recipient = requesting_message["recipient"]
 
     # alternating participants
     elif len(participants) == 2 and "user" in participants:
@@ -69,150 +82,357 @@ def compute_recipient(messages, participants_configs) -> str | None:
 
 # Test cases
 
-def test_implicit_assistant():
-    messages = [
-        {"role": "user", "content": "Hello"},
-    ]
-    participants_configs = {"user": {}, "assistant": {}}
+@pytest.fixture
+def taskmates_dir(tmp_path):
+    base_dir = tmp_path / ".taskmates"
+    (base_dir / "engine").mkdir(parents=True)
+    (base_dir / "engine" / "chat_introduction.md").write_text("CHAT_INTRODUCTION\n")
+    (base_dir / "taskmates").mkdir(parents=True)
+    (base_dir / "taskmates" / "mediator.md").write_text("MEDIATOR_PROMPT\n")
+    (base_dir / "taskmates" / "mediator.description.md").write_text("MEDIATOR_ROLE\n")
+    (base_dir / "taskmates" / "browser.md").write_text("---\ntools:\n  BROWSER_TOOL:\n---\n\nBROWSER_PROMPT\n")
+    (base_dir / "taskmates" / "browser.description.md").write_text("BROWSER_ROLE\n")
+    (base_dir / "taskmates" / "coder.md").write_text("CODER_PROMPT\n")
+    (base_dir / "taskmates" / "coder.description.md").write_text("CODER_ROLE\n")
+    return base_dir
 
-    recipient = compute_recipient(messages, participants_configs)
+
+@pytest.mark.asyncio
+async def test_implicit_assistant(taskmates_dir, tmp_path):
+    from taskmates.actions.parse_markdown_chat import parse_markdown_chat
+
+    markdown_chat = """\
+    ---
+    participants: {}
+    ---
+
+    **user>** Hello
+    """
+
+    chat = await parse_markdown_chat(textwrap.dedent(markdown_chat), tmp_path / "chat.md", [taskmates_dir])
+    recipient = compute_recipient(chat['messages'], chat['participants'])
     assert recipient == "assistant"
 
 
-def test_mention_reply():
-    messages = [
-        {"role": "user", "name": "user", "content": "Hello", "recipient": "assistant"},
-        {"role": "user", "name": "dave", "content": "Hey @alice how much is 1 + 1?", "recipient": "alice"},
-        {"role": "assistant", "name": "alice", "content": "2"},
+@pytest.mark.asyncio
+async def test_mention_reply(taskmates_dir, tmp_path):
+    from taskmates.actions.parse_markdown_chat import parse_markdown_chat
 
-    ]
-    participants_configs = {"user": {}, "assistant": {}, "alice": {"role": "assistant"}}
+    markdown_chat = """\
+    ---
+    participants:
+      alice:
+        system: true
+    ---
 
-    recipient = compute_recipient(messages, participants_configs)
+    **user>** Hello
+
+    **dave>** Hey @alice how much is 1 + 1?
+
+    **alice>** 2
+    """
+
+    chat = await parse_markdown_chat(textwrap.dedent(markdown_chat), tmp_path / "chat.md", [taskmates_dir])
+    recipient = compute_recipient(chat['messages'], chat['participants'])
     assert recipient == "dave"
 
 
-def test_tool_resume():
-    messages = [
-        {"role": "user", "content": "Hello"},
-        {"role": "assistant", "name": "assistant1", "content": "Hi there"},
-        {"role": "tool", "content": "Running tool..."}
-    ]
-    participants_configs = {"user": {}, "assistant1": {"system": True}}
+@pytest.mark.asyncio
+async def test_mention(taskmates_dir, tmp_path):
+    from taskmates.actions.parse_markdown_chat import parse_markdown_chat
 
-    recipient = compute_recipient(messages, participants_configs)
-    assert recipient == "assistant1"
+    markdown_chat = """\
+    ---
+    participants:
+      assistant1:
+        system: true
+      assistant2: {}
+    ---
 
+    **user>** Hello @assistant2
+    """
 
-def test_mention():
-    messages = [
-        {"role": "user", "content": "Hello @assistant2"},
-    ]
-    participants_configs = {"user": {}, "assistant1": {"system": True}, "assistant2": {}}
-
-    recipient = compute_recipient(messages, participants_configs)
+    chat = await parse_markdown_chat(textwrap.dedent(markdown_chat), tmp_path / "chat.md", [taskmates_dir])
+    recipient = compute_recipient(chat['messages'], chat['participants'])
     assert recipient == "assistant2"
 
 
-def test_alternating():
-    messages = [
-        {"role": "user", "content": "Hello"},
-        {"role": "user", "name": "assistant1", "content": "Hi there"},
-        {"role": "user", "content": "How are you?"}
-    ]
-    participants_configs = {"user": {}, "assistant1": {"system": True}}
+@pytest.mark.asyncio
+async def test_alternating(taskmates_dir, tmp_path):
+    from taskmates.actions.parse_markdown_chat import parse_markdown_chat
 
-    recipient = compute_recipient(messages, participants_configs)
+    markdown_chat = """\
+    ---
+    participants:
+      assistant1:
+        system: true
+    ---
+
+    **user>** Hello
+
+    **assistant1>** Hi there
+
+    **user>** How are you?
+    """
+
+    chat = await parse_markdown_chat(textwrap.dedent(markdown_chat), tmp_path / "chat.md", [taskmates_dir])
+    recipient = compute_recipient(chat['messages'], chat['participants'])
     assert recipient == "assistant1"
 
 
-def test_unknown():
-    messages = [
-        {"role": "user", "content": "Hello"},
-        {"role": "assistant", "name": "assistant1", "content": "Hi there"},
-        {"role": "user", "content": "How are you?"}
-    ]
-    participants_configs = {"user": {}, "assistant1": {"system": True}, "assistant2": {"system": True}}
+@pytest.mark.asyncio
+async def test_tool_call(taskmates_dir, tmp_path):
+    from taskmates.actions.parse_markdown_chat import parse_markdown_chat
 
-    recipient = compute_recipient(messages, participants_configs)
-    assert recipient is None
+    markdown_chat = """\
+    ---
+    participants:
+      assistant:
+        tools:
+          run_shell_command:
+    ---
+    
+    **user>** Check the current directory
+    
+    **assistant>** I'll help you check the current directory using the `pwd` (print working directory) command.
+    
+    ###### Steps
+    
+    - Run Shell Command [1] `{"cmd": "pwd"}`
+    
+    """
 
-
-def test_code_cell_reply():
-    messages = [
-        {"role": "user", "name": "user", "content": "Can you write a function that adds two numbers?"},
-        {"role": "assistant", "name": "coder",
-         "content": "Here's a simple function to add two numbers:\n\n```python\ndef add(a, b):\n    return a + b\n```"},
-        {"role": "tool", "name": "cell_output", "content": "Function defined successfully"}
-    ]
-    participants_configs = {"user": {}, "coder": {"role": "assistant"}}
-
-    recipient = compute_recipient(messages, participants_configs)
-    assert recipient == "coder"  # Should return to coder after cell output
-
-
-def test_tool_call_sequence():
-    messages = [
-        {"role": "user", "name": "user", "content": "What is 2 + 2?"},
-        {"role": "assistant", "name": "assistant", "content": "Let me calculate that for you."},
-        {"role": "tool", "content": "4"}
-    ]
-    participants_configs = {"user": {}, "assistant": {"role": "assistant", "tools": {"calculator": {}}}}
-
-    recipient = compute_recipient(messages, participants_configs)
-    assert recipient == "assistant"  # Should return to assistant after tool call
+    chat = await parse_markdown_chat(textwrap.dedent(markdown_chat), tmp_path / "chat.md", [taskmates_dir])
+    recipient = compute_recipient(chat['messages'], chat['participants'])
+    assert recipient == "user"
 
 
-def test_tool_call_with_requester():
-    messages = [
-        {"role": "user", "name": "user", "content": "@assistant what is 2 + 2?"},
-        {"role": "assistant", "name": "assistant", "content": "Let me calculate that for you."},
-        {"role": "tool", "content": "4"},
-        {"role": "assistant", "name": "assistant", "content": "The result is 4."},
-        {"role": "user", "name": "user", "content": "Thanks! @coder can you write a function that adds numbers?"}
-    ]
-    participants_configs = {
-        "user": {},
-        "assistant": {"role": "assistant", "tools": {"calculator": {}}},
-        "coder": {"role": "assistant"}
-    }
+@pytest.mark.asyncio
+async def test_tool_call_response(taskmates_dir, tmp_path):
+    from taskmates.actions.parse_markdown_chat import parse_markdown_chat
 
-    recipient = compute_recipient(messages, participants_configs)
-    assert recipient == "coder"  # Should go to coder after mention
+    markdown_chat = """\
+    ---
+    participants:
+      assistant:
+        tools:
+          run_shell_command:
+    ---
+    
+    **user>** Check the current directory
+    
+    **assistant>** I'll help you check the current directory using the `pwd` (print working directory) command.
+    
+    ###### Steps
+    
+    - Run Shell Command [1] `{"cmd": "pwd"}`
+    
+    ###### Execution: Run Shell Command [1]
+    
+    <pre class='output' style='display:none'>
+    /tmp
+    
+    Exit Code: 0
+    </pre>
+    -[x] Done
+    
+    """
+
+    chat = await parse_markdown_chat(textwrap.dedent(markdown_chat), tmp_path / "chat.md", [taskmates_dir])
+    recipient = compute_recipient(chat['messages'], chat['participants'])
+    assert recipient == "assistant"  # The tool output should be handled by the assistant that called it
 
 
-def test_code_cell_with_mention():
-    messages = [
-        {"role": "user", "name": "user", "content": "@coder write a function"},
-        {"role": "assistant", "name": "coder",
-         "content": "Here's a function:\n\n```python\ndef hello():\n    print('Hello')\n```"},
-        {"role": "tool", "name": "cell_output", "content": "Function defined"},
-        {"role": "assistant", "name": "coder",
-         "content": "The function has been defined. @assistant can you explain what it does?"}
-    ]
-    participants_configs = {
-        "user": {},
-        "coder": {"role": "assistant"},
-        "assistant": {"role": "assistant"}
-    }
+@pytest.mark.asyncio
+async def test_tool_call_and_assistant_reply(taskmates_dir, tmp_path):
+    from taskmates.actions.parse_markdown_chat import parse_markdown_chat
 
-    recipient = compute_recipient(messages, participants_configs)
-    assert recipient == "assistant"  # Should go to assistant after mention
+    markdown_chat = """\
+    ---
+    participants:
+      assistant:
+        tools:
+          run_shell_command:
+    ---
+    
+    **user>** Check the current directory
+    
+    **assistant>** I'll help you check the current directory using the `pwd` (print working directory) command.
+    
+    ###### Steps
+    
+    - Run Shell Command [1] `{"cmd": "pwd"}`
+    
+    ###### Execution: Run Shell Command [1]
+    
+    <pre class='output' style='display:none'>
+    /tmp
+    
+    Exit Code: 0
+    </pre>
+    -[x] Done
+    
+    **assistant>** 
+    
+    The current directory is `/tmp`.
+    
+    
+    """
+
+    chat = await parse_markdown_chat(textwrap.dedent(markdown_chat), tmp_path / "chat.md", [taskmates_dir])
+    recipient = compute_recipient(chat['messages'], chat['participants'])
+    assert recipient == "user"  # The tool output should be handled by the assistant that called it
 
 
-def test_code_cell_recipient_after_mention():
-    messages = [
-        {"role": "user", "name": "user", "content": "@coder can you write a function?"},
-        {"role": "assistant", "name": "coder",
-         "content": "Here's a function:\n\n```python\ndef hello():\n    print('Hello')\n```"},
-        {"role": "tool", "name": "cell_output", "content": "Function defined"},
-        {"role": "user", "name": "user", "content": "Can you add a parameter to it?"}
-    ]
-    participants_configs = {
-        "user": {},
-        "coder": {"role": "assistant"},
-        "assistant": {"role": "assistant"}
-    }
+@pytest.mark.asyncio
+async def test_code_cell(taskmates_dir, tmp_path):
+    from taskmates.actions.parse_markdown_chat import parse_markdown_chat
 
-    recipient = compute_recipient(messages, participants_configs)
-    assert recipient == "coder"  # Should go back to coder after code cell, even without mention
+    markdown_chat = """\
+    ---
+    participants:
+      coder:
+        system: true
+    ---
+    
+    **user>** Calculate something
+    
+    **coder>** I'll help you calculate:
+    
+    ```python .eval
+    print(1 + 1)
+    ```
+    """
+
+    chat = await parse_markdown_chat(textwrap.dedent(markdown_chat), tmp_path / "chat.md", [taskmates_dir])
+    recipient = compute_recipient(chat['messages'], chat['participants'])
+    assert recipient == "user"
+
+
+@pytest.mark.asyncio
+async def test_code_cell_execution(taskmates_dir, tmp_path):
+    from taskmates.actions.parse_markdown_chat import parse_markdown_chat
+
+    markdown_chat = """\
+    ---
+    participants:
+      coder:
+        system: true
+    ---
+    
+    **user>** Calculate something
+    
+    **coder>** I'll help you calculate:
+    
+    ```python .eval
+    print(1 + 1)
+    ```
+    ###### Cell Output: stdout [cell_0]
+    
+    Done
+    
+    """
+
+    chat = await parse_markdown_chat(textwrap.dedent(markdown_chat), tmp_path / "chat.md", [taskmates_dir])
+    recipient = compute_recipient(chat['messages'], chat['participants'])
+    assert recipient == "coder"
+
+
+@pytest.mark.asyncio
+async def test_code_cell_execution_and_assistant_reply(taskmates_dir, tmp_path):
+    from taskmates.actions.parse_markdown_chat import parse_markdown_chat
+
+    markdown_chat = """\
+    ---
+    participants:
+      coder:
+        system: true
+    ---
+    
+    **user>** Calculate something
+    
+    **coder>** I'll help you calculate:
+    
+    ```python .eval
+    print(1 + 1)
+    ```
+    ###### Cell Output: stdout [cell_0]
+    
+    Done
+    
+    **coder>** 1+1=2
+    
+    
+    """
+
+    chat = await parse_markdown_chat(textwrap.dedent(markdown_chat), tmp_path / "chat.md", [taskmates_dir])
+    recipient = compute_recipient(chat['messages'], chat['participants'])
+    assert recipient == "user"  # The code cell output should be handled by the assistant that executed it
+
+
+@pytest.mark.asyncio
+async def test_code_cell_execution_and_user_interruption(taskmates_dir, tmp_path):
+    from taskmates.actions.parse_markdown_chat import parse_markdown_chat
+
+    markdown_chat = """\
+    ---
+    participants:
+      coder:
+        system: true
+    ---
+    
+    **user>** Calculate something
+    
+    **coder>** I'll help you calculate:
+    
+    ```python .eval
+    print(1 + 1)
+    ```
+    ###### Cell Output: stdout [cell_0]
+    
+    Done
+    
+    **user>** Good, calculate something more
+    """
+
+    chat = await parse_markdown_chat(textwrap.dedent(markdown_chat), tmp_path / "chat.md", [taskmates_dir])
+    recipient = compute_recipient(chat['messages'], chat['participants'])
+    assert recipient == "coder"  # The code cell output should be handled by the assistant that executed it
+
+
+@pytest.mark.asyncio
+async def test_code_cell_error_handling(taskmates_dir, tmp_path):
+    from taskmates.actions.parse_markdown_chat import parse_markdown_chat
+
+    markdown_chat = """\
+    ---
+    participants:
+      coder:
+        system: true
+    ---
+    
+    **user>** @coder Let's try something that will fail
+    
+    **coder>** Here's a calculation that will fail:
+    
+    ```python .eval
+    print(1/0)
+    ```
+    
+    ###### Cell Output: error [cell_0]
+    
+    <pre>
+    ---------------------------------------------------------------------------
+    ZeroDivisionError                         Traceback (most recent call last)
+    Cell In[4], line 1
+    ----&gt; 1 print(1/0)
+    
+    ZeroDivisionError: division by zero
+    </pre>
+    
+    **coder>** Done
+    """
+
+    chat = await parse_markdown_chat(textwrap.dedent(markdown_chat), tmp_path / "chat.md", [taskmates_dir])
+    recipient = compute_recipient(chat['messages'], chat['participants'])
+    assert recipient == "user"
