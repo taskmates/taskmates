@@ -19,8 +19,10 @@ from taskmates.workflow_engine.run import RUN, Run
 
 from taskmates.core.actions.code_execution.code_cells.kernel_manager import KernelManager
 from taskmates.core.actions.code_execution.code_cells.message_handler import MessageHandler
+from taskmates.core.actions.code_execution.code_cells.bash_script_handler import BashScriptHandler
 
 kernel_manager = KernelManager()
+bash_script_handler = BashScriptHandler()
 
 pytestmark = pytest.mark.slow
 
@@ -76,23 +78,7 @@ async def execute_markdown_on_local_kernel(content, markdown_path: str = None, c
                 jupyter_notebook_logger.debug(f"Executing cell {cell_index + 1}/{len(code_cells)}")
                 jupyter_notebook_logger.debug(f"Cell source:\n{source}")
 
-                # see https://stackoverflow.com/questions/57984815/whats-the-difference-between-bash-and-bang
-                # in our case, `ack` is not working when called via %%bash
-                if source.startswith("%%bash\n"):
-                    # Remove the "%%bash\n" prefix
-                    bash_content = source[7:]
-
-                    # Create a temporary file with the bash script
-                    with tempfile.NamedTemporaryFile(mode='w', suffix='.sh', delete=False) as f:
-                        f.write(bash_content)
-                        temp_path = f.name
-
-                    # Make the script executable
-                    os.chmod(temp_path, 0o755)
-
-                    # Execute the script and clean up
-                    source = f"!bash {temp_path}"
-                    jupyter_notebook_logger.debug(f"Converted bash cell to: {source}")
+                source = bash_script_handler.convert_if_bash(source)
 
                 msg_id = kernel_client.execute(source)
                 jupyter_notebook_logger.debug(f"Execution request sent with msg_id: {msg_id}")
