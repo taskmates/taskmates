@@ -1,154 +1,25 @@
 import argparse
 import asyncio
 import os
-import signal
 import sys
-import tempfile
 import textwrap
-from queue import Empty
 from typing import Mapping
 
 import pytest
-from jupyter_client import AsyncKernelManager, AsyncKernelClient
-from nbformat import NotebookNode
 
 from taskmates.core.actions.code_execution.code_cells.jupyter_notebook_logger import jupyter_notebook_logger
-from taskmates.core.actions.code_execution.code_cells.parse_notebook import parse_notebook
-from taskmates.lib.root_path.root_path import root_path
-from taskmates.workflow_engine.run import RUN, Run
-
-from taskmates.core.actions.code_execution.code_cells.kernel_manager import KernelManager
-from taskmates.core.actions.code_execution.code_cells.message_handler import MessageHandler
-
-kernel_manager = KernelManager()
+from taskmates.core.actions.code_execution.code_cells.kernel_manager import get_kernel_manager
+from taskmates.core.actions.code_execution.code_cells.markdown_executor import MarkdownExecutor
+from taskmates.workflow_engine.run import RUN
 
 pytestmark = pytest.mark.slow
 
 
-# Main execution function
 async def execute_markdown_on_local_kernel(content, markdown_path: str = None, cwd: str = None, env: Mapping = None):
-    run: Run = RUN.get()
-    status = run.signals["status"]
-    control = run.signals["control"]
-    output_streams = run.signals["output_streams"]
-
-    jupyter_notebook_logger.debug(f"Starting execution for markdown_path={markdown_path}, cwd={cwd}")
-
-    notebook: NotebookNode
-    code_cells: list[NotebookNode]
-    notebook, code_cells = parse_notebook(content)
-
-    jupyter_notebook_logger.debug(f"Parsed {len(code_cells)} code cells")
-
-    kernel_manager, kernel_client, setup_msgs = await get_or_start_kernel(cwd, markdown_path, env)
-
-    message_handler = MessageHandler(kernel_client, run)
-    await message_handler.start()
-
-    async def interrupt_handler(sender):
-        jupyter_notebook_logger.debug("Interrupt signal received")
-        message_handler.notebook_finished = True
-        await kernel_manager.interrupt_kernel()
-        await status.interrupted.send_async(None)
-
-    async def kill_handler(sender):
-        jupyter_notebook_logger.debug("Kill signal received")
-        message_handler.notebook_finished = True
-        message_handler.cell_finished = True
-        await message_handler.msg_queue.put(None)
-        # TODO: note sure this works on windows
-        await kernel_manager.signal_kernel(signal.SIGKILL)
-        message_handler.cancel_tasks()
-        await status.killed.send_async(None)
-        await kernel_manager.shutdown_kernel(now=True)
-
-    with control.interrupt.connected_to(interrupt_handler), \
-            control.kill.connected_to(kill_handler):
-
-        try:
-            for cell_index, cell in enumerate(code_cells):
-                if message_handler.notebook_finished:
-                    break
-
-                message_handler.reset_cell()
-
-                source: str = cell.source
-                jupyter_notebook_logger.debug(f"Executing cell {cell_index + 1}/{len(code_cells)}")
-                jupyter_notebook_logger.debug(f"Cell source:\n{source}")
-
-                # see https://stackoverflow.com/questions/57984815/whats-the-difference-between-bash-and-bang
-                # in our case, `ack` is not working when called via %%bash
-                if source.startswith("%%bash\n"):
-                    # Remove the "%%bash\n" prefix
-                    bash_content = source[7:]
-
-                    # Create a temporary file with the bash script
-                    with tempfile.NamedTemporaryFile(mode='w', suffix='.sh', delete=False) as f:
-                        f.write(bash_content)
-                        temp_path = f.name
-
-                    # Make the script executable
-                    os.chmod(temp_path, 0o755)
-
-                    # Execute the script and clean up
-                    source = f"!bash {temp_path}"
-                    jupyter_notebook_logger.debug(f"Converted bash cell to: {source}")
-
-                msg_id = kernel_client.execute(source)
-                jupyter_notebook_logger.debug(f"Execution request sent with msg_id: {msg_id}")
-                jupyter_notebook_logger.debug(f"Will wait for messages with parent_header.msg_id = {msg_id}")
-
-                while True:
-                    if message_handler.cell_finished:
-                        break
-                    msg = await message_handler.get_message()
-                    if msg is None:
-                        jupyter_notebook_logger.debug("Received None message")
-                        continue
-
-                    jupyter_notebook_logger.debug(
-                        f"Processing message: {msg['msg_type']}, msg_id={msg['parent_header'].get('msg_id')}")
-                    jupyter_notebook_logger.debug(f"Message content: {msg}")
-
-                    if msg['parent_header'].get('msg_id') in setup_msgs and msg["msg_type"] != "error":
-                        jupyter_notebook_logger.debug("Skipping setup message")
-                        continue
-
-                    if msg['parent_header'].get('msg_id') != msg_id and msg["msg_type"] != "error":
-                        jupyter_notebook_logger.debug(
-                            f"Skipping message from different cell. Got {msg['parent_header'].get('msg_id')}, expecting {msg_id}")
-                        continue
-
-                    if msg['msg_type'] == 'error':
-                        jupyter_notebook_logger.error(f"Error in cell execution: {msg['content']}")
-                        message_handler.cell_finished = True
-                        message_handler.notebook_finished = True
-
-                    if msg['msg_type'] == 'execute_reply':
-                        jupyter_notebook_logger.debug("Cell execution completed")
-                        message_handler.cell_finished = True
-                        continue
-
-                    if msg['msg_type'] not in ('stream', 'error', 'display_data', 'execute_result'):
-                        jupyter_notebook_logger.debug(f"Skipping message type: {msg['msg_type']}")
-                        continue
-
-                    jupyter_notebook_logger.debug(f"Sending message to output streams: {msg['msg_type']}")
-                    jupyter_notebook_logger.debug(f"Message ID: {msg['parent_header'].get('msg_id')}")
-                    await output_streams.code_cell_output.send_async({
-                        "msg_id": msg['parent_header'].get('msg_id'),
-                        "cell_source": source,
-                        "msg": msg
-                    })
-        finally:
-            jupyter_notebook_logger.debug("Cleaning up kernel resources: started")
-            message_handler.cancel_tasks()
-            kernel_client.stop_channels()
-            jupyter_notebook_logger.debug("Cleaning up kernel resources: done")
-
-
-async def get_or_start_kernel(cwd, markdown_path, env=None):
-    return await kernel_manager.get_or_start_kernel(cwd, markdown_path, env)
+    """Main execution function that coordinates the execution of markdown content as Jupyter notebook cells."""
+    run = RUN.get()
+    executor = MarkdownExecutor(run)
+    await executor.execute(content, cwd=cwd, markdown_path=markdown_path, env=env)
 
 
 async def main(argv=None):
@@ -265,6 +136,7 @@ async def test_cwd(tmp_path):
     chunks = []
 
     async def capture_chunk(chunk):
+        jupyter_notebook_logger.debug(f"Captured chunk: {chunk}")
         chunks.append(chunk)
 
     run.signals["output_streams"].code_cell_output.connect(capture_chunk)
@@ -277,8 +149,16 @@ async def test_cwd(tmp_path):
         ```
     """)
 
+    jupyter_notebook_logger.debug(f"Input markdown:\n{input_md}")
+    jupyter_notebook_logger.debug(f"Expected cwd: {tmp_path}")
+
     # Execute the markdown with cwd set to the temporary directory
     await execute_markdown_on_local_kernel(input_md, markdown_path="test_with_cwd", cwd=str(tmp_path))
+
+    jupyter_notebook_logger.debug(f"Captured chunks: {chunks}")
+
+    # Check if we got any chunks
+    assert len(chunks) > 0, "No output was captured"
 
     # Check if the output contains the expected directory path
     output_path = chunks[-1]['msg']['content']['text'].strip()
@@ -371,6 +251,7 @@ async def test_kill(capsys):
 
     assert stream_chunks == [{'name': 'stdout', 'text': '0\n1\n2\n'}]
 
+    kernel_manager = get_kernel_manager()
     kernel = await kernel_manager.get_kernel(None, "test_kill", None)
     is_alive = await kernel.is_alive() if kernel else False
 
