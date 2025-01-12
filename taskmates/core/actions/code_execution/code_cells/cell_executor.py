@@ -1,17 +1,17 @@
-from typing import Optional
 from nbformat import NotebookNode
 
-from taskmates.core.actions.code_execution.code_cells.jupyter_notebook_logger import jupyter_notebook_logger
-from taskmates.core.actions.code_execution.code_cells.message_handler import MessageHandler
 from taskmates.core.actions.code_execution.code_cells.bash_script_handler import BashScriptHandler
 from taskmates.core.actions.code_execution.code_cells.cell_status import KernelCellTracker, CellExecutionStatus
+from taskmates.core.actions.code_execution.code_cells.jupyter_notebook_logger import jupyter_notebook_logger
+from taskmates.core.actions.code_execution.code_cells.message_handler import MessageHandler
 from taskmates.workflow_engine.run import Run
 
 
 class CellExecutor:
     """Handles the execution of a single notebook cell."""
 
-    def __init__(self, message_handler: MessageHandler, bash_script_handler: BashScriptHandler, cell_tracker: KernelCellTracker, run: Run):
+    def __init__(self, message_handler: MessageHandler, bash_script_handler: BashScriptHandler,
+                 cell_tracker: KernelCellTracker, run: Run):
         self.message_handler = message_handler
         self.bash_script_handler = bash_script_handler
         self.cell_tracker = cell_tracker
@@ -47,6 +47,10 @@ class CellExecutor:
         })
 
         while True:
+            if self.message_handler._received_execute_reply and self.message_handler._received_idle_status:
+                jupyter_notebook_logger.debug("Cell execution completed - both execute_reply and idle status received")
+                self.message_handler.cell_finished = True
+
             if self.message_handler.cell_finished:
                 break
 
@@ -75,13 +79,19 @@ class CellExecutor:
             self.cell_tracker.record_received_message(cell_id, msg)
 
             if msg_type == 'error':
-                jupyter_notebook_logger.error(f"Cell execution error: {msg['content'].get('ename')}: {msg['content'].get('evalue')}")
+                jupyter_notebook_logger.error(
+                    f"Cell execution error: {msg['content'].get('ename')}: {msg['content'].get('evalue')}")
                 self.message_handler.cell_finished = True
                 self.message_handler.notebook_finished = True
 
             if msg_type == 'execute_reply':
-                jupyter_notebook_logger.debug("Cell execution completed")
-                self.message_handler.cell_finished = True
+                jupyter_notebook_logger.debug("Received execute_reply")
+                self.message_handler._received_execute_reply = True
+                continue
+
+            if msg_type == 'status' and msg['content'].get('execution_state') == 'idle':
+                jupyter_notebook_logger.debug("Received idle status")
+                self.message_handler._received_idle_status = True
                 continue
 
             if msg_type not in ('stream', 'error', 'display_data', 'execute_result'):

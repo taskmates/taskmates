@@ -15,6 +15,8 @@ class MessageHandler:
         self.notebook_finished = False
         self.cell_finished = False
         self._tasks = []
+        self._received_execute_reply = False
+        self._received_idle_status = False
 
     async def start(self):
         self._tasks = [
@@ -32,6 +34,8 @@ class MessageHandler:
 
     def reset_cell(self):
         self.cell_finished = False
+        self._received_execute_reply = False
+        self._received_idle_status = False
 
     async def handle_shell_msg(self):
         jupyter_notebook_logger.debug("Starting shell message handler")
