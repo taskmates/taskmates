@@ -8,6 +8,7 @@ from taskmates.core.actions.code_execution.code_cells.bash_script_handler import
 from taskmates.core.actions.code_execution.code_cells.cell_executor import CellExecutor
 from taskmates.core.actions.code_execution.code_cells.signal_handler import SignalHandler
 from taskmates.core.actions.code_execution.code_cells.parse_notebook import parse_notebook
+from taskmates.core.actions.code_execution.code_cells.cell_status import KernelCellTracker
 from taskmates.workflow_engine.run import Run
 
 
@@ -22,7 +23,7 @@ class MarkdownExecutor:
         self.signal_handler = None
         self.cell_executor = None
 
-    async def setup(self, cwd: str = None, markdown_path: str = None, env: Mapping = None) -> Tuple[List[str], List[NotebookNode]]:
+    async def setup(self, content: str, cwd: str = None, markdown_path: str = None, env: Mapping = None) -> Tuple[List[str], List[NotebookNode]]:
         """Sets up all components needed for execution."""
         jupyter_notebook_logger.debug(f"Setting up components for markdown_path={markdown_path}, cwd={cwd}")
 
@@ -31,10 +32,23 @@ class MarkdownExecutor:
         self.message_handler = MessageHandler(kernel_client, self.run)
         await self.message_handler.start()
 
-        self.signal_handler = SignalHandler(kernel_instance, self.message_handler, self.run)
-        self.cell_executor = CellExecutor(self.message_handler, self.bash_script_handler, self.run)
+        # Get or create cell tracker for this kernel
+        key = (cwd, markdown_path, self.kernel_manager._get_env_hash(env))
+        jupyter_notebook_logger.debug(f"Getting cell tracker for key: {key}")
+        if key not in self.kernel_manager._cell_trackers:
+            jupyter_notebook_logger.debug("Creating new cell tracker")
+            self.kernel_manager._cell_trackers[key] = KernelCellTracker()
+        cell_tracker = self.kernel_manager._cell_trackers[key]
+        jupyter_notebook_logger.debug(f"Cell tracker has {len(cell_tracker.cells)} cells")
 
-        return setup_msgs
+        self.signal_handler = SignalHandler(kernel_instance, self.message_handler, self.run)
+        self.cell_executor = CellExecutor(self.message_handler, self.bash_script_handler, cell_tracker, self.run)
+
+        # Parse notebook cells
+        notebook, code_cells = parse_notebook(content)
+        jupyter_notebook_logger.debug(f"Parsed {len(code_cells)} code cells")
+
+        return setup_msgs, code_cells
 
     async def cleanup(self):
         """Cleans up all components."""
@@ -46,13 +60,7 @@ class MarkdownExecutor:
         """Executes markdown content as Jupyter notebook cells."""
         jupyter_notebook_logger.debug(f"Starting execution for markdown_path={markdown_path}, cwd={cwd}")
 
-        notebook: NotebookNode
-        code_cells: list[NotebookNode]
-        notebook, code_cells = parse_notebook(content)
-
-        jupyter_notebook_logger.debug(f"Parsed {len(code_cells)} code cells")
-
-        setup_msgs = await self.setup(cwd, markdown_path, env)
+        setup_msgs, code_cells = await self.setup(content, cwd, markdown_path, env)
 
         with self.run.signals["control"].interrupt.connected_to(self.signal_handler.handle_interrupt), \
                 self.run.signals["control"].kill.connected_to(self.signal_handler.handle_kill):

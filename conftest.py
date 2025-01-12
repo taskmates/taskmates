@@ -116,6 +116,7 @@ async def teardown_after_all_tests(taskmates_runtime):
     yield
 
     kernel_manager = get_kernel_manager()
-    for path, kernel in kernel_manager._kernel_pool.items():
-        await kernel.shutdown_kernel(now=True)
+    await kernel_manager.cleanup_all()
     kernel_manager._kernel_pool.clear()
+    kernel_manager._client_pool.clear()
+    kernel_manager._cell_trackers.clear()
