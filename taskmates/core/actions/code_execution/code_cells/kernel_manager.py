@@ -1,4 +1,4 @@
-from typing import Mapping, Tuple, List
+from typing import Mapping, Tuple, List, Dict, Any
 from jupyter_client import AsyncKernelManager, AsyncKernelClient
 from taskmates.lib.root_path.root_path import root_path
 from taskmates.core.actions.code_execution.code_cells.jupyter_notebook_logger import jupyter_notebook_logger
@@ -6,18 +6,27 @@ from taskmates.core.actions.code_execution.code_cells.jupyter_notebook_logger im
 
 class KernelManager:
     def __init__(self):
-        self._kernel_pool: dict[tuple[str | None, str], AsyncKernelManager] = {}
+        # The key is now (cwd, markdown_path, env_hash)
+        self._kernel_pool: dict[tuple[str | None, str | None, str | None], AsyncKernelManager] = {}
+
+    def _get_env_hash(self, env: Mapping | None) -> str | None:
+        if env is None:
+            return None
+        # Convert env to a sorted list of tuples to ensure consistent hashing
+        env_items = sorted((str(k), str(v)) for k, v in env.items())
+        return str(hash(tuple(env_items)))
 
     async def get_or_start_kernel(self, cwd: str | None, markdown_path: str | None, env: Mapping | None = None) -> Tuple[AsyncKernelManager, AsyncKernelClient, List[str]]:
         ignored = []
         # Get or create a kernel manager for the given path
-        key = (cwd, markdown_path)
+        env_hash = self._get_env_hash(env)
+        key = (cwd, markdown_path, env_hash)
         if key in self._kernel_pool and (await self._kernel_pool[key].is_alive()):
-            jupyter_notebook_logger.debug(f"Reusing kernel for {(cwd, markdown_path)}")
+            jupyter_notebook_logger.debug(f"Reusing kernel for {key}")
             is_new_kernel = False
-            kernel_manager = self._kernel_pool[(cwd, markdown_path)]
+            kernel_manager = self._kernel_pool[key]
         else:
-            jupyter_notebook_logger.debug(f"Starting new kernel for {(cwd, markdown_path)}")
+            jupyter_notebook_logger.debug(f"Starting new kernel for {key}")
             is_new_kernel = True
             kernel_manager = AsyncKernelManager(kernel_name='python3')
             kernel_args = {}
@@ -29,7 +38,7 @@ class KernelManager:
             jupyter_notebook_logger.debug(f"Kernel arguments: {kernel_args}")
             await kernel_manager.start_kernel(**kernel_args)
             jupyter_notebook_logger.debug(f"Kernel started with id={kernel_manager.kernel_id}")
-            self._kernel_pool[(cwd, markdown_path)] = kernel_manager
+            self._kernel_pool[key] = kernel_manager
 
         kernel_client: AsyncKernelClient = kernel_manager.client()
         jupyter_notebook_logger.debug(f"Created kernel client for kernel_id={kernel_manager.kernel_id}")
@@ -66,5 +75,6 @@ class KernelManager:
 
         return kernel_manager, kernel_client, ignored
 
-    async def get_kernel(self, cwd: str | None, markdown_path: str | None) -> AsyncKernelManager | None:
-        return self._kernel_pool.get((cwd, markdown_path))
+    async def get_kernel(self, cwd: str | None, markdown_path: str | None, env: Mapping | None = None) -> AsyncKernelManager | None:
+        env_hash = self._get_env_hash(env)
+        return self._kernel_pool.get((cwd, markdown_path, env_hash))
