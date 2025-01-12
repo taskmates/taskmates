@@ -44,12 +44,12 @@ async def execute_markdown_on_local_kernel(content, markdown_path: str = None, c
 
     jupyter_notebook_logger.debug(f"Parsed {len(code_cells)} code cells")
 
-    kernel_manager, kernel_client, setup_msgs = await get_or_start_kernel(cwd, markdown_path, env)
+    kernel_instance, kernel_client, setup_msgs = await get_or_start_kernel(cwd, markdown_path, env)
 
     message_handler = MessageHandler(kernel_client, run)
     await message_handler.start()
 
-    signal_handler = SignalHandler(kernel_manager, message_handler, run)
+    signal_handler = SignalHandler(kernel_instance, message_handler, run)
 
     with control.interrupt.connected_to(signal_handler.handle_interrupt), \
             control.kill.connected_to(signal_handler.handle_kill):
@@ -61,10 +61,9 @@ async def execute_markdown_on_local_kernel(content, markdown_path: str = None, c
                 if not should_continue:
                     break
         finally:
-            jupyter_notebook_logger.debug("Cleaning up kernel resources: started")
+            jupyter_notebook_logger.debug("Cleaning up resources")
             message_handler.cancel_tasks()
-            kernel_client.stop_channels()
-            jupyter_notebook_logger.debug("Cleaning up kernel resources: done")
+            await kernel_manager.cleanup_kernel(kernel_instance)
 
 
 async def get_or_start_kernel(cwd, markdown_path, env=None):
@@ -185,6 +184,7 @@ async def test_cwd(tmp_path):
     chunks = []
 
     async def capture_chunk(chunk):
+        jupyter_notebook_logger.debug(f"Captured chunk: {chunk}")
         chunks.append(chunk)
 
     run.signals["output_streams"].code_cell_output.connect(capture_chunk)
@@ -197,8 +197,16 @@ async def test_cwd(tmp_path):
         ```
     """)
 
+    jupyter_notebook_logger.debug(f"Input markdown:\n{input_md}")
+    jupyter_notebook_logger.debug(f"Expected cwd: {tmp_path}")
+
     # Execute the markdown with cwd set to the temporary directory
     await execute_markdown_on_local_kernel(input_md, markdown_path="test_with_cwd", cwd=str(tmp_path))
+
+    jupyter_notebook_logger.debug(f"Captured chunks: {chunks}")
+
+    # Check if we got any chunks
+    assert len(chunks) > 0, "No output was captured"
 
     # Check if the output contains the expected directory path
     output_path = chunks[-1]['msg']['content']['text'].strip()
