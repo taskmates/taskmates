@@ -19,6 +19,7 @@ class KernelManager:
         # The key is now (cwd, markdown_path, env_hash)
         self._kernel_pool: dict[tuple[str | None, str | None, str | None], AsyncKernelManager] = {}
         self._client_pool: dict[AsyncKernelManager, AsyncKernelClient] = {}
+        self._cell_trackers: dict[tuple[str | None, str | None, str | None], KernelCellTracker] = {}
 
     def _get_env_hash(self, env: Mapping | None) -> str | None:
         if env is None:

@@ -4,15 +4,17 @@ from nbformat import NotebookNode
 from taskmates.core.actions.code_execution.code_cells.jupyter_notebook_logger import jupyter_notebook_logger
 from taskmates.core.actions.code_execution.code_cells.message_handler import MessageHandler
 from taskmates.core.actions.code_execution.code_cells.bash_script_handler import BashScriptHandler
+from taskmates.core.actions.code_execution.code_cells.cell_status import KernelCellTracker, CellExecutionStatus
 from taskmates.workflow_engine.run import Run
 
 
 class CellExecutor:
     """Handles the execution of a single notebook cell."""
 
-    def __init__(self, message_handler: MessageHandler, bash_script_handler: BashScriptHandler, run: Run):
+    def __init__(self, message_handler: MessageHandler, bash_script_handler: BashScriptHandler, cell_tracker: KernelCellTracker, run: Run):
         self.message_handler = message_handler
         self.bash_script_handler = bash_script_handler
+        self.cell_tracker = cell_tracker
         self.run = run
         self.output_streams = run.signals["output_streams"]
 
@@ -31,9 +33,22 @@ class CellExecutor:
 
         source = self.bash_script_handler.convert_if_bash(source)
 
+        # Create a unique cell ID and register it with the tracker
+        cell_id = f"cell_{cell_index}"
+        jupyter_notebook_logger.debug(f"Adding cell {cell_id} to tracker")
+        self.cell_tracker.add_cell(cell_id, source)
+        jupyter_notebook_logger.debug(f"Cell tracker now has {len(self.cell_tracker.cells)} cells")
+
+        # Record the execution request
         msg_id = self.message_handler.kernel_client.execute(source)
         jupyter_notebook_logger.debug(f"Execution request sent with msg_id: {msg_id}")
         jupyter_notebook_logger.debug(f"Will wait for messages with parent_header.msg_id = {msg_id}")
+
+        # Record the sent message
+        self.cell_tracker.record_sent_message(cell_id, {
+            "msg_id": msg_id,
+            "content": {"code": source}
+        })
 
         while True:
             if self.message_handler.cell_finished:
@@ -56,6 +71,9 @@ class CellExecutor:
                 jupyter_notebook_logger.debug(
                     f"Skipping message from different cell. Got {msg['parent_header'].get('msg_id')}, expecting {msg_id}")
                 continue
+
+            # Record received message
+            self.cell_tracker.record_received_message(cell_id, msg)
 
             if msg['msg_type'] == 'error':
                 jupyter_notebook_logger.error(f"Error in cell execution: {msg['content']}")
@@ -113,8 +131,11 @@ async def test_cell_executor(tmp_path):
     message_handler = MessageHandler(kernel_client, run)
     await message_handler.start()
 
+    # Create cell tracker
+    cell_tracker = KernelCellTracker()
+
     # Create cell executor
-    cell_executor = CellExecutor(message_handler, BashScriptHandler(), run)
+    cell_executor = CellExecutor(message_handler, BashScriptHandler(), cell_tracker, run)
 
     # Execute cell
     should_continue = await cell_executor.execute_cell(cell, 0, 1, [])
@@ -123,6 +144,14 @@ async def test_cell_executor(tmp_path):
     # Check output
     assert len(chunks) > 0
     assert any('Hello, World!' in str(chunk['msg']['content']) for chunk in chunks)
+
+    # Check cell tracker
+    assert len(cell_tracker.cells) == 1
+    cell_status = cell_tracker.get_cell("cell_0")
+    assert cell_status is not None
+    assert cell_status.status == CellExecutionStatus.FINISHED
+    assert len(cell_status.sent_messages) == 1
+    assert len(cell_status.received_messages) > 0
 
     # Clean up
     message_handler.cancel_tasks()
@@ -161,8 +190,11 @@ async def test_cell_executor_error(tmp_path):
     message_handler = MessageHandler(kernel_client, run)
     await message_handler.start()
 
+    # Create cell tracker
+    cell_tracker = KernelCellTracker()
+
     # Create cell executor
-    cell_executor = CellExecutor(message_handler, BashScriptHandler(), run)
+    cell_executor = CellExecutor(message_handler, BashScriptHandler(), cell_tracker, run)
 
     # Execute cell
     should_continue = await cell_executor.execute_cell(cell, 0, 1, [])
@@ -172,6 +204,13 @@ async def test_cell_executor_error(tmp_path):
     assert any(chunk['msg']['msg_type'] == 'error' for chunk in chunks)
     error_chunk = next(chunk for chunk in chunks if chunk['msg']['msg_type'] == 'error')
     assert 'ZeroDivisionError' in error_chunk['msg']['content']['ename']
+
+    # Check cell tracker
+    assert len(cell_tracker.cells) == 1
+    cell_status = cell_tracker.get_cell("cell_0")
+    assert cell_status is not None
+    assert cell_status.status == CellExecutionStatus.ERROR
+    assert 'ZeroDivisionError' in cell_status.error_info.get('ename', '')
 
     # Clean up
     message_handler.cancel_tasks()
@@ -210,8 +249,11 @@ async def test_cell_executor_bash(tmp_path):
     message_handler = MessageHandler(kernel_client, run)
     await message_handler.start()
 
+    # Create cell tracker
+    cell_tracker = KernelCellTracker()
+
     # Create cell executor
-    cell_executor = CellExecutor(message_handler, BashScriptHandler(), run)
+    cell_executor = CellExecutor(message_handler, BashScriptHandler(), cell_tracker, run)
 
     # Execute cell
     should_continue = await cell_executor.execute_cell(cell, 0, 1, [])
@@ -220,6 +262,14 @@ async def test_cell_executor_bash(tmp_path):
     # Check output
     assert len(chunks) > 0
     assert any('Hello from bash!' in str(chunk['msg']['content']) for chunk in chunks)
+
+    # Check cell tracker
+    assert len(cell_tracker.cells) == 1
+    cell_status = cell_tracker.get_cell("cell_0")
+    assert cell_status is not None
+    assert cell_status.status == CellExecutionStatus.FINISHED
+    assert len(cell_status.sent_messages) == 1
+    assert len(cell_status.received_messages) > 0
 
     # Clean up
     message_handler.cancel_tasks()
