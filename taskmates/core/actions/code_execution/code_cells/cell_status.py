@@ -41,10 +41,8 @@ class KernelCellTracker:
     current_cell_id: str | None = None
 
     def add_cell(self, cell_id: str, source: str) -> None:
-        jupyter_notebook_logger.debug(f"Adding cell {cell_id} to tracker")
         self.cells[cell_id] = CellStatus(cell_id=cell_id, source=source)
         self.current_cell_id = cell_id
-        jupyter_notebook_logger.debug(f"Tracker now has {len(self.cells)} cells")
 
     def get_cell(self, cell_id: str) -> CellStatus | None:
         return self.cells.get(cell_id)

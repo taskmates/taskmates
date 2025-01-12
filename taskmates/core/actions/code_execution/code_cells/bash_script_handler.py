@@ -27,8 +27,6 @@ class BashScriptHandler:
 
         # Execute the script and clean up
         source = f"!bash {temp_path}"
-        jupyter_notebook_logger.debug(f"Converted bash cell to: {source}")
-
         return source
 
 

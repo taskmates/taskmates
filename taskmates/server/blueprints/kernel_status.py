@@ -13,16 +13,11 @@ async def get_kernel_status():
     kernel_manager = get_kernel_manager()
     status = {}
 
-    jupyter_notebook_logger.debug(f"Total kernels: {len(kernel_manager._kernel_pool)}")
-    jupyter_notebook_logger.debug(f"Total cell trackers: {len(kernel_manager._cell_trackers)}")
-    jupyter_notebook_logger.debug(f"Cell tracker keys: {list(kernel_manager._cell_trackers.keys())}")
+    jupyter_notebook_logger.debug(f"Kernels: {len(kernel_manager._kernel_pool)}, Cell trackers: {len(kernel_manager._cell_trackers)}")
 
     for key, kernel_manager_instance in kernel_manager._kernel_pool.items():
         cwd, markdown_path, env_hash = key
         is_alive = await kernel_manager_instance.is_alive()
-
-        jupyter_notebook_logger.debug(f"Processing kernel with key: {key}")
-        jupyter_notebook_logger.debug(f"CWD: {cwd}, Markdown path: {markdown_path}, Env hash: {env_hash}")
 
         # Get the kernel client if it exists
         kernel_client = kernel_manager._client_pool.get(kernel_manager_instance)
@@ -30,9 +25,6 @@ async def get_kernel_status():
 
         # Get the cell tracker if it exists
         cell_tracker = kernel_manager._cell_trackers.get(key)
-        jupyter_notebook_logger.debug(f"Cell tracker found: {cell_tracker is not None}")
-        if cell_tracker:
-            jupyter_notebook_logger.debug(f"Cell tracker cells: {cell_tracker.cells}")
 
         status[str(key)] = {
             'cwd': cwd,

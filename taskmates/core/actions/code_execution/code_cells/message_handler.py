@@ -38,10 +38,7 @@ class MessageHandler:
         while True:
             try:
                 msg = await self.kernel_client.get_shell_msg(timeout=0.1)
-                jupyter_notebook_logger.debug(f"Shell message received: {msg['msg_type']}")
-                jupyter_notebook_logger.debug(f"Shell message parent_header: {msg['parent_header']}")
-                jupyter_notebook_logger.debug(f"Shell message content: {msg['content']}")
-                jupyter_notebook_logger.debug(f"Shell message metadata: {msg['metadata']}")
+                jupyter_notebook_logger.debug(f"Shell message: type={msg['msg_type']}, msg_id={msg['parent_header'].get('msg_id')}")
                 await self.msg_queue.put(msg)
             except Empty:
                 pass
@@ -51,10 +48,7 @@ class MessageHandler:
         while True:
             try:
                 msg = await self.kernel_client.get_iopub_msg(timeout=0.1)
-                jupyter_notebook_logger.debug(f"IOPub message received: {msg['msg_type']}")
-                jupyter_notebook_logger.debug(f"IOPub message parent_header: {msg['parent_header']}")
-                jupyter_notebook_logger.debug(f"IOPub message content: {msg['content']}")
-                jupyter_notebook_logger.debug(f"IOPub message metadata: {msg['metadata']}")
+                jupyter_notebook_logger.debug(f"IOPub message: type={msg['msg_type']}, msg_id={msg['parent_header'].get('msg_id')}")
                 await self.msg_queue.put(msg)
             except Empty:
                 pass
@@ -64,10 +58,7 @@ class MessageHandler:
         while True:
             try:
                 msg = await self.kernel_client.get_control_msg(timeout=0.1)
-                jupyter_notebook_logger.debug(f"Control message received: {msg['msg_type']}")
-                jupyter_notebook_logger.debug(f"Control message parent_header: {msg['parent_header']}")
-                jupyter_notebook_logger.debug(f"Control message content: {msg['content']}")
-                jupyter_notebook_logger.debug(f"Control message metadata: {msg['metadata']}")
+                jupyter_notebook_logger.debug(f"Control message: type={msg['msg_type']}, msg_id={msg['parent_header'].get('msg_id')}")
 
                 if msg['msg_type'] == 'shutdown_reply':
                     jupyter_notebook_logger.debug("Kernel shutdown acknowledged")

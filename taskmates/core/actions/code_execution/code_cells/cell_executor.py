@@ -29,20 +29,16 @@ class CellExecutor:
 
         source: str = cell.source
         jupyter_notebook_logger.debug(f"Executing cell {cell_index + 1}/{total_cells}")
-        jupyter_notebook_logger.debug(f"Cell source:\n{source}")
 
         source = self.bash_script_handler.convert_if_bash(source)
 
         # Create a unique cell ID and register it with the tracker
         cell_id = f"cell_{cell_index}"
-        jupyter_notebook_logger.debug(f"Adding cell {cell_id} to tracker")
         self.cell_tracker.add_cell(cell_id, source)
-        jupyter_notebook_logger.debug(f"Cell tracker now has {len(self.cell_tracker.cells)} cells")
 
         # Record the execution request
         msg_id = self.message_handler.kernel_client.execute(source)
-        jupyter_notebook_logger.debug(f"Execution request sent with msg_id: {msg_id}")
-        jupyter_notebook_logger.debug(f"Will wait for messages with parent_header.msg_id = {msg_id}")
+        jupyter_notebook_logger.debug(f"Cell execution started: msg_id={msg_id}")
 
         # Record the sent message
         self.cell_tracker.record_sent_message(cell_id, {
@@ -63,11 +59,14 @@ class CellExecutor:
                 f"Processing message: {msg['msg_type']}, msg_id={msg['parent_header'].get('msg_id')}")
             jupyter_notebook_logger.debug(f"Message content: {msg}")
 
-            if msg['parent_header'].get('msg_id') in setup_msgs and msg["msg_type"] != "error":
+            msg_type = msg['msg_type']
+            parent_msg_id = msg['parent_header'].get('msg_id')
+
+            if parent_msg_id in setup_msgs and msg_type != "error":
                 jupyter_notebook_logger.debug("Skipping setup message")
                 continue
 
-            if msg['parent_header'].get('msg_id') != msg_id and msg["msg_type"] != "error":
+            if parent_msg_id != msg_id and msg_type != "error":
                 jupyter_notebook_logger.debug(
                     f"Skipping message from different cell. Got {msg['parent_header'].get('msg_id')}, expecting {msg_id}")
                 continue
@@ -75,24 +74,23 @@ class CellExecutor:
             # Record received message
             self.cell_tracker.record_received_message(cell_id, msg)
 
-            if msg['msg_type'] == 'error':
-                jupyter_notebook_logger.error(f"Error in cell execution: {msg['content']}")
+            if msg_type == 'error':
+                jupyter_notebook_logger.error(f"Cell execution error: {msg['content'].get('ename')}: {msg['content'].get('evalue')}")
                 self.message_handler.cell_finished = True
                 self.message_handler.notebook_finished = True
 
-            if msg['msg_type'] == 'execute_reply':
+            if msg_type == 'execute_reply':
                 jupyter_notebook_logger.debug("Cell execution completed")
                 self.message_handler.cell_finished = True
                 continue
 
-            if msg['msg_type'] not in ('stream', 'error', 'display_data', 'execute_result'):
+            if msg_type not in ('stream', 'error', 'display_data', 'execute_result'):
                 jupyter_notebook_logger.debug(f"Skipping message type: {msg['msg_type']}")
                 continue
 
             jupyter_notebook_logger.debug(f"Sending message to output streams: {msg['msg_type']}")
-            jupyter_notebook_logger.debug(f"Message ID: {msg['parent_header'].get('msg_id')}")
             await self.output_streams.code_cell_output.send_async({
-                "msg_id": msg['parent_header'].get('msg_id'),
+                "msg_id": parent_msg_id,
                 "cell_source": source,
                 "msg": msg
             })

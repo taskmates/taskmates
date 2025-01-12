@@ -25,8 +25,6 @@ class MarkdownExecutor:
 
     async def setup(self, content: str, cwd: str = None, markdown_path: str = None, env: Mapping = None) -> Tuple[List[str], List[NotebookNode]]:
         """Sets up all components needed for execution."""
-        jupyter_notebook_logger.debug(f"Setting up components for markdown_path={markdown_path}, cwd={cwd}")
-
         kernel_instance, kernel_client, setup_msgs = await self.kernel_manager.get_or_start_kernel(cwd, markdown_path, env)
 
         self.message_handler = MessageHandler(kernel_client, self.run)
@@ -34,19 +32,16 @@ class MarkdownExecutor:
 
         # Get or create cell tracker for this kernel
         key = (cwd, markdown_path, self.kernel_manager._get_env_hash(env))
-        jupyter_notebook_logger.debug(f"Getting cell tracker for key: {key}")
         if key not in self.kernel_manager._cell_trackers:
-            jupyter_notebook_logger.debug("Creating new cell tracker")
             self.kernel_manager._cell_trackers[key] = KernelCellTracker()
         cell_tracker = self.kernel_manager._cell_trackers[key]
-        jupyter_notebook_logger.debug(f"Cell tracker has {len(cell_tracker.cells)} cells")
 
         self.signal_handler = SignalHandler(kernel_instance, self.message_handler, self.run)
         self.cell_executor = CellExecutor(self.message_handler, self.bash_script_handler, cell_tracker, self.run)
 
         # Parse notebook cells
         notebook, code_cells = parse_notebook(content)
-        jupyter_notebook_logger.debug(f"Parsed {len(code_cells)} code cells")
+        jupyter_notebook_logger.debug(f"Executing {len(code_cells)} cells in {markdown_path}")
 
         return setup_msgs, code_cells
 
