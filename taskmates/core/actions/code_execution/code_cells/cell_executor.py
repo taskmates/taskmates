@@ -37,7 +37,7 @@ class CellExecutor:
         self.cell_tracker.add_cell(cell_id, source)
 
         # Record the execution request
-        msg_id = self.message_handler.kernel_client.execute(source)
+        msg_id = self.message_handler.kernel_client.execute(source, store_history=False)
         jupyter_notebook_logger.debug(f"Cell execution started: msg_id={msg_id}")
 
         # Record the sent message

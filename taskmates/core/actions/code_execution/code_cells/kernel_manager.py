@@ -1,6 +1,8 @@
 from typing import Mapping, Tuple, List
 
 from jupyter_client import AsyncKernelManager, AsyncKernelClient
+
+from taskmates.core.actions.code_execution.code_cells.cell_status import KernelCellTracker
 from taskmates.core.actions.code_execution.code_cells.jupyter_notebook_logger import jupyter_notebook_logger
 from taskmates.lib.root_path.root_path import root_path
 
@@ -29,7 +31,7 @@ class KernelManager:
         return str(hash(tuple(env_items)))
 
     async def get_or_start_kernel(self, cwd: str | None, markdown_path: str | None, env: Mapping | None = None) -> \
-    Tuple[AsyncKernelManager, AsyncKernelClient, List[str]]:
+            Tuple[AsyncKernelManager, AsyncKernelClient, List[str]]:
         ignored = []
         # Get or create a kernel manager for the given path
         env_hash = self._get_env_hash(env)
@@ -37,7 +39,6 @@ class KernelManager:
         if key in self._kernel_pool and (await self._kernel_pool[key].is_alive()):
             kernel_manager = self._kernel_pool[key]
             jupyter_notebook_logger.debug(f"Reusing kernel {kernel_manager.kernel_id}")
-            is_new_kernel = False
             kernel_client = self._client_pool[kernel_manager]
         else:
             jupyter_notebook_logger.debug(f"Starting new kernel for {key}")
@@ -64,9 +65,9 @@ class KernelManager:
             if is_new_kernel:
                 jupyter_notebook_logger.debug("Setting up new kernel")
                 package_path = root_path()
-                setup_msg_1 = kernel_client.execute(f"import sys; sys.path.append('{package_path}')")
-                setup_msg_2 = kernel_client.execute("%load_ext taskmates.magics.file_editing_magics")
-                setup_msg_3 = kernel_client.execute("%matplotlib inline")
+                setup_msg_1 = kernel_client.execute(f"import sys; sys.path.append('{package_path}')", silent=True)
+                setup_msg_2 = kernel_client.execute("%load_ext taskmates.magics.file_editing_magics", silent=True)
+                setup_msg_3 = kernel_client.execute("%matplotlib inline", silent=True)
                 ignored = [setup_msg_1, setup_msg_2, setup_msg_3]
                 jupyter_notebook_logger.debug(f"Setup complete. Ignored message IDs: {ignored}")
 

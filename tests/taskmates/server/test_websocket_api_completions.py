@@ -345,7 +345,6 @@ async def test_interrupt_code_cell(app, tmp_path):
     
     """)
 
-    ignored = 3
     expected_response = ('###### Cell Output: stdout [cell_0]\n'
                          '\n'
                          '<pre>\n'
@@ -357,7 +356,7 @@ async def test_interrupt_code_cell(app, tmp_path):
                          '<pre>\n'
                          '---------------------------------------------------------------------------\n'
                          'KeyboardInterrupt                         Traceback (most recent call last)\n'
-                         f'Cell In[{ignored + 1}], line 3\n'
+                         f'Cell In[1], line 3\n'
                          '      1 import time\n'
                          '      2 print(2)\n'
                          '----&gt; 3 time.sleep(60)\n'

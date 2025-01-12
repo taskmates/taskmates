@@ -1,14 +1,15 @@
 from typing import Mapping, Tuple, List
+
 from nbformat import NotebookNode
 
+from taskmates.core.actions.code_execution.code_cells.bash_script_handler import BashScriptHandler
+from taskmates.core.actions.code_execution.code_cells.cell_executor import CellExecutor
+from taskmates.core.actions.code_execution.code_cells.cell_status import KernelCellTracker
 from taskmates.core.actions.code_execution.code_cells.jupyter_notebook_logger import jupyter_notebook_logger
 from taskmates.core.actions.code_execution.code_cells.kernel_manager import KernelManager, get_kernel_manager
 from taskmates.core.actions.code_execution.code_cells.message_handler import MessageHandler
-from taskmates.core.actions.code_execution.code_cells.bash_script_handler import BashScriptHandler
-from taskmates.core.actions.code_execution.code_cells.cell_executor import CellExecutor
-from taskmates.core.actions.code_execution.code_cells.signal_handler import SignalHandler
 from taskmates.core.actions.code_execution.code_cells.parse_notebook import parse_notebook
-from taskmates.core.actions.code_execution.code_cells.cell_status import KernelCellTracker
+from taskmates.core.actions.code_execution.code_cells.signal_handler import SignalHandler
 from taskmates.workflow_engine.run import Run
 
 
@@ -19,13 +20,15 @@ class MarkdownExecutor:
         self.run = run
         self.kernel_manager = kernel_manager or get_kernel_manager()
         self.bash_script_handler = bash_script_handler or BashScriptHandler()
-        self.message_handler = None
-        self.signal_handler = None
-        self.cell_executor = None
+        self.message_handler: MessageHandler | None = None
+        self.signal_handler: SignalHandler | None = None
+        self.cell_executor: CellExecutor | None = None
 
-    async def setup(self, content: str, cwd: str = None, markdown_path: str = None, env: Mapping = None) -> Tuple[List[str], List[NotebookNode]]:
+    async def setup(self, content: str, cwd: str = None, markdown_path: str = None, env: Mapping = None) -> Tuple[
+        List[str], List[NotebookNode]]:
         """Sets up all components needed for execution."""
-        kernel_instance, kernel_client, setup_msgs = await self.kernel_manager.get_or_start_kernel(cwd, markdown_path, env)
+        kernel_instance, kernel_client, setup_msgs = await self.kernel_manager.get_or_start_kernel(cwd, markdown_path,
+                                                                                                   env)
 
         self.message_handler = MessageHandler(kernel_client, self.run)
         await self.message_handler.start()
@@ -62,7 +65,8 @@ class MarkdownExecutor:
 
             try:
                 for cell_index, cell in enumerate(code_cells):
-                    should_continue = await self.cell_executor.execute_cell(cell, cell_index, len(code_cells), setup_msgs)
+                    should_continue = await self.cell_executor.execute_cell(cell, cell_index, len(code_cells),
+                                                                            setup_msgs)
                     if not should_continue:
                         break
             finally:
@@ -161,8 +165,8 @@ async def test_markdown_executor_interrupt(tmp_path: Path):
         while True:
             await asyncio.sleep(0.1)
             content = "".join([chunk['msg']['content']["text"]
-                             for chunk in chunks
-                             if chunk['msg']['msg_type'] == 'stream'])
+                               for chunk in chunks
+                               if chunk['msg']['msg_type'] == 'stream'])
             lines = content.split("\n")
             if len(lines) >= 2:
                 break
