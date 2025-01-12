@@ -20,6 +20,7 @@ from taskmates.workflow_engine.run import RUN, Run
 from taskmates.core.actions.code_execution.code_cells.kernel_manager import KernelManager
 from taskmates.core.actions.code_execution.code_cells.message_handler import MessageHandler
 from taskmates.core.actions.code_execution.code_cells.bash_script_handler import BashScriptHandler
+from taskmates.core.actions.code_execution.code_cells.cell_executor import CellExecutor
 
 kernel_manager = KernelManager()
 bash_script_handler = BashScriptHandler()
@@ -68,64 +69,11 @@ async def execute_markdown_on_local_kernel(content, markdown_path: str = None, c
             control.kill.connected_to(kill_handler):
 
         try:
+            cell_executor = CellExecutor(message_handler, bash_script_handler, run)
             for cell_index, cell in enumerate(code_cells):
-                if message_handler.notebook_finished:
+                should_continue = await cell_executor.execute_cell(cell, cell_index, len(code_cells), setup_msgs)
+                if not should_continue:
                     break
-
-                message_handler.reset_cell()
-
-                source: str = cell.source
-                jupyter_notebook_logger.debug(f"Executing cell {cell_index + 1}/{len(code_cells)}")
-                jupyter_notebook_logger.debug(f"Cell source:\n{source}")
-
-                source = bash_script_handler.convert_if_bash(source)
-
-                msg_id = kernel_client.execute(source)
-                jupyter_notebook_logger.debug(f"Execution request sent with msg_id: {msg_id}")
-                jupyter_notebook_logger.debug(f"Will wait for messages with parent_header.msg_id = {msg_id}")
-
-                while True:
-                    if message_handler.cell_finished:
-                        break
-                    msg = await message_handler.get_message()
-                    if msg is None:
-                        jupyter_notebook_logger.debug("Received None message")
-                        continue
-
-                    jupyter_notebook_logger.debug(
-                        f"Processing message: {msg['msg_type']}, msg_id={msg['parent_header'].get('msg_id')}")
-                    jupyter_notebook_logger.debug(f"Message content: {msg}")
-
-                    if msg['parent_header'].get('msg_id') in setup_msgs and msg["msg_type"] != "error":
-                        jupyter_notebook_logger.debug("Skipping setup message")
-                        continue
-
-                    if msg['parent_header'].get('msg_id') != msg_id and msg["msg_type"] != "error":
-                        jupyter_notebook_logger.debug(
-                            f"Skipping message from different cell. Got {msg['parent_header'].get('msg_id')}, expecting {msg_id}")
-                        continue
-
-                    if msg['msg_type'] == 'error':
-                        jupyter_notebook_logger.error(f"Error in cell execution: {msg['content']}")
-                        message_handler.cell_finished = True
-                        message_handler.notebook_finished = True
-
-                    if msg['msg_type'] == 'execute_reply':
-                        jupyter_notebook_logger.debug("Cell execution completed")
-                        message_handler.cell_finished = True
-                        continue
-
-                    if msg['msg_type'] not in ('stream', 'error', 'display_data', 'execute_result'):
-                        jupyter_notebook_logger.debug(f"Skipping message type: {msg['msg_type']}")
-                        continue
-
-                    jupyter_notebook_logger.debug(f"Sending message to output streams: {msg['msg_type']}")
-                    jupyter_notebook_logger.debug(f"Message ID: {msg['parent_header'].get('msg_id')}")
-                    await output_streams.code_cell_output.send_async({
-                        "msg_id": msg['parent_header'].get('msg_id'),
-                        "cell_source": source,
-                        "msg": msg
-                    })
         finally:
             jupyter_notebook_logger.debug("Cleaning up kernel resources: started")
             message_handler.cancel_tasks()
