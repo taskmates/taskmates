@@ -173,7 +173,7 @@ class MarkdownComplete(Workflow):
             markdown_chat=markdown_chat,
             markdown_path=(run.context["runner_environment"]["markdown_path"]),
             taskmates_dirs=(run.context["runner_config"]["taskmates_dirs"]),
-            inputs=run.objective.inputs)
+            inputs=run.objective.key['inputs'])
         return chat
 
     async def end_markdown_completion(self, chat: Chat, contexts: RunContext, run: Run):

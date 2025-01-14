@@ -13,7 +13,7 @@ class MarkdownChatDaemon(Daemon):
         run = RUN.get()
         connections = []
 
-        incoming_markdown_chat = run.objective.inputs.get("markdown_chat")
+        incoming_markdown_chat = run.objective.key['inputs'].get("markdown_chat")
         if incoming_markdown_chat is not None:
             run.state["markdown_chat"].append_to_format("full", incoming_markdown_chat)
 

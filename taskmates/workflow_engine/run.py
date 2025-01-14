@@ -2,8 +2,7 @@ import asyncio
 import contextlib
 import contextvars
 import importlib
-from collections.abc import Mapping
-from typing import Any, Dict, Optional, List, Union, Self, Iterator
+from typing import Any, Dict, Optional, List, Union, Self, Iterator, TypeVar, cast
 
 import pytest
 from blinker import Namespace, Signal
@@ -26,39 +25,78 @@ from taskmates.workflows.contexts.run_context import RunContext, default_taskmat
 
 Signal.set_class = OrderedSet
 
+T = TypeVar('T')
 
 @typechecked
-class ObjectiveKey(BaseModel, Mapping):
-    model_config = ConfigDict(frozen=True)  # Make it immutable for hashing
+class ObjectiveKey(Dict[str, Any]):
+    """A dictionary-based key for objectives that maintains immutability and proper hashing."""
 
-    outcome: Optional[str] = None
-    inputs: Dict[str, Any] = Field(default_factory=dict)  # Remove Optional, always return a dict
-    requesting_run: Optional['Run'] = Field(default=None, exclude=True)
+    def __init__(self, outcome: Optional[str] = None, inputs: Optional[Dict[str, Any]] = None,
+                 requesting_run: Optional['Run'] = None) -> None:
+        super().__init__()
+        self['outcome'] = outcome
+        self['inputs'] = inputs or {}
+        self['requesting_run'] = requesting_run
+        # Make the dictionary immutable after initialization
+        self._hash = hash((self['outcome'], str(self['inputs'])))
 
-    def __getitem__(self, key: str) -> Any:
-        return getattr(self, key)
+    def __setitem__(self, key: str, value: Any) -> None:
+        if hasattr(self, '_hash'):
+            raise TypeError("ObjectiveKey is immutable")
+        super().__setitem__(key, value)
 
-    def __iter__(self) -> Iterator[str]:
-        return iter(['outcome', 'inputs', 'requesting_run'])
+    def __delitem__(self, key: str) -> None:
+        raise TypeError("ObjectiveKey is immutable")
 
-    def __len__(self) -> int:
-        return 3
+    def clear(self) -> None:
+        raise TypeError("ObjectiveKey is immutable")
+
+    def pop(self, key: str, default: Any = None) -> Any:
+        raise TypeError("ObjectiveKey is immutable")
+
+    def popitem(self) -> Any:
+        raise TypeError("ObjectiveKey is immutable")
+
+    def setdefault(self, key: str, default: Any = None) -> Any:
+        raise TypeError("ObjectiveKey is immutable")
+
+    def update(self, other: Any = None, **kwargs: Any) -> None:
+        raise TypeError("ObjectiveKey is immutable")
 
     def __hash__(self) -> int:
-        return hash((self.outcome, str(self.inputs)))
+        return self._hash
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, ObjectiveKey):
             return NotImplemented
-        return (self.outcome == other.outcome and
-                self.inputs == other.inputs)
+        return (self['outcome'] == other['outcome'] and
+                self['inputs'] == other['inputs'])
+
+    def model_dump(self) -> Dict[str, Any]:
+        """Support Pydantic serialization."""
+        return {
+            'outcome': self['outcome'],
+            'inputs': self['inputs'],
+            'requesting_run': self['requesting_run']
+        }
+
+    @classmethod
+    def model_validate(cls, obj: Dict[str, Any]) -> 'ObjectiveKey':
+        """Support Pydantic deserialization."""
+        return cls(
+            outcome=obj.get('outcome'),
+            inputs=obj.get('inputs', {}),
+            requesting_run=obj.get('requesting_run')
+        )
+
+    def __repr__(self) -> str:
+        return f"ObjectiveKey(outcome={self['outcome']!r}, inputs={self['inputs']!r})"
 
 
 @typechecked
 class Objective(BaseModel):
     model_config = ConfigDict(
         arbitrary_types_allowed=True,
-        # extra='allow',  # Allow extra fields that aren't serialized
         validate_assignment=True,
         from_attributes=True
     )
@@ -68,17 +106,16 @@ class Objective(BaseModel):
     result_future: Optional[asyncio.Future] = Field(default=None, exclude=True)
     sub_objectives: Dict[ObjectiveKey, 'Objective'] = Field(default_factory=dict, exclude=True)
 
-    @property
-    def outcome(self) -> Optional[str]:
-        return self.key.outcome
-
-    @property
-    def inputs(self) -> Dict[str, Any]:
-        return self.key.inputs
-
-    @property
-    def requesting_run(self) -> Optional['Run']:
-        return self.key.requesting_run
+    @field_validator('key', mode='before')
+    @classmethod
+    def validate_key(cls, value: Any) -> ObjectiveKey:
+        if isinstance(value, dict):
+            return ObjectiveKey(
+                outcome=value.get('outcome'),
+                inputs=value.get('inputs', {}),
+                requesting_run=value.get('requesting_run')
+            )
+        return value
 
     @model_validator(mode='before')
     @classmethod
@@ -90,7 +127,7 @@ class Objective(BaseModel):
     def get_or_create_sub_objective(self, outcome: str, args_key: Optional[Dict[str, Any]] = None) -> 'Objective':
         key = ObjectiveKey(outcome=outcome, inputs=args_key or {})
         if key not in self.sub_objectives:
-            sub_objective = Objective(key=ObjectiveKey(outcome=outcome, inputs=self.key.inputs))
+            sub_objective = Objective(key=ObjectiveKey(outcome=outcome, inputs=self.key['inputs']))
             sub_objective.result_future = asyncio.Future()
             self.sub_objectives[key] = sub_objective
         return self.sub_objectives[key]
@@ -120,7 +157,7 @@ class Objective(BaseModel):
         )
 
     def __repr__(self):
-        return f"<{self.__class__.__name__}: {self.key.outcome}>"
+        return f"<{self.__class__.__name__}: {self.key['outcome']}>"
 
 
 @typechecked
@@ -140,14 +177,14 @@ class Run(BaseModel):
     namespace: Namespace = Field(default_factory=Namespace, exclude=True)
     exit_stack: contextlib.ExitStack = Field(default_factory=contextlib.ExitStack, exclude=True)
 
-    @model_validator(mode='before')  # type: ignore[no-untyped-decorator]
+    @model_validator(mode='before')
     @classmethod
     def convert_daemons(cls, data: Any) -> Any:
         if isinstance(data, dict) and 'daemons' in data and not isinstance(data['daemons'], dict):
             data['daemons'] = to_daemons_dict(data['daemons'])
         return data
 
-    @field_serializer('signals')  # type: ignore[no-untyped-decorator]
+    @field_serializer('signals')
     def serialize_signals(self, signals: Dict[str, BaseSignals]) -> Dict[str, List[str]]:
         """Serialize signals by storing their names"""
         return {
@@ -156,7 +193,7 @@ class Run(BaseModel):
             if isinstance(signal_group, BaseSignals)
         }
 
-    @field_validator('signals', mode='before')  # type: ignore[no-untyped-decorator]
+    @field_validator('signals', mode='before')
     @classmethod
     def deserialize_signals(cls, value: Any) -> Dict[str, BaseSignals]:
         """Reconstruct signals from their names"""
@@ -170,7 +207,7 @@ class Run(BaseModel):
             return signals
         return value
 
-    @field_serializer('daemons')  # type: ignore[no-untyped-decorator]
+    @field_serializer('daemons')
     def serialize_daemons(self, daemons: Dict[str, Daemon]) -> Dict[str, str]:
         """Serialize daemons by storing their class paths"""
         return {
@@ -178,7 +215,7 @@ class Run(BaseModel):
             for name, daemon in daemons.items()
         }
 
-    @field_validator('daemons', mode='before')  # type: ignore[misc, no-untyped-decorator]
+    @field_validator('daemons', mode='before')
     @classmethod
     def deserialize_daemons(cls, value: Any) -> Dict[str, Daemon]:
         """Reconstruct daemons from their class paths"""
@@ -203,16 +240,16 @@ class Run(BaseModel):
 
         return self
 
-    def __exit__(self, exc_type: Optional[type], exc_val: Optional[BaseException], exc_tb: Optional[Any]) -> None:
+    def __exit__(self, exc_type: Optional[type], exc_val: Optional[Exception], exc_tb: Optional[Any]) -> None:
         self.exit_stack.close()
 
     def __repr__(self) -> str:
-        return f"{self.__class__.__name__}(outcome={self.objective.key.outcome})"
+        return f"{self.__class__.__name__}(outcome={self.objective.key['outcome']})"
 
     async def run_steps(self, steps: Any) -> Any:
         self.objective.runs.append(self)
 
-        runner = Runner(func=steps, inputs=self.objective.key.inputs)
+        runner = Runner(func=steps, inputs=self.objective.key['inputs'])
 
         with tracer().start_as_current_span(
                 format_span_name(steps, self.objective),
@@ -286,11 +323,24 @@ def test_objective_key():
     d = {key1: "value1", key3: "value3"}
     assert d[key2] == "value1"  # key2 should hash to the same value as key1
 
-    # Test mapping interface
+    # Test dictionary interface
     assert key1["outcome"] == "test"
     assert key1["inputs"] == {"key": "value"}
     assert len(key1) == 3
     assert set(key1.keys()) == {"outcome", "inputs", "requesting_run"}
+
+    # Test immutability
+    with pytest.raises(TypeError):
+        key1["outcome"] = "new_test"
+
+    with pytest.raises(TypeError):
+        key1.clear()
+
+    with pytest.raises(TypeError):
+        key1.pop("outcome")
+
+    with pytest.raises(TypeError):
+        key1.update({"outcome": "new_test"})
 
 
 def test_objective_with_key():
@@ -298,19 +348,19 @@ def test_objective_with_key():
     key = ObjectiveKey(outcome="test", inputs={"key": "value"})
     obj = Objective(key=key)
 
-    assert obj.key is key  # Should be the same instance
-    assert obj.key.outcome == "test"
-    assert obj.key.inputs == {"key": "value"}
+    # Test that the key values are preserved
+    assert obj.key == key  # Check equality instead of identity
+    assert obj.key['outcome'] == "test"
+    assert obj.key['inputs'] == {"key": "value"}
 
     # Test sub_objectives with keys
     sub_key = ObjectiveKey(outcome="sub_test", inputs={"arg": "value"})
-    sub_obj = obj.get_or_create_sub_objective(sub_key.outcome, sub_key.inputs)
+    sub_obj = obj.get_or_create_sub_objective(sub_key['outcome'], sub_key['inputs'])
     assert isinstance(sub_obj, Objective)
 
     # Test that the same key returns the same sub_objective
-    sub_obj2 = obj.get_or_create_sub_objective(sub_key.outcome, sub_key.inputs)
-    assert sub_obj2 is sub_obj
-
+    sub_obj2 = obj.get_or_create_sub_objective(sub_key['outcome'], sub_key['inputs'])
+    assert sub_obj2 is sub_obj  # This should still be the same instance
 
 def test_run_serialization(context: RunContext) -> None:
     # Create a simple objective with ObjectiveKey
@@ -422,17 +472,17 @@ def test_run_serialization_with_multiple_signal_groups(context: RunContext) -> N
 def test_objective_initialization():
     # Test initialization with ObjectiveKey
     obj = Objective(key=ObjectiveKey(outcome="test", inputs={"key": "value"}))
-    assert obj.key.outcome == "test"
-    assert obj.key.inputs == {"key": "value"}
+    assert obj.key['outcome'] == "test"
+    assert obj.key['inputs'] == {"key": "value"}
     assert obj.runs == []
-    assert obj.key.requesting_run is None
+    assert obj.key['requesting_run'] is None
 
     # Test with default values
     obj = Objective(key=ObjectiveKey())
-    assert obj.key.outcome is None
-    assert obj.key.inputs == {}
+    assert obj.key['outcome'] is None
+    assert obj.key['inputs'] == {}
     assert obj.runs == []
-    assert obj.key.requesting_run is None
+    assert obj.key['requesting_run'] is None
 
 
 async def test_objective_future_results():
