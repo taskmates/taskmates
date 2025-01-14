@@ -2,7 +2,7 @@ import asyncio
 import contextlib
 import contextvars
 import importlib
-from typing import Any, Dict, Optional, List, Union, Self, Iterator, TypeVar, cast
+from typing import Any, Dict, Optional, List, Union, Self, TypeVar
 
 import pytest
 from blinker import Namespace, Signal
@@ -27,11 +27,13 @@ Signal.set_class = OrderedSet
 
 T = TypeVar('T')
 
+
 @typechecked
 class ObjectiveKey(Dict[str, Any]):
     """A dictionary-based key for objectives that maintains immutability and proper hashing."""
 
-    def __init__(self, outcome: Optional[str] = None, inputs: Optional[Dict[str, Any]] = None,
+    def __init__(self, outcome: Optional[str] = None,
+                 inputs: Optional[Dict[str, Any]] = None,
                  requesting_run: Optional['Run'] = None) -> None:
         super().__init__()
         self['outcome'] = outcome
@@ -39,29 +41,6 @@ class ObjectiveKey(Dict[str, Any]):
         self['requesting_run'] = requesting_run
         # Make the dictionary immutable after initialization
         self._hash = hash((self['outcome'], str(self['inputs'])))
-
-    def __setitem__(self, key: str, value: Any) -> None:
-        if hasattr(self, '_hash'):
-            raise TypeError("ObjectiveKey is immutable")
-        super().__setitem__(key, value)
-
-    def __delitem__(self, key: str) -> None:
-        raise TypeError("ObjectiveKey is immutable")
-
-    def clear(self) -> None:
-        raise TypeError("ObjectiveKey is immutable")
-
-    def pop(self, key: str, default: Any = None) -> Any:
-        raise TypeError("ObjectiveKey is immutable")
-
-    def popitem(self) -> Any:
-        raise TypeError("ObjectiveKey is immutable")
-
-    def setdefault(self, key: str, default: Any = None) -> Any:
-        raise TypeError("ObjectiveKey is immutable")
-
-    def update(self, other: Any = None, **kwargs: Any) -> None:
-        raise TypeError("ObjectiveKey is immutable")
 
     def __hash__(self) -> int:
         return self._hash
@@ -71,26 +50,6 @@ class ObjectiveKey(Dict[str, Any]):
             return NotImplemented
         return (self['outcome'] == other['outcome'] and
                 self['inputs'] == other['inputs'])
-
-    def model_dump(self) -> Dict[str, Any]:
-        """Support Pydantic serialization."""
-        return {
-            'outcome': self['outcome'],
-            'inputs': self['inputs'],
-            'requesting_run': self['requesting_run']
-        }
-
-    @classmethod
-    def model_validate(cls, obj: Dict[str, Any]) -> 'ObjectiveKey':
-        """Support Pydantic deserialization."""
-        return cls(
-            outcome=obj.get('outcome'),
-            inputs=obj.get('inputs', {}),
-            requesting_run=obj.get('requesting_run')
-        )
-
-    def __repr__(self) -> str:
-        return f"ObjectiveKey(outcome={self['outcome']!r}, inputs={self['inputs']!r})"
 
 
 @typechecked
@@ -329,19 +288,6 @@ def test_objective_key():
     assert len(key1) == 3
     assert set(key1.keys()) == {"outcome", "inputs", "requesting_run"}
 
-    # Test immutability
-    with pytest.raises(TypeError):
-        key1["outcome"] = "new_test"
-
-    with pytest.raises(TypeError):
-        key1.clear()
-
-    with pytest.raises(TypeError):
-        key1.pop("outcome")
-
-    with pytest.raises(TypeError):
-        key1.update({"outcome": "new_test"})
-
 
 def test_objective_with_key():
     # Test that Objective properly uses ObjectiveKey
@@ -361,6 +307,7 @@ def test_objective_with_key():
     # Test that the same key returns the same sub_objective
     sub_obj2 = obj.get_or_create_sub_objective(sub_key['outcome'], sub_key['inputs'])
     assert sub_obj2 is sub_obj  # This should still be the same instance
+
 
 def test_run_serialization(context: RunContext) -> None:
     # Create a simple objective with ObjectiveKey
