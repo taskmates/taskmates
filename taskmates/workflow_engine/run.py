@@ -39,7 +39,6 @@ class ObjectiveKey(Dict[str, Any]):
         self['outcome'] = outcome
         self['inputs'] = inputs or {}
         self['requesting_run'] = requesting_run
-        # Make the dictionary immutable after initialization
         self._hash = hash((self['outcome'], str(self['inputs'])))
 
     def __hash__(self) -> int:
@@ -60,6 +59,7 @@ class Objective(BaseModel):
         from_attributes=True
     )
 
+    of: Optional['Objective'] = None
     key: ObjectiveKey
     runs: List[Any] = Field(default_factory=list, exclude=True)  # exclude from serialization
     result_future: Optional[asyncio.Future] = Field(default=None, exclude=True)
@@ -83,21 +83,22 @@ class Objective(BaseModel):
             data['inputs'] = {}
         return data
 
-    def get_or_create_sub_objective(self, outcome: str, args_key: Optional[Dict[str, Any]] = None) -> 'Objective':
-        key = ObjectiveKey(outcome=outcome, inputs=args_key or {})
+    def get_or_create_sub_objective(self, outcome: str,
+                                    inputs: Optional[Dict[str, Any]] = None) -> 'Objective':
+        key = ObjectiveKey(outcome=outcome, inputs=inputs or {})
         if key not in self.sub_objectives:
-            sub_objective = Objective(key=ObjectiveKey(outcome=outcome, inputs=self.key['inputs']))
+            sub_objective = Objective(of=self, key=ObjectiveKey(outcome=outcome, inputs=self.key['inputs']))
             sub_objective.result_future = asyncio.Future()
             self.sub_objectives[key] = sub_objective
         return self.sub_objectives[key]
 
-    def set_future_result(self, outcome: str, args_key: Optional[Dict[str, Any]], result: Any) -> None:
-        sub_objective = self.get_or_create_sub_objective(outcome, args_key)
+    def set_future_result(self, outcome: str, inputs: Optional[Dict[str, Any]], result: Any) -> None:
+        sub_objective = self.get_or_create_sub_objective(outcome, inputs)
         if not sub_objective.result_future.done():
             sub_objective.result_future.set_result(result)
 
-    def get_future_result(self, outcome: str, args_key: Optional[Dict[str, Any]]) -> Any:
-        sub_objective = self.get_or_create_sub_objective(outcome, args_key)
+    def get_future_result(self, outcome: str, inputs: Optional[Dict[str, Any]]) -> Any:
+        sub_objective = self.get_or_create_sub_objective(outcome, inputs)
         if sub_objective.result_future.done():
             return sub_objective.result_future.result()
         return None

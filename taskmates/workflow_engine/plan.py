@@ -17,7 +17,7 @@ class Plan:
         return {}
 
     async def create_state(self) -> dict[str, Any]:
-        pass
+        return {}
 
     @abstractmethod
     async def steps(self, *args, **kwargs) -> Any:

@@ -21,12 +21,14 @@ def fulfills(outcome: str):
             if existing_result is not None:
                 return existing_result
 
-            # TODO: bind to current
-            sub_objective = Objective(key=ObjectiveKey(
-                outcome=outcome,
-                inputs={},  # TODO: review
-                requesting_run=current_run
-            ))
+            sub_objective = Objective(
+                of=current_objective,
+                key=ObjectiveKey(
+                    outcome=outcome,
+                    inputs={},  # TODO: review
+                    requesting_run=current_run
+                ))
+            current_objective.sub_objectives[sub_objective.key] = sub_objective
 
             sub_run = Run(objective=sub_objective,
                           context=current_run.context,
