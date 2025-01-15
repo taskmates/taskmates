@@ -61,9 +61,9 @@ class Objective(BaseModel):
 
     of: Optional['Objective'] = None
     key: ObjectiveKey
-    runs: List[Any] = Field(default_factory=list, exclude=True)  # exclude from serialization
-    result_future: Optional[asyncio.Future] = Field(default=None, exclude=True)
     sub_objectives: Dict[ObjectiveKey, 'Objective'] = Field(default_factory=dict, exclude=True)
+    result_future: Optional[asyncio.Future] = Field(default=None, exclude=True)
+    runs: List[Any] = Field(default_factory=list, exclude=True)  # exclude from serialization
 
     @field_validator('key', mode='before')
     @classmethod
