@@ -37,8 +37,8 @@ class ObjectiveKey(Dict[str, Any]):
                  requesting_run: Optional['Run'] = None) -> None:
         super().__init__()
         self['outcome'] = outcome
-        self['inputs'] = inputs or {}
-        self['requesting_run'] = requesting_run
+        self['inputs'] = inputs or {}  # args
+        self['requesting_run'] = requesting_run  # context
         self._hash = hash((self['outcome'], str(self['inputs'])))
 
     def __hash__(self) -> int:
