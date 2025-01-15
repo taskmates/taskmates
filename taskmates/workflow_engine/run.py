@@ -30,8 +30,6 @@ T = TypeVar('T')
 
 @typechecked
 class ObjectiveKey(Dict[str, Any]):
-    """A dictionary-based key for objectives that maintains immutability and proper hashing."""
-
     def __init__(self, outcome: Optional[str] = None,
                  inputs: Optional[Dict[str, Any]] = None,
                  requesting_run: Optional['Run'] = None) -> None:
