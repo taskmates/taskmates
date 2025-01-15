@@ -198,7 +198,7 @@ class Run(BaseModel):
 
         return self
 
-    def __exit__(self, exc_type: Optional[type], exc_val: Optional[Exception], exc_tb: Optional[Any]) -> None:
+    def __exit__(self, exc_type: Optional[type], exc_val: Optional[BaseException], exc_tb: Optional[Any]) -> None:
         self.exit_stack.close()
 
     def __repr__(self) -> str:
