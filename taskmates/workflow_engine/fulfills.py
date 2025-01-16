@@ -21,15 +21,7 @@ def fulfills(outcome: str):
             if existing_result is not None:
                 return existing_result
 
-            sub_objective = Objective(
-                of=current_objective,
-                key=ObjectiveKey(
-                    outcome=outcome,
-                    inputs={},  # TODO: review
-                    requesting_run=current_run
-                ))
-            current_objective.sub_objectives[sub_objective.key] = sub_objective
-
+            sub_objective = current_objective.get_or_create_sub_objective(outcome, args_key)
             sub_run = Run(objective=sub_objective,
                           context=current_run.context,
                           daemons={},

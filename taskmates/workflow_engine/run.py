@@ -118,30 +118,20 @@ class Objective(BaseModel):
         return f"<{self.__class__.__name__}: {self.key['outcome']}>"
 
     def _get_root(self) -> 'Objective':
-        """Find the root objective by traversing up the 'of' chain."""
         current = self
         while current.of is not None:
             current = current.of
         return current
 
     def dump_graph(self, indent: str = "") -> str:
-        """
-        Dumps the objective hierarchy as a tree-like text structure.
-        
-        Args:
-            indent: The current indentation string (used for recursion)
-            
-        Returns:
-            A string representation of the objective hierarchy
-        """
         # Start with the current node
         result = [f"{indent}└── {self.key['outcome'] or '<no outcome>'} {dict(self.key['inputs'])}"]
-        
+
         # Add all sub-objectives
         child_indent = indent + "    "
         for key, sub_obj in self.sub_objectives.items():
             result.append(sub_obj.dump_graph(child_indent))
-            
+
         return "\n".join(result)
 
     def print_graph(self) -> None:
@@ -590,17 +580,17 @@ async def test_run_future_fallback(test_context):
 def test_objective_dump_graph():
     # Create a root objective
     root = Objective(key=ObjectiveKey(outcome="root", inputs={"root_input": "value"}))
-    
+
     # Create some sub-objectives
     sub1 = root.get_or_create_sub_objective("child1", {"child1_input": "value1"})
     sub2 = root.get_or_create_sub_objective("child2", {"child2_input": "value2"})
-    
+
     # Create a sub-sub-objective
     sub_sub1 = sub1.get_or_create_sub_objective("grandchild1", {"grandchild1_input": "value3"})
-    
+
     # Get the graph representation
     graph = root.dump_graph()
-    
+
     # Verify the structure
     assert "root" in graph
     assert "child1" in graph
@@ -610,7 +600,7 @@ def test_objective_dump_graph():
     assert "{'child1_input': 'value1'}" in graph
     assert "{'child2_input': 'value2'}" in graph
     assert "{'grandchild1_input': 'value3'}" in graph
-    
+
     # Verify indentation structure
     lines = graph.split("\n")
     assert lines[0].startswith("└──")  # Root level
@@ -622,12 +612,12 @@ def test_objective_get_root():
     root = Objective(key=ObjectiveKey(outcome="root"))
     child = Objective(key=ObjectiveKey(outcome="child"), of=root)
     grandchild = Objective(key=ObjectiveKey(outcome="grandchild"), of=child)
-    
+
     # Test that _get_root returns the root objective from any level
     assert root._get_root() is root
     assert child._get_root() is root
     assert grandchild._get_root() is root
-    
+
     # Test with a single objective (is its own root)
     single = Objective(key=ObjectiveKey(outcome="single"))
     assert single._get_root() is single

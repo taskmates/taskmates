@@ -95,9 +95,11 @@ class MarkdownComplete(Workflow):
     async def steps(self, markdown_chat: str) -> str:
         logger.debug(f"Starting MarkdownComplete with markdown:\n{markdown_chat}")
 
-        markdown_complete_run = RUN.get()
-        context = markdown_complete_run.context
-        state = markdown_complete_run.state
+        current_run = RUN.get()
+        context = current_run.context
+        state = current_run.state
+
+        # current_run.objective.print_graph()
 
         while True:
             result = await self.get_completion(markdown_chat)
