@@ -125,7 +125,7 @@ class Objective(BaseModel):
 
     def dump_graph(self, indent: str = "") -> str:
         # Start with the current node
-        result = [f"{indent}└── {self.key['outcome'] or '<no outcome>'} {dict(self.key['inputs'])}"]
+        result = [f"{indent}└── {self.key['outcome'] or '<no outcome>'} {dict(self.key['inputs'])} {'' if self.result_future and self.result_future.done() else ' PENDING...'}"]
 
         # Add all sub-objectives
         child_indent = indent + "    "

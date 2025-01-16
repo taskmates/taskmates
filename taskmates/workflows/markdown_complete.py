@@ -113,20 +113,21 @@ class MarkdownComplete(Workflow):
 
     @fulfills(outcome="completion")
     async def get_completion(self, markdown_chat: str):
-        completion_run = RUN.get()
-        state = completion_run.state
+        current_run = RUN.get()
+        state = current_run.state
 
         state["current_step"].increment()
         chat = await self.get_markdown_chat(markdown_chat)
 
         next_completion = await self.compute_next_completion(chat)
         if not next_completion:
-            await self.end_markdown_completion(chat, completion_run.context, completion_run)
+            await self.end_markdown_completion(chat, current_run.context, current_run)
             return None
 
         step = MarkdownCompletionAction()
         await step.perform(chat, next_completion)
 
+        # current_run.objective.print_graph()
         await self.on_after_step()
 
         return state["markdown_chat"].get()["full"]
