@@ -19,7 +19,7 @@ def fulfills(outcome: str):
 
             fulfills_objective = parent_objective.get_or_create_sub_objective(outcome, args_key)
 
-            if fulfills_objective.result_future and fulfills_objective.result_future.done():
+            if fulfills_objective.result_future.done():
                 return fulfills_objective.result_future.result()
 
             fulfills_run = Run(objective=fulfills_objective,

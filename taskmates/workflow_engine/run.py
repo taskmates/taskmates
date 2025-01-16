@@ -60,8 +60,8 @@ class Objective(BaseModel):
     of: Optional['Objective'] = None
     key: ObjectiveKey
     sub_objectives: Dict[ObjectiveKey, 'Objective'] = Field(default_factory=dict, exclude=True)
-    result_future: Optional[asyncio.Future] = Field(default=None, exclude=True)
-    runs: List[Any] = Field(default_factory=list, exclude=True)  # exclude from serialization
+    result_future: asyncio.Future = Field(default_factory=asyncio.Future, exclude=True)
+    runs: List[Any] = Field(default_factory=list, exclude=True)
 
     @field_validator('key', mode='before')
     @classmethod
@@ -86,7 +86,6 @@ class Objective(BaseModel):
         key = ObjectiveKey(outcome=outcome, inputs=inputs or {})
         if key not in self.sub_objectives:
             sub_objective = Objective(of=self, key=ObjectiveKey(outcome=outcome, inputs=inputs or {}))
-            sub_objective.result_future = asyncio.Future()
             self.sub_objectives[key] = sub_objective
         return self.sub_objectives[key]
 
@@ -125,7 +124,8 @@ class Objective(BaseModel):
 
     def dump_graph(self, indent: str = "") -> str:
         # Start with the current node
-        result = [f"{indent}└── {self.key['outcome'] or '<no outcome>'} {dict(self.key['inputs'])} {'' if self.result_future and self.result_future.done() else ' PENDING...'}"]
+        result = [
+            f"{indent}└── {self.key['outcome'] or '<no outcome>'} {dict(self.key['inputs'])} {'' if self.result_future.done() else ' PENDING...'}"]
 
         # Add all sub-objectives
         child_indent = indent + "    "
