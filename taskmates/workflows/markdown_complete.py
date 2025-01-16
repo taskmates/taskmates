@@ -55,8 +55,7 @@ class MarkdownComplete(Workflow):
 
     @fulfills(outcome="signals")
     async def create_signals(self):
-        return {
-        }
+        return {}
 
     @fulfills(outcome="state")
     async def create_state(self) -> MarkdownCompleteState:
@@ -106,17 +105,20 @@ class MarkdownComplete(Workflow):
             if result is None:
                 break
             markdown_chat += result
+            await self.on_after_step()
 
         response_format = context["runner_config"]["format"]
         response = state["markdown_chat"].get()[response_format]
         return response
 
+    # TODO outcome hooks?
     @fulfills(outcome="completion")
     async def get_completion(self, markdown_chat: str):
         current_run = RUN.get()
-        state = current_run.state
 
+        state = current_run.state
         state["current_step"].increment()
+
         chat = await self.get_markdown_chat(markdown_chat)
 
         next_completion = await self.compute_next_completion(chat)
@@ -128,8 +130,8 @@ class MarkdownComplete(Workflow):
         await step.perform(chat, next_completion)
 
         # current_run.objective.print_graph()
-        await self.on_after_step()
 
+        # TODO: return a rich result here
         return state["markdown_chat"].get()["completion"]
 
     async def on_after_step(self):
