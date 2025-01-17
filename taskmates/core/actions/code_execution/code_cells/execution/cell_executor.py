@@ -1,9 +1,9 @@
 from nbformat import NotebookNode
 
-from taskmates.core.actions.code_execution.code_cells.bash_script_handler import BashScriptHandler
-from taskmates.core.actions.code_execution.code_cells.cell_status import KernelCellTracker, CellExecutionStatus
+from taskmates.core.actions.code_execution.code_cells.execution.bash_script_handler import BashScriptHandler
+from taskmates.core.actions.code_execution.code_cells.execution.cell_status import KernelCellTracker, CellExecutionStatus
 from taskmates.core.actions.code_execution.code_cells.jupyter_notebook_logger import jupyter_notebook_logger
-from taskmates.core.actions.code_execution.code_cells.message_handler import MessageHandler
+from taskmates.core.actions.code_execution.code_cells.execution.message_handler import MessageHandler
 from taskmates.workflow_engine.run import Run
 
 

@@ -6,7 +6,7 @@ import pytest_socket
 import tiktoken
 
 from taskmates.config.load_participant_config import load_cache
-from taskmates.core.actions.code_execution.code_cells.kernel_manager import get_kernel_manager
+from taskmates.core.actions.code_execution.code_cells.execution.kernel_manager import get_kernel_manager
 from taskmates.load_env_files import load_env_for_environment
 from taskmates.taskmates_runtime import TASKMATES_RUNTIME
 from taskmates.workflow_engine.default_environment_signals import default_environment_signals

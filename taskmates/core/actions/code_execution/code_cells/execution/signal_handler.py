@@ -1,9 +1,8 @@
 import signal
-from typing import Optional
 
 from jupyter_client import AsyncKernelManager
 from taskmates.core.actions.code_execution.code_cells.jupyter_notebook_logger import jupyter_notebook_logger
-from taskmates.core.actions.code_execution.code_cells.message_handler import MessageHandler
+from taskmates.core.actions.code_execution.code_cells.execution.message_handler import MessageHandler
 from taskmates.workflow_engine.run import Run
 
 

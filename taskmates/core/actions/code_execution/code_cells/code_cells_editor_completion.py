@@ -4,9 +4,8 @@ from pathlib import Path
 from nbconvert.filters import strip_ansi
 from typeguard import typechecked
 
-from taskmates.core.actions.code_execution.code_cells.code_execution import CodeExecution
+from taskmates.core.actions.code_execution.code_cells.execution.code_execution import CodeExecution
 from taskmates.core.actions.code_execution.code_cells.code_execution_output_appender import CodeExecutionOutputAppender
-from taskmates.workflows.contexts.run_context import RunContext
 from taskmates.workflow_engine.run import Run
 
 
