@@ -150,11 +150,11 @@ class Objective(BaseModel):
 class Run(BaseModel):
     model_config = ConfigDict(
         arbitrary_types_allowed=True,
-        extra='allow'  # Allow extra fields that aren't serialized
     )
 
     objective: Objective
     context: RunContext = Field(default_factory=dict)
+
     signals: Dict[str, BaseSignals] = Field(default_factory=dict)
     state: Dict[str, Any] = Field(default_factory=dict)
     daemons: Dict[str, Daemon] = Field(default_factory=dict)
