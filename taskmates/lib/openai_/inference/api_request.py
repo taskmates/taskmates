@@ -19,11 +19,13 @@ from taskmates.server.streamed_response import StreamedResponse
 
 @typechecked
 async def api_request(client, messages: list, model_conf: dict, model_params: dict,
-                      run: Run) -> dict:
+                      current_run: Run) -> dict:
     streamed_response = StreamedResponse()
-    output_streams = run.signals["output_streams"]
-    control = run.signals["control"]
-    status = run.signals["status"]
+    output_streams = current_run.signals["output_streams"]
+    control = current_run.signals["control"]
+    status = current_run.signals["status"]
+
+    # current_run.objective.print_graph()
 
     output_streams.chat_completion.connect(streamed_response.accept, weak=False)
 

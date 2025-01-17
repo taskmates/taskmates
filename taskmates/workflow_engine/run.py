@@ -122,15 +122,19 @@ class Objective(BaseModel):
             current = current.of
         return current
 
-    def dump_graph(self, indent: str = "") -> str:
+    def dump_graph(self, indent: str = "", current_objective: Optional['Objective'] = None) -> str:
         # Start with the current node
+        status = ''
+        if not self.result_future.done():
+            status = ' CURRENT...' if self is current_objective else ' PENDING...'
+
         result = [
-            f"{indent}└── {self.key['outcome'] or '<no outcome>'} {dict(self.key['inputs'])} {'' if self.result_future.done() else ' PENDING...'}"]
+            f"{indent}└── {self.key['outcome'] or '<no outcome>'} {dict(self.key['inputs'])}{status}"]
 
         # Add all sub-objectives
         child_indent = indent + "    "
         for key, sub_obj in self.sub_objectives.items():
-            result.append(sub_obj.dump_graph(child_indent))
+            result.append(sub_obj.dump_graph(child_indent, current_objective))
 
         return "\n".join(result)
 
@@ -139,7 +143,7 @@ class Objective(BaseModel):
         Prints the entire objective hierarchy starting from the root.
         """
         root = self._get_root()
-        print(root.dump_graph())
+        print(root.dump_graph(current_objective=self))
 
 
 @typechecked
@@ -621,3 +625,29 @@ def test_objective_get_root():
     # Test with a single objective (is its own root)
     single = Objective(key=ObjectiveKey(outcome="single"))
     assert single._get_root() is single
+
+def test_objective_dump_graph_with_current():
+    # Create a root objective
+    root = Objective(key=ObjectiveKey(outcome="root", inputs={"root_input": "value"}))
+
+    # Create some sub-objectives
+    sub1 = root.get_or_create_sub_objective("child1", {"child1_input": "value1"})
+    sub2 = root.get_or_create_sub_objective("child2", {"child2_input": "value2"})
+
+    # Create a sub-sub-objective
+    sub_sub1 = sub1.get_or_create_sub_objective("grandchild1", {"grandchild1_input": "value3"})
+
+    # Get the graph representation when called from sub1
+    graph = root.dump_graph(current_objective=sub1)
+
+    # Verify that sub1 shows as CURRENT and others show as PENDING
+    assert "child1" in graph
+    assert "CURRENT..." in graph
+    assert "PENDING..." in graph
+    assert graph.count("CURRENT...") == 1  # Only one objective should be marked as current
+    assert graph.count("PENDING...") >= 1  # At least one objective should be marked as pending
+
+    # Test that the structure is maintained
+    lines = graph.split("\n")
+    assert lines[0].startswith("└──")  # Root level
+    assert all(line.startswith("    ") for line in lines[1:])  # Indented children
