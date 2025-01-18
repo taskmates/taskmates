@@ -24,8 +24,7 @@ class ChatCompletionProvider(CompletionProvider):
 
     @typechecked
     async def perform_completion(self, chat: Chat, completion_signals: EnvironmentSignals):
-        current_run: Run = RUN.get()
-        contexts = current_run.context
+        contexts = RUN.get().context
         output_streams: OutputStreams = completion_signals["output_streams"]
 
         chat_completion_markdown_appender = ChatCompletionMarkdownAppender(chat, self.has_truncated_response(chat),
