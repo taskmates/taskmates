@@ -2,7 +2,7 @@ import json
 
 from typeguard import typechecked
 
-from taskmates.core.actions.chat_completion.chat_completion_editor_completion import ChatCompletionEditorCompletion
+from taskmates.core.actions.chat_completion.chat_completion_markdown_appender import ChatCompletionMarkdownAppender
 from taskmates.core.completion_provider import CompletionProvider
 from taskmates.core.tools_registry import tools_registry
 from taskmates.formats.markdown.metadata.get_model_client import get_model_client
@@ -30,11 +30,11 @@ class ChatCompletionProvider(CompletionProvider):
         run: Run = RUN.get()
         output_streams = run.signals["output_streams"]
 
-        chat_completion_editor_completion = ChatCompletionEditorCompletion(chat, self.has_truncated_response(chat), run)
+        chat_completion_markdown_appender = ChatCompletionMarkdownAppender(chat, self.has_truncated_response(chat), run)
 
         async def restream_completion_chunk(chat_completion_chunk):
             choice = chat_completion_chunk.model_dump()['choices'][0]
-            await chat_completion_editor_completion.process_chat_completion_chunk(choice)
+            await chat_completion_markdown_appender.process_chat_completion_chunk(choice)
 
         with output_streams.chat_completion.connected_to(restream_completion_chunk):
             taskmates_dirs = contexts["runner_config"]["taskmates_dirs"]

@@ -10,7 +10,7 @@ def snake_case_to_title_case(text: str) -> str:
     return re.sub(r'_([a-z])', lambda x: x.group(1).upper(), text.replace('_', ' ')).title()
 
 
-class ChatCompletionEditorCompletion:
+class ChatCompletionMarkdownAppender:
     def __init__(self, chat: Chat, is_resume_request: bool, run: Run):
         self.chat = chat
         self.output_streams = run.signals["output_streams"]
