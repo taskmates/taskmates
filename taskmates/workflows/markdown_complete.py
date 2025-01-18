@@ -13,7 +13,7 @@ from taskmates.workflow_engine.environment_signals import EnvironmentSignals
 from taskmates.workflow_engine.fulfills import fulfills
 from taskmates.workflow_engine.run import RUN, Run
 from taskmates.workflow_engine.workflow import Workflow
-from taskmates.workflows.actions.markdown_completion_action import MarkdownCompletionAction
+from taskmates.workflows.actions.markdown_completion_step_action import MarkdownCompleteSectionAction
 from taskmates.workflows.contexts.run_context import RunContext
 from taskmates.workflows.daemons.interrupt_request_daemon import InterruptRequestDaemon
 from taskmates.workflows.daemons.interrupted_or_killed_daemon import InterruptedOrKilledDaemon
@@ -102,7 +102,7 @@ class MarkdownComplete(Workflow):
         # current_run.objective.print_graph()
 
         while True:
-            result = await self.get_completion(markdown_chat)
+            result = await self.get_completion_section(markdown_chat)
             if result is None:
                 break
             markdown_chat += result
@@ -113,8 +113,8 @@ class MarkdownComplete(Workflow):
         return response
 
     # TODO outcome hooks?
-    @fulfills(outcome="completion")
-    async def get_completion(self, markdown_chat: str):
+    @fulfills(outcome="completion_section")
+    async def get_completion_section(self, markdown_chat: str):
         current_run = RUN.get()
         output_streams = current_run.signals["output_streams"]
         completion_signals: EnvironmentSignals = current_run.signals
@@ -130,7 +130,7 @@ class MarkdownComplete(Workflow):
             await self.end_markdown_completion(chat, current_run.context, current_run)
             return None
 
-        step = MarkdownCompletionAction()
+        step = MarkdownCompleteSectionAction()
         await step.perform(chat, next_completion, completion_signals)
 
         # current_run.objective.print_graph()
