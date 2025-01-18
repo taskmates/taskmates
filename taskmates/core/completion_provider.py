@@ -9,6 +9,8 @@ class CompletionProvider(ABC):
     def can_complete(self, chat: Chat):
         pass
 
+    # TODO: we're missing a return type here
+    # IDEA: make return type signal all side effects
     @abstractmethod
     async def perform_completion(self, chat: Chat):
         pass

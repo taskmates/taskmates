@@ -23,9 +23,9 @@ class ChatCompletionProvider(CompletionProvider):
 
     @typechecked
     async def perform_completion(self, chat: Chat):
-        contexts = RUN.get().context
-        run: Run = RUN.get()
-        output_streams: OutputStreams = run.signals["output_streams"]
+        current_run: Run = RUN.get()
+        contexts = current_run.context
+        output_streams: OutputStreams = current_run.signals["output_streams"]
 
         chat_completion_markdown_appender = ChatCompletionMarkdownAppender(chat, self.has_truncated_response(chat),
                                                                            output_streams)
@@ -48,4 +48,4 @@ class ChatCompletionProvider(CompletionProvider):
             request_payload = prepare_request_payload(chat, model_conf, force_stream)
             await output_streams.artifact.send_async({"name": "request_payload.json", "content": request_payload})
 
-            return await api_request(client, request_payload, run)
+            return await api_request(client, request_payload, current_run)

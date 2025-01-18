@@ -157,6 +157,7 @@ class Run(BaseModel):
 
     signals: Dict[str, BaseSignals] = Field(default_factory=dict)
     state: Dict[str, Any] = Field(default_factory=dict)
+
     daemons: Dict[str, Daemon] = Field(default_factory=dict)
 
     # Runtime-only fields, excluded from serialization
