@@ -2,8 +2,7 @@ import re
 from typing import Dict
 
 from taskmates.types import Chat
-from taskmates.workflows.contexts.run_context import RunContext
-from taskmates.workflow_engine.run import Run
+from taskmates.workflows.signals.output_streams import OutputStreams
 
 
 def snake_case_to_title_case(text: str) -> str:
@@ -11,9 +10,9 @@ def snake_case_to_title_case(text: str) -> str:
 
 
 class ChatCompletionMarkdownAppender:
-    def __init__(self, chat: Chat, is_resume_request: bool, run: Run):
+    def __init__(self, chat: Chat, is_resume_request: bool, output_streams: OutputStreams):
         self.chat = chat
-        self.output_streams = run.signals["output_streams"]
+        self.output_streams = output_streams
         self.recipient = None
         self.role = None
         self.name = None

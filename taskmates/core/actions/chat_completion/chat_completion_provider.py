@@ -14,6 +14,7 @@ from taskmates.lib.tool_schemas_.tool_schema import tool_schema
 from taskmates.types import Chat
 from taskmates.workflow_engine.run import RUN
 from taskmates.workflow_engine.run import Run
+from taskmates.workflows.signals.output_streams import OutputStreams
 
 
 class ChatCompletionProvider(CompletionProvider):
@@ -29,9 +30,10 @@ class ChatCompletionProvider(CompletionProvider):
     async def perform_completion(self, chat: Chat):
         contexts = RUN.get().context
         run: Run = RUN.get()
-        output_streams = run.signals["output_streams"]
+        output_streams: OutputStreams = run.signals["output_streams"]
 
-        chat_completion_markdown_appender = ChatCompletionMarkdownAppender(chat, self.has_truncated_response(chat), run)
+        chat_completion_markdown_appender = ChatCompletionMarkdownAppender(chat, self.has_truncated_response(chat),
+                                                                           output_streams)
 
         async def restream_completion_chunk(chat_completion_chunk):
             choice = chat_completion_chunk.model_dump()['choices'][0]
