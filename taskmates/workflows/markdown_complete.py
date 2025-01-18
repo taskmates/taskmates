@@ -102,7 +102,7 @@ class MarkdownComplete(Workflow):
         # current_run.objective.print_graph()
 
         while True:
-            result = await self.get_completion_section(markdown_chat)
+            result = await self.complete_section(markdown_chat)
             if result is None:
                 break
             markdown_chat += result
@@ -113,8 +113,8 @@ class MarkdownComplete(Workflow):
         return response
 
     # TODO outcome hooks?
-    @fulfills(outcome="completion_section")
-    async def get_completion_section(self, markdown_chat: str):
+    @fulfills(outcome="markdown_section_completion")
+    async def complete_section(self, markdown_chat: str):
         current_run = RUN.get()
         output_streams = current_run.signals["output_streams"]
         completion_signals: EnvironmentSignals = current_run.signals
