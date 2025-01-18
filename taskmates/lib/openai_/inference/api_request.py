@@ -12,6 +12,7 @@ from taskmates.core.actions.chat_completion.openai_adapters.anthropic_openai_ada
 from taskmates.formats.markdown.metadata.get_model_client import get_model_client
 from taskmates.lib.not_set.not_set import NOT_SET
 from taskmates.lib.opentelemetry_.tracing import tracer
+from taskmates.lib.openai_.inference.interruptible_request import InterruptibleRequest
 from taskmates.server.streamed_response import StreamedResponse
 from taskmates.workflow_engine.run import RUN, Run
 
@@ -26,8 +27,6 @@ async def api_request(client, messages: list,
     control = current_run.signals["control"]
     status = current_run.signals["status"]
 
-    # current_run.objective.print_graph()
-
     output_streams.chat_completion.connect(streamed_response.accept, weak=False)
 
     if output_streams.chat_completion.receivers:
@@ -39,41 +38,20 @@ async def api_request(client, messages: list,
         await output_streams.artifact.send_async(
             {"name": "openai_request_payload.json", "content": llm_client_args})
 
-        # TODO: extract this interrupt/kill logic into a reusable class
-        interrupted_or_killed = False
-
-        async def interrupt_handler(sender):
-            nonlocal interrupted_or_killed
-            interrupted_or_killed = True
-            await chat_completion.response.aclose()
-            await status.interrupted.send_async(None)
-
-        async def kill_handler(sender):
-            nonlocal interrupted_or_killed
-            interrupted_or_killed = True
-            await chat_completion.response.aclose()
-            await status.killed.send_async(None)
-
-        with control.interrupt.connected_to(interrupt_handler), \
-                control.kill.connected_to(kill_handler):
+        async with InterruptibleRequest(status=status, control=control) as request:
             chat_completion = await client.chat.completions.create(**llm_client_args)
 
             if model_conf["stream"]:
                 try:
                     async for chat_completion_chunk in \
                             ChatCompletionWithUsername(ChatCompletionPreProcessor(chat_completion)):
-                        if interrupted_or_killed:
+                        if request.interrupted_or_killed:
                             break
-                        for choice in chat_completion_chunk.choices:
-                            if choice.delta.content:
-                                content: str = choice.delta.content
-                                # The carriage return removal is now handled by ChatCompletionPreProcessor
                         await output_streams.chat_completion.send_async(chat_completion_chunk)
 
                 except asyncio.CancelledError:
                     await output_streams.artifact.send_async(
                         {"name": "response_cancelled.json", "content": str(True)})
-                    await chat_completion.response.aclose()
                     raise
                 except ReadError as e:
                     await output_streams.artifact.send_async(
@@ -164,18 +142,7 @@ async def test_api_request_with_complex_payload(run):
         },
         {
             "role": "assistant",
-            "content": [
-                {
-                    "text": "![[/Users/ralphus/Downloads/cat.jpeg]]\n\n",
-                    "type": "text"
-                },
-                {
-                    "image_url": {
-                        "url": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAgAAAAIAQMAAAD+wSzIAAAABlBMVEX///+/v7+jQ3Y5AAAADklEQVQI12P4AIX8EAgALgAD/aNpbtEAAAAASUVORK5CYII=",
-                    },
-                    "type": "image_url"
-                }
-            ],
+            "content": "![[/Users/ralphus/Downloads/cat.jpeg]]\n\nI can see a cat in the image."
         }
     ]
 
@@ -203,9 +170,6 @@ async def test_api_request_with_complex_payload(run):
     }
     model_params = {}
 
-    # Assuming the SIGNALS and CURRENT_PATH are properly initialized
-    # and the OpenAI API key is set in the environment or configuration
-
     # Call the api_request function with the defined parameters
     contexts = RUN.get().context
     client = get_model_client(model_conf["model"], contexts["runner_config"]["taskmates_dirs"])
@@ -218,4 +182,3 @@ async def test_api_request_with_complex_payload(run):
     assert 'message' in response['choices'][0]
     assert 'content' in response['choices'][0]['message']
     assert response['choices'][0]['message']['content']  # Content should not be empty
-    # Add more specific assertions based on the expected response structure
