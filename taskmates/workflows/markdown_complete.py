@@ -115,11 +115,13 @@ class MarkdownComplete(Workflow):
     @fulfills(outcome="completion")
     async def get_completion(self, markdown_chat: str):
         current_run = RUN.get()
+        output_streams = current_run.signals["output_streams"]
 
         state = current_run.state
         state["current_step"].increment()
 
         chat = await self.get_markdown_chat(markdown_chat)
+        await output_streams.artifact.send_async({"name": "parsed_chat.json", "content": chat})
 
         next_completion = await self.compute_next_completion(chat)
         if not next_completion:
