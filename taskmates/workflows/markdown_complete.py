@@ -102,10 +102,10 @@ class MarkdownComplete(Workflow):
         # current_run.objective.print_graph()
 
         while True:
-            result = await self.complete_section(markdown_chat)
-            if result is None:
+            markdown_section_completion = await self.complete_section(markdown_chat)
+            if markdown_section_completion is None:
                 break
-            markdown_chat += result
+            markdown_chat += markdown_section_completion
             await self.on_after_step()
 
         response_format = context["runner_config"]["format"]
