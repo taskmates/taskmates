@@ -27,8 +27,13 @@ class ChatCompletionPreProcessor:
                 yield chunk
                 continue
 
-            if current_token and re.match(r'^[#*\->`\[\]{}]', current_token):
-                current_token = "\n" + current_token
+            if current_token:
+                # Remove carriage returns
+                current_token = current_token.replace("\r", "")
+                
+                # Add newline for markdown elements
+                if re.match(r'^[#*\->`\[\]{}]', current_token):
+                    current_token = "\n" + current_token
 
             if current_token or tool_calls:
                 self.buffering = False
@@ -42,10 +47,14 @@ async def mock_chat_completion_generator(content_list: List[str], model: str = '
         model=model
     )
     for content in content_list:
-        yield ChatCompletionChunkModel(
-            choices=[ChoiceModel(delta=DeltaModel(content=content))],
-            model=model
-        )
+        # Split content by carriage returns and yield each part separately
+        parts = content.split('\r')
+        for part in parts:
+            if part:  # Only yield non-empty parts
+                yield ChatCompletionChunkModel(
+                    choices=[ChoiceModel(delta=DeltaModel(content=part))],
+                    model=model
+                )
     yield ChatCompletionChunkModel(
         choices=[ChoiceModel(delta=DeltaModel(content=None), finish_reason='stop')],
         model=model
@@ -160,3 +169,14 @@ async def test_chat_completion_pre_processor_various_content(content_list, expec
     texts = [chunk.choices[0].delta.content for chunk in chunks if chunk.choices[0].delta.content is not None]
 
     assert texts == expected_output
+
+
+@pytest.mark.asyncio
+async def test_chat_completion_pre_processor_removes_carriage_returns():
+    content_list = ['Hello\r', 'World\r', 'This\ris\ra\rtest']
+    pre_processor = ChatCompletionPreProcessor(mock_chat_completion_generator(content_list))
+
+    chunks = [chunk async for chunk in pre_processor]
+    texts = [chunk.choices[0].delta.content for chunk in chunks if chunk.choices[0].delta.content is not None]
+
+    assert texts == ['Hello', 'World', 'This', 'is', 'a', 'test']

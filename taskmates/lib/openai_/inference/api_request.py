@@ -9,16 +9,17 @@ from taskmates.core.actions.chat_completion.openai_adapters.anthropic_openai_ada
     ChatCompletionPreProcessor
 from taskmates.core.actions.chat_completion.openai_adapters.anthropic_openai_adapter.response.chat_completion_with_username import \
     ChatCompletionWithUsername
-from taskmates.workflows.contexts.run_context import RunContext
-from taskmates.workflow_engine.run import RUN, Run
 from taskmates.formats.markdown.metadata.get_model_client import get_model_client
 from taskmates.lib.not_set.not_set import NOT_SET
 from taskmates.lib.opentelemetry_.tracing import tracer
 from taskmates.server.streamed_response import StreamedResponse
+from taskmates.workflow_engine.run import RUN, Run
 
 
 @typechecked
-async def api_request(client, messages: list, model_conf: dict, model_params: dict,
+async def api_request(client, messages: list,
+                      model_conf: dict,
+                      model_params: dict,
                       current_run: Run) -> dict:
     streamed_response = StreamedResponse()
     output_streams = current_run.signals["output_streams"]
@@ -38,6 +39,7 @@ async def api_request(client, messages: list, model_conf: dict, model_params: di
         await output_streams.artifact.send_async(
             {"name": "openai_request_payload.json", "content": llm_client_args})
 
+        # TODO: extract this interrupt/kill logic into a reusable class
         interrupted_or_killed = False
 
         async def interrupt_handler(sender):
@@ -65,8 +67,7 @@ async def api_request(client, messages: list, model_conf: dict, model_params: di
                         for choice in chat_completion_chunk.choices:
                             if choice.delta.content:
                                 content: str = choice.delta.content
-                                # TODO move this to ChatCompletionPreProcessor
-                                choice.delta.content = content.replace("\r", "")
+                                # The carriage return removal is now handled by ChatCompletionPreProcessor
                         await output_streams.chat_completion.send_async(chat_completion_chunk)
 
                 except asyncio.CancelledError:
