@@ -63,6 +63,9 @@ class ChatCompletionProvider(CompletionProvider):
                 if config["role"] == "user" and name not in user_participants:
                     user_participants.append(name)
 
+            if output_streams.chat_completion.receivers:
+                model_conf.update({"stream": True})
+
             model_conf.setdefault("stop", []).extend([f"\n**{u}>** " for u in user_participants])
 
             # TODO: This is currently not supported by Claude + Tools

@@ -11,8 +11,8 @@ from taskmates.core.actions.chat_completion.openai_adapters.anthropic_openai_ada
     ChatCompletionWithUsername
 from taskmates.formats.markdown.metadata.get_model_client import get_model_client
 from taskmates.lib.not_set.not_set import NOT_SET
-from taskmates.lib.opentelemetry_.tracing import tracer
 from taskmates.lib.openai_.inference.interruptible_request import InterruptibleRequest
+from taskmates.lib.opentelemetry_.tracing import tracer
 from taskmates.server.streamed_response import StreamedResponse
 from taskmates.workflow_engine.run import RUN, Run
 
@@ -27,11 +27,6 @@ async def api_request(client, messages: list,
     control = current_run.signals["control"]
     status = current_run.signals["status"]
 
-    output_streams.chat_completion.connect(streamed_response.accept, weak=False)
-
-    if output_streams.chat_completion.receivers:
-        model_conf.update({"stream": True})
-
     llm_client_args = get_llm_client_args(messages, model_conf, model_params)
 
     with tracer().start_as_current_span(name="chat-completion"):
@@ -42,6 +37,8 @@ async def api_request(client, messages: list,
             chat_completion = await client.chat.completions.create(**llm_client_args)
 
             if model_conf["stream"]:
+                output_streams.chat_completion.connect(streamed_response.accept, weak=False)
+
                 try:
                     async for chat_completion_chunk in \
                             ChatCompletionWithUsername(ChatCompletionPreProcessor(chat_completion)):
