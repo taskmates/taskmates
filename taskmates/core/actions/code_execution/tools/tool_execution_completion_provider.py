@@ -7,6 +7,7 @@ from taskmates.actions.invoke_function import invoke_function
 from taskmates.core.actions.code_execution.code_cells.execution.code_execution import CodeExecution
 from taskmates.core.actions.code_execution.tools.tool_editor_completion import ToolEditorCompletion
 from taskmates.core.completion_provider import CompletionProvider
+from taskmates.workflow_engine.environment_signals import EnvironmentSignals
 from taskmates.workflow_engine.run import RUN
 from taskmates.workflow_engine.run import Run
 from taskmates.core.tools_registry import tools_registry
@@ -24,7 +25,7 @@ class ToolExecutionCompletionProvider(CompletionProvider):
         tool_calls = last_message.get("tool_calls", [])
         return len(tool_calls) > 0
 
-    async def perform_completion(self, chat: Chat):
+    async def perform_completion(self, chat: Chat, completion_signals: EnvironmentSignals):
         contexts = RUN.get().context
         run = RUN.get()
 
@@ -36,7 +37,7 @@ class ToolExecutionCompletionProvider(CompletionProvider):
 
         tool_calls = messages[-1].get("tool_calls", [])
 
-        editor_completion = ToolEditorCompletion(project_dir=cwd, chat_file=markdown_path, run=run)
+        editor_completion = ToolEditorCompletion(project_dir=cwd, chat_file=markdown_path, completion_signals=completion_signals)
 
         for tool_call in tool_calls:
             function_title = tool_call["function"]["name"].replace("_", " ").title()
@@ -45,13 +46,13 @@ class ToolExecutionCompletionProvider(CompletionProvider):
             tool_call_obj = ToolCall.from_dict(tool_call)
 
             async def handle_interrupted(sender):
-                await run.signals["output_streams"].response.send_async("--- INTERRUPT ---\n")
+                await completion_signals["output_streams"].response.send_async("--- INTERRUPT ---\n")
 
             async def handle_killed(sender):
-                await run.signals["output_streams"].response.send_async("--- KILL ---\n")
+                await completion_signals["output_streams"].response.send_async("--- KILL ---\n")
 
-            with run.signals["status"].interrupted.connected_to(handle_interrupted), \
-                    run.signals["status"].killed.connected_to(handle_killed):
+            with completion_signals["status"].interrupted.connected_to(handle_interrupted), \
+                    completion_signals["status"].killed.connected_to(handle_killed):
                 original_cwd = os.getcwd()
                 try:
                     try:
@@ -62,7 +63,7 @@ class ToolExecutionCompletionProvider(CompletionProvider):
                 finally:
                     os.chdir(original_cwd)
 
-            await run.signals["output_streams"].response.send_async(CodeExecution.escape_pre_output(str(return_value)))
+            await completion_signals["output_streams"].response.send_async(CodeExecution.escape_pre_output(str(return_value)))
             await editor_completion.append_tool_execution_footer(function_title)
 
     @staticmethod

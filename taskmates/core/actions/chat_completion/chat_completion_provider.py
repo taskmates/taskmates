@@ -7,6 +7,7 @@ from taskmates.formats.markdown.metadata.get_model_client import get_model_clien
 from taskmates.formats.markdown.metadata.get_model_conf import get_model_conf
 from taskmates.lib.openai_.inference.api_request import api_request
 from taskmates.types import Chat
+from taskmates.workflow_engine.environment_signals import EnvironmentSignals
 from taskmates.workflow_engine.run import RUN
 from taskmates.workflow_engine.run import Run
 from taskmates.workflows.signals.output_streams import OutputStreams
@@ -22,10 +23,10 @@ class ChatCompletionProvider(CompletionProvider):
         return recipient_role is not None and not recipient_role == "user"
 
     @typechecked
-    async def perform_completion(self, chat: Chat):
+    async def perform_completion(self, chat: Chat, completion_signals: EnvironmentSignals):
         current_run: Run = RUN.get()
         contexts = current_run.context
-        output_streams: OutputStreams = current_run.signals["output_streams"]
+        output_streams: OutputStreams = completion_signals["output_streams"]
 
         chat_completion_markdown_appender = ChatCompletionMarkdownAppender(chat, self.has_truncated_response(chat),
                                                                            output_streams)
@@ -48,4 +49,4 @@ class ChatCompletionProvider(CompletionProvider):
             request_payload = prepare_request_payload(chat, model_conf, force_stream)
             await output_streams.artifact.send_async({"name": "request_payload.json", "content": request_payload})
 
-            return await api_request(client, request_payload, current_run)
+            return await api_request(client, request_payload, completion_signals)

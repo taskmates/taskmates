@@ -12,15 +12,16 @@ from taskmates.formats.markdown.metadata.get_model_client import get_model_clien
 from taskmates.lib.openai_.inference.interruptible_request import InterruptibleRequest
 from taskmates.lib.opentelemetry_.tracing import tracer
 from taskmates.server.streamed_response import StreamedResponse
+from taskmates.workflow_engine.environment_signals import EnvironmentSignals
 from taskmates.workflow_engine.run import RUN, Run
 
 
 @typechecked
-async def api_request(client, request_payload: dict, current_run: Run) -> dict:
+async def api_request(client, request_payload: dict, completion_signals: EnvironmentSignals) -> dict:
     streamed_response = StreamedResponse()
-    output_streams = current_run.signals["output_streams"]
-    control = current_run.signals["control"]
-    status = current_run.signals["status"]
+    output_streams = completion_signals["output_streams"]
+    control = completion_signals["control"]
+    status = completion_signals["status"]
 
     with tracer().start_as_current_span(name="chat-completion"):
         async with InterruptibleRequest(status=status, control=control) as request:
