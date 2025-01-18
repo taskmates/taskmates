@@ -1,4 +1,5 @@
 import json
+from random import random
 
 from typeguard import typechecked
 
@@ -81,6 +82,17 @@ class ChatCompletionProvider(CompletionProvider):
                 **({"tool_choice": tool_choice} if tool_choice is not None else {})
             )
 
-            await output_streams.artifact.send_async({"name": "parsed_chat.json", "content": chat})
+            # Clean up empty tool parameters
+            if model_params.get("tool_choice", None) is NOT_SET:
+                del model_params["tool_choice"]
+            if "tools" in model_params and not model_params["tools"]:
+                del model_params["tools"]
 
-            return await api_request(client, messages, model_conf, model_params, run)
+            # Add random seed
+            seed = int(random() * 1000000)
+            request_payload = dict(messages=messages, **model_conf, **model_params, seed=seed)
+
+            await output_streams.artifact.send_async({"name": "parsed_chat.json", "content": chat})
+            await output_streams.artifact.send_async({"name": "request_payload.json", "content": request_payload})
+
+            return await api_request(client, request_payload, run)

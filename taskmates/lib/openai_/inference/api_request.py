@@ -1,5 +1,4 @@
 import asyncio
-from random import random
 
 import pytest
 from httpx import ReadError
@@ -10,7 +9,6 @@ from taskmates.core.actions.chat_completion.openai_adapters.anthropic_openai_ada
 from taskmates.core.actions.chat_completion.openai_adapters.anthropic_openai_adapter.response.chat_completion_with_username import \
     ChatCompletionWithUsername
 from taskmates.formats.markdown.metadata.get_model_client import get_model_client
-from taskmates.lib.not_set.not_set import NOT_SET
 from taskmates.lib.openai_.inference.interruptible_request import InterruptibleRequest
 from taskmates.lib.opentelemetry_.tracing import tracer
 from taskmates.server.streamed_response import StreamedResponse
@@ -18,25 +16,17 @@ from taskmates.workflow_engine.run import RUN, Run
 
 
 @typechecked
-async def api_request(client, messages: list,
-                      model_conf: dict,
-                      model_params: dict,
-                      current_run: Run) -> dict:
+async def api_request(client, request_payload: dict, current_run: Run) -> dict:
     streamed_response = StreamedResponse()
     output_streams = current_run.signals["output_streams"]
     control = current_run.signals["control"]
     status = current_run.signals["status"]
 
-    llm_client_args = get_llm_client_args(messages, model_conf, model_params)
-
     with tracer().start_as_current_span(name="chat-completion"):
-        await output_streams.artifact.send_async(
-            {"name": "openai_request_payload.json", "content": llm_client_args})
-
         async with InterruptibleRequest(status=status, control=control) as request:
-            chat_completion = await client.chat.completions.create(**llm_client_args)
+            chat_completion = await client.chat.completions.create(**request_payload)
 
-            if model_conf["stream"]:
+            if request_payload.get("stream", False):
                 output_streams.chat_completion.connect(streamed_response.accept, weak=False)
 
                 try:
@@ -68,16 +58,6 @@ async def api_request(client, messages: list,
         raise Exception("OpenAI API response was truncated.")
 
     return response
-
-
-def get_llm_client_args(messages, model_conf, model_params):
-    if model_params.get("tool_choice", None) is NOT_SET:
-        del model_params["tool_choice"]
-    if "tools" in model_params and not model_params["tools"]:
-        del model_params["tools"]
-    seed = int(random() * 1000000)
-    llm_client_args = (dict(messages=messages, **model_conf, **model_params, seed=seed))
-    return llm_client_args
 
 
 @pytest.mark.integration
