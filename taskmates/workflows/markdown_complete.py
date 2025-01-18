@@ -9,6 +9,7 @@ from taskmates.core.compute_separator import compute_separator
 from taskmates.lib.not_set.not_set import NOT_SET
 from taskmates.logging import logger
 from taskmates.types import Chat
+from taskmates.workflow_engine.base_signals import fork_signals
 from taskmates.workflow_engine.environment_signals import EnvironmentSignals
 from taskmates.workflow_engine.fulfills import fulfills
 from taskmates.workflow_engine.run import RUN, Run
@@ -102,7 +103,11 @@ class MarkdownComplete(Workflow):
         # current_run.objective.print_graph()
 
         while True:
-            markdown_section_completion = await self.complete_section(markdown_chat)
+            parent_signals: EnvironmentSignals = current_run.signals
+            # completion_signals = fork_signals(parent_signals)
+            completion_signals = parent_signals
+
+            markdown_section_completion = await self.complete_section(markdown_chat, completion_signals)
             if markdown_section_completion is None:
                 break
             markdown_chat += markdown_section_completion
@@ -114,10 +119,9 @@ class MarkdownComplete(Workflow):
 
     # TODO outcome hooks?
     @fulfills(outcome="markdown_section_completion")
-    async def complete_section(self, markdown_chat: str):
+    async def complete_section(self, markdown_chat: str, completion_signals: EnvironmentSignals):
         current_run = RUN.get()
-        output_streams = current_run.signals["output_streams"]
-        completion_signals: EnvironmentSignals = current_run.signals
+        output_streams = completion_signals["output_streams"]
 
         state = current_run.state
         state["current_step"].increment()
