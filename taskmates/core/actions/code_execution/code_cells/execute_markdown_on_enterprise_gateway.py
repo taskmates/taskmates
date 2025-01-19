@@ -12,7 +12,7 @@ from nbformat import NotebookNode
 
 from taskmates.core.actions.code_execution.code_cells.jupyter_enterprise_gateway_client import get_kernel_manager, \
     DEFAULT_GATEWAY_URL
-from taskmates.core.actions.code_execution.code_cells.parse_notebook import parse_notebook
+from taskmates.core.actions.code_execution.code_cells.parsing.parse_notebook import parse_notebook
 
 
 async def setup_kernel(kernel_manager, cwd=None):

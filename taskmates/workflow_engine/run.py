@@ -30,16 +30,13 @@ T = TypeVar('T')
 
 @typechecked
 class ObjectiveKey(Dict[str, Any]):
-    """A dictionary-based key for objectives that maintains immutability and proper hashing."""
-
     def __init__(self, outcome: Optional[str] = None,
                  inputs: Optional[Dict[str, Any]] = None,
                  requesting_run: Optional['Run'] = None) -> None:
         super().__init__()
         self['outcome'] = outcome
-        self['inputs'] = inputs or {}
-        self['requesting_run'] = requesting_run
-        # Make the dictionary immutable after initialization
+        self['inputs'] = inputs or {}  # args
+        self['requesting_run'] = requesting_run  # context
         self._hash = hash((self['outcome'], str(self['inputs'])))
 
     def __hash__(self) -> int:
@@ -60,10 +57,11 @@ class Objective(BaseModel):
         from_attributes=True
     )
 
+    of: Optional['Objective'] = None
     key: ObjectiveKey
-    runs: List[Any] = Field(default_factory=list, exclude=True)  # exclude from serialization
-    result_future: Optional[asyncio.Future] = Field(default=None, exclude=True)
     sub_objectives: Dict[ObjectiveKey, 'Objective'] = Field(default_factory=dict, exclude=True)
+    result_future: asyncio.Future = Field(default_factory=asyncio.Future, exclude=True)
+    runs: List[Any] = Field(default_factory=list, exclude=True)
 
     @field_validator('key', mode='before')
     @classmethod
@@ -83,21 +81,21 @@ class Objective(BaseModel):
             data['inputs'] = {}
         return data
 
-    def get_or_create_sub_objective(self, outcome: str, args_key: Optional[Dict[str, Any]] = None) -> 'Objective':
-        key = ObjectiveKey(outcome=outcome, inputs=args_key or {})
+    def get_or_create_sub_objective(self, outcome: str,
+                                    inputs: Optional[Dict[str, Any]] = None) -> 'Objective':
+        key = ObjectiveKey(outcome=outcome, inputs=inputs or {})
         if key not in self.sub_objectives:
-            sub_objective = Objective(key=ObjectiveKey(outcome=outcome, inputs=self.key['inputs']))
-            sub_objective.result_future = asyncio.Future()
+            sub_objective = Objective(of=self, key=ObjectiveKey(outcome=outcome, inputs=inputs or {}))
             self.sub_objectives[key] = sub_objective
         return self.sub_objectives[key]
 
-    def set_future_result(self, outcome: str, args_key: Optional[Dict[str, Any]], result: Any) -> None:
-        sub_objective = self.get_or_create_sub_objective(outcome, args_key)
+    def set_future_result(self, outcome: str, inputs: Optional[Dict[str, Any]], result: Any) -> None:
+        sub_objective = self.get_or_create_sub_objective(outcome, inputs)
         if not sub_objective.result_future.done():
             sub_objective.result_future.set_result(result)
 
-    def get_future_result(self, outcome: str, args_key: Optional[Dict[str, Any]]) -> Any:
-        sub_objective = self.get_or_create_sub_objective(outcome, args_key)
+    def get_future_result(self, outcome: str, inputs: Optional[Dict[str, Any]]) -> Any:
+        sub_objective = self.get_or_create_sub_objective(outcome, inputs)
         if sub_objective.result_future.done():
             return sub_objective.result_future.result()
         return None
@@ -118,18 +116,48 @@ class Objective(BaseModel):
     def __repr__(self):
         return f"<{self.__class__.__name__}: {self.key['outcome']}>"
 
+    def _get_root(self) -> 'Objective':
+        current = self
+        while current.of is not None:
+            current = current.of
+        return current
+
+    def dump_graph(self, indent: str = "", current_objective: Optional['Objective'] = None) -> str:
+        # Start with the current node
+        status = ''
+        if not self.result_future.done():
+            status = ' CURRENT...' if self is current_objective else ' PENDING...'
+
+        result = [
+            f"{indent}└── {self.key['outcome'] or '<no outcome>'} {dict(self.key['inputs'])}{status}"]
+
+        # Add all sub-objectives
+        child_indent = indent + "    "
+        for key, sub_obj in self.sub_objectives.items():
+            result.append(sub_obj.dump_graph(child_indent, current_objective))
+
+        return "\n".join(result)
+
+    def print_graph(self) -> None:
+        """
+        Prints the entire objective hierarchy starting from the root.
+        """
+        root = self._get_root()
+        print(root.dump_graph(current_objective=self))
+
 
 @typechecked
 class Run(BaseModel):
     model_config = ConfigDict(
         arbitrary_types_allowed=True,
-        extra='allow'  # Allow extra fields that aren't serialized
     )
 
     objective: Objective
     context: RunContext = Field(default_factory=dict)
+
     signals: Dict[str, BaseSignals] = Field(default_factory=dict)
     state: Dict[str, Any] = Field(default_factory=dict)
+
     daemons: Dict[str, Daemon] = Field(default_factory=dict)
 
     # Runtime-only fields, excluded from serialization
@@ -199,7 +227,7 @@ class Run(BaseModel):
 
         return self
 
-    def __exit__(self, exc_type: Optional[type], exc_val: Optional[Exception], exc_tb: Optional[Any]) -> None:
+    def __exit__(self, exc_type: Optional[type], exc_val: Optional[BaseException], exc_tb: Optional[Any]) -> None:
         self.exit_stack.close()
 
     def __repr__(self) -> str:
@@ -552,3 +580,75 @@ async def test_run_future_fallback(test_context):
     key2 = {"args": (3, 4), "kwargs": {}}
     result4 = run.objective.get_future_result("test_outcome", key2, True)
     assert result4 == "fallback_result"
+
+
+def test_objective_dump_graph():
+    # Create a root objective
+    root = Objective(key=ObjectiveKey(outcome="root", inputs={"root_input": "value"}))
+
+    # Create some sub-objectives
+    sub1 = root.get_or_create_sub_objective("child1", {"child1_input": "value1"})
+    sub2 = root.get_or_create_sub_objective("child2", {"child2_input": "value2"})
+
+    # Create a sub-sub-objective
+    sub_sub1 = sub1.get_or_create_sub_objective("grandchild1", {"grandchild1_input": "value3"})
+
+    # Get the graph representation
+    graph = root.dump_graph()
+
+    # Verify the structure
+    assert "root" in graph
+    assert "child1" in graph
+    assert "child2" in graph
+    assert "grandchild1" in graph
+    assert "{'root_input': 'value'}" in graph
+    assert "{'child1_input': 'value1'}" in graph
+    assert "{'child2_input': 'value2'}" in graph
+    assert "{'grandchild1_input': 'value3'}" in graph
+
+    # Verify indentation structure
+    lines = graph.split("\n")
+    assert lines[0].startswith("└──")  # Root level
+    assert all(line.startswith("    ") for line in lines[1:])  # Indented children
+
+
+def test_objective_get_root():
+    # Create a chain of objectives
+    root = Objective(key=ObjectiveKey(outcome="root"))
+    child = Objective(key=ObjectiveKey(outcome="child"), of=root)
+    grandchild = Objective(key=ObjectiveKey(outcome="grandchild"), of=child)
+
+    # Test that _get_root returns the root objective from any level
+    assert root._get_root() is root
+    assert child._get_root() is root
+    assert grandchild._get_root() is root
+
+    # Test with a single objective (is its own root)
+    single = Objective(key=ObjectiveKey(outcome="single"))
+    assert single._get_root() is single
+
+def test_objective_dump_graph_with_current():
+    # Create a root objective
+    root = Objective(key=ObjectiveKey(outcome="root", inputs={"root_input": "value"}))
+
+    # Create some sub-objectives
+    sub1 = root.get_or_create_sub_objective("child1", {"child1_input": "value1"})
+    sub2 = root.get_or_create_sub_objective("child2", {"child2_input": "value2"})
+
+    # Create a sub-sub-objective
+    sub_sub1 = sub1.get_or_create_sub_objective("grandchild1", {"grandchild1_input": "value3"})
+
+    # Get the graph representation when called from sub1
+    graph = root.dump_graph(current_objective=sub1)
+
+    # Verify that sub1 shows as CURRENT and others show as PENDING
+    assert "child1" in graph
+    assert "CURRENT..." in graph
+    assert "PENDING..." in graph
+    assert graph.count("CURRENT...") == 1  # Only one objective should be marked as current
+    assert graph.count("PENDING...") >= 1  # At least one objective should be marked as pending
+
+    # Test that the structure is maintained
+    lines = graph.split("\n")
+    assert lines[0].startswith("└──")  # Root level
+    assert all(line.startswith("    ") for line in lines[1:])  # Indented children

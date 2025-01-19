@@ -1,12 +1,14 @@
-from taskmates.core.actions.code_execution.code_cells.code_execution import CodeExecution
+from typeguard import typechecked
+
+from taskmates.core.actions.code_execution.code_cells.execution.code_execution import CodeExecution
 from taskmates.core.actions.code_execution.tools.editor_appender import EditorAppender
-from taskmates.workflows.contexts.run_context import RunContext
-from taskmates.workflow_engine.run import Run
+from taskmates.workflow_engine.environment_signals import EnvironmentSignals
 
 
+@typechecked
 class ToolEditorCompletion:
-    def __init__(self, project_dir: str, chat_file: str, run: Run):
-        self.editor_appender = EditorAppender(project_dir, chat_file, run)
+    def __init__(self, project_dir: str, chat_file: str, completion_signals: EnvironmentSignals):
+        self.editor_appender = EditorAppender(project_dir, chat_file, completion_signals)
 
     async def append(self, text: str):
         await self.editor_appender.append(text)

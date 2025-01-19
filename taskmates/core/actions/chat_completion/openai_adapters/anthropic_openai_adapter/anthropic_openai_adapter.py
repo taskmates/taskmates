@@ -122,9 +122,7 @@ class AsyncAnthropicOpenAIAdapter:
             for attempt in range(1, max_attempts + 1):
                 try:
                     # TODO: Add tracing
-                    run = RUN.get()
-                    output_streams = run.signals["output_streams"]
-                    await output_streams.artifact.send_async(
+                    await RUN.get().signals["output_streams"].artifact.send_async(
                         {"name": "anthropic_request_payload.json", "content": payload})
                     chat_completion = await resource.create(**payload)
                     id, created, model_name = None, None, model

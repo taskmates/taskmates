@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 
 from taskmates.formats.openai.get_text_content import get_text_content
 from taskmates.types import Chat
+from taskmates.workflow_engine.environment_signals import EnvironmentSignals
 
 
 class CompletionProvider(ABC):
@@ -10,7 +11,7 @@ class CompletionProvider(ABC):
         pass
 
     @abstractmethod
-    async def perform_completion(self, chat: Chat):
+    async def perform_completion(self, chat: Chat, completion_signals: EnvironmentSignals):
         pass
 
     @staticmethod

@@ -7,7 +7,7 @@ import pytest
 from loguru import logger
 from typeguard import typechecked
 
-from taskmates.core.actions.code_execution.code_cells.parse_notebook import parse_notebook
+from taskmates.core.actions.code_execution.code_cells.parsing.parse_notebook import parse_notebook
 from taskmates.formats.markdown.metadata.get_available_tools import get_available_tools
 from taskmates.formats.markdown.metadata.prepend_recipient_system import prepend_recipient_system
 from taskmates.formats.markdown.parsing.parse_front_matter_and_messages import parse_front_matter_and_messages
@@ -291,7 +291,7 @@ async def test_partial_assistant_response_debug(markdown_path, taskmates_dir):
     markdown_path.write_text(textwrap.dedent(markdown_chat_content))
 
     result = await parse_markdown_chat(textwrap.dedent(markdown_chat_content), markdown_path, [taskmates_dir])
-    
+
     import sys
     # Debug print
     for i, msg in enumerate(result['messages']):

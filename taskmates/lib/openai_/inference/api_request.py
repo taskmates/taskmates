@@ -1,5 +1,4 @@
 import asyncio
-from random import random
 
 import pytest
 from httpx import ReadError
@@ -9,68 +8,38 @@ from taskmates.core.actions.chat_completion.openai_adapters.anthropic_openai_ada
     ChatCompletionPreProcessor
 from taskmates.core.actions.chat_completion.openai_adapters.anthropic_openai_adapter.response.chat_completion_with_username import \
     ChatCompletionWithUsername
-from taskmates.workflows.contexts.run_context import RunContext
-from taskmates.workflow_engine.run import RUN, Run
 from taskmates.formats.markdown.metadata.get_model_client import get_model_client
-from taskmates.lib.not_set.not_set import NOT_SET
+from taskmates.lib.openai_.inference.interruptible_request import InterruptibleRequest
 from taskmates.lib.opentelemetry_.tracing import tracer
 from taskmates.server.streamed_response import StreamedResponse
+from taskmates.workflow_engine.environment_signals import EnvironmentSignals
+from taskmates.workflow_engine.run import RUN, Run
 
 
 @typechecked
-async def api_request(client, messages: list, model_conf: dict, model_params: dict,
-                      run: Run) -> dict:
+async def api_request(client, request_payload: dict, completion_signals: EnvironmentSignals) -> dict:
     streamed_response = StreamedResponse()
-    output_streams = run.signals["output_streams"]
-    control = run.signals["control"]
-    status = run.signals["status"]
-
-    output_streams.chat_completion.connect(streamed_response.accept, weak=False)
-
-    if output_streams.chat_completion.receivers:
-        model_conf.update({"stream": True})
-
-    llm_client_args = get_llm_client_args(messages, model_conf, model_params)
+    output_streams = completion_signals["output_streams"]
+    control = completion_signals["control"]
+    status = completion_signals["status"]
 
     with tracer().start_as_current_span(name="chat-completion"):
-        await output_streams.artifact.send_async(
-            {"name": "openai_request_payload.json", "content": llm_client_args})
+        async with InterruptibleRequest(status=status, control=control) as request:
+            chat_completion = await client.chat.completions.create(**request_payload)
 
-        interrupted_or_killed = False
+            if request_payload.get("stream", False):
+                output_streams.chat_completion.connect(streamed_response.accept, weak=False)
 
-        async def interrupt_handler(sender):
-            nonlocal interrupted_or_killed
-            interrupted_or_killed = True
-            await chat_completion.response.aclose()
-            await status.interrupted.send_async(None)
-
-        async def kill_handler(sender):
-            nonlocal interrupted_or_killed
-            interrupted_or_killed = True
-            await chat_completion.response.aclose()
-            await status.killed.send_async(None)
-
-        with control.interrupt.connected_to(interrupt_handler), \
-                control.kill.connected_to(kill_handler):
-            chat_completion = await client.chat.completions.create(**llm_client_args)
-
-            if model_conf["stream"]:
                 try:
                     async for chat_completion_chunk in \
                             ChatCompletionWithUsername(ChatCompletionPreProcessor(chat_completion)):
-                        if interrupted_or_killed:
+                        if request.interrupted_or_killed:
                             break
-                        for choice in chat_completion_chunk.choices:
-                            if choice.delta.content:
-                                content: str = choice.delta.content
-                                # TODO move this to ChatCompletionPreProcessor
-                                choice.delta.content = content.replace("\r", "")
                         await output_streams.chat_completion.send_async(chat_completion_chunk)
 
                 except asyncio.CancelledError:
                     await output_streams.artifact.send_async(
                         {"name": "response_cancelled.json", "content": str(True)})
-                    await chat_completion.response.aclose()
                     raise
                 except ReadError as e:
                     await output_streams.artifact.send_async(
@@ -90,16 +59,6 @@ async def api_request(client, messages: list, model_conf: dict, model_params: di
         raise Exception("OpenAI API response was truncated.")
 
     return response
-
-
-def get_llm_client_args(messages, model_conf, model_params):
-    if model_params.get("tool_choice", None) is NOT_SET:
-        del model_params["tool_choice"]
-    if "tools" in model_params and not model_params["tools"]:
-        del model_params["tools"]
-    seed = int(random() * 1000000)
-    llm_client_args = (dict(messages=messages, **model_conf, **model_params, seed=seed))
-    return llm_client_args
 
 
 @pytest.mark.integration
@@ -161,18 +120,7 @@ async def test_api_request_with_complex_payload(run):
         },
         {
             "role": "assistant",
-            "content": [
-                {
-                    "text": "![[/Users/ralphus/Downloads/cat.jpeg]]\n\n",
-                    "type": "text"
-                },
-                {
-                    "image_url": {
-                        "url": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAgAAAAIAQMAAAD+wSzIAAAABlBMVEX///+/v7+jQ3Y5AAAADklEQVQI12P4AIX8EAgALgAD/aNpbtEAAAAASUVORK5CYII=",
-                    },
-                    "type": "image_url"
-                }
-            ],
+            "content": "![[/Users/ralphus/Downloads/cat.jpeg]]\n\nI can see a cat in the image."
         }
     ]
 
@@ -200,9 +148,6 @@ async def test_api_request_with_complex_payload(run):
     }
     model_params = {}
 
-    # Assuming the SIGNALS and CURRENT_PATH are properly initialized
-    # and the OpenAI API key is set in the environment or configuration
-
     # Call the api_request function with the defined parameters
     contexts = RUN.get().context
     client = get_model_client(model_conf["model"], contexts["runner_config"]["taskmates_dirs"])
@@ -215,4 +160,3 @@ async def test_api_request_with_complex_payload(run):
     assert 'message' in response['choices'][0]
     assert 'content' in response['choices'][0]['message']
     assert response['choices'][0]['message']['content']  # Content should not be empty
-    # Add more specific assertions based on the expected response structure

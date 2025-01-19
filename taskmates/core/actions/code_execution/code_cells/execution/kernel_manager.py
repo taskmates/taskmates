@@ -2,7 +2,7 @@ from typing import Mapping, Tuple, List
 
 from jupyter_client import AsyncKernelManager, AsyncKernelClient
 
-from taskmates.core.actions.code_execution.code_cells.cell_status import KernelCellTracker
+from taskmates.core.actions.code_execution.code_cells.execution.cell_status import KernelCellTracker
 from taskmates.core.actions.code_execution.code_cells.jupyter_notebook_logger import jupyter_notebook_logger
 from taskmates.lib.root_path.root_path import root_path
 

@@ -2,14 +2,14 @@ from typing import Mapping, Tuple, List
 
 from nbformat import NotebookNode
 
-from taskmates.core.actions.code_execution.code_cells.bash_script_handler import BashScriptHandler
-from taskmates.core.actions.code_execution.code_cells.cell_executor import CellExecutor
-from taskmates.core.actions.code_execution.code_cells.cell_status import KernelCellTracker
+from taskmates.core.actions.code_execution.code_cells.execution.bash_script_handler import BashScriptHandler
+from taskmates.core.actions.code_execution.code_cells.execution.cell_executor import CellExecutor
+from taskmates.core.actions.code_execution.code_cells.execution.cell_status import KernelCellTracker
 from taskmates.core.actions.code_execution.code_cells.jupyter_notebook_logger import jupyter_notebook_logger
-from taskmates.core.actions.code_execution.code_cells.kernel_manager import KernelManager, get_kernel_manager
-from taskmates.core.actions.code_execution.code_cells.message_handler import MessageHandler
-from taskmates.core.actions.code_execution.code_cells.parse_notebook import parse_notebook
-from taskmates.core.actions.code_execution.code_cells.signal_handler import SignalHandler
+from taskmates.core.actions.code_execution.code_cells.execution.kernel_manager import KernelManager, get_kernel_manager
+from taskmates.core.actions.code_execution.code_cells.execution.message_handler import MessageHandler
+from taskmates.core.actions.code_execution.code_cells.parsing.parse_notebook import parse_notebook
+from taskmates.core.actions.code_execution.code_cells.execution.signal_handler import SignalHandler
 from taskmates.workflow_engine.run import Run
 
 

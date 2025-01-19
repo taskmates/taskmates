@@ -1,18 +1,16 @@
-from taskmates.workflows.contexts.run_context import RunContext
-from taskmates.workflow_engine.run import Run
+from taskmates.workflow_engine.environment_signals import EnvironmentSignals
 
 
 # TODO: Remove this class
 class EditorAppender:
-    def __init__(self, project_dir: str, chat_file: str, run: Run):
+    def __init__(self, project_dir: str, chat_file: str, completion_signals: EnvironmentSignals):
         self.chat_file = chat_file
         self.project_dir = project_dir
-        self.run = run
+        self.completion_signals = completion_signals
 
     async def append(self, text: str):
         sanitized = text.replace("\r", "")
         if not sanitized:
             return
 
-        await self.run.signals["output_streams"].response.send_async(sanitized)
-
+        await self.completion_signals["output_streams"].response.send_async(sanitized)

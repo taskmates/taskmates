@@ -12,32 +12,25 @@ def fulfills(outcome: str):
     def decorator(fn: Callable):
         @wraps(fn)
         async def _fulfills_wrapper(*args, **kwargs):
-            current_run = RUN.get()
-            current_objective = current_run.objective
+            parent_run = RUN.get()
+            parent_objective = parent_run.objective
 
-            # Check result in parent run
             args_key = {"args": args, "kwargs": kwargs} if args or kwargs else None
-            existing_result = current_objective.get_future_result(outcome, args_key)
-            if existing_result is not None:
-                return existing_result
 
-            # TODO: bind to current
-            sub_objective = Objective(key=ObjectiveKey(
-                outcome=outcome,
-                inputs={},  # TODO: review
-                requesting_run=current_run
-            ))
+            fulfills_objective = parent_objective.get_or_create_sub_objective(outcome, args_key)
 
-            sub_run = Run(objective=sub_objective,
-                          context=current_run.context,
-                          daemons={},
-                          signals=current_run.signals,
-                          state=current_run.state)
+            if fulfills_objective.result_future.done():
+                return fulfills_objective.result_future.result()
 
-            with sub_run:
-                # Execute and store result in parent run
+            fulfills_run = Run(objective=fulfills_objective,
+                               context=parent_run.context,
+                               daemons={},
+                               signals=parent_run.signals,
+                               state=parent_run.state)
+
+            with fulfills_run:
                 result = await ensure_async(fn(*args, **kwargs))
-                current_objective.set_future_result(outcome, args_key, result)
+                fulfills_objective.result_future.set_result(result)
                 return result
 
         return _fulfills_wrapper

@@ -8,8 +8,8 @@ from typing import Mapping
 import pytest
 
 from taskmates.core.actions.code_execution.code_cells.jupyter_notebook_logger import jupyter_notebook_logger
-from taskmates.core.actions.code_execution.code_cells.kernel_manager import get_kernel_manager
-from taskmates.core.actions.code_execution.code_cells.markdown_executor import MarkdownExecutor
+from taskmates.core.actions.code_execution.code_cells.execution.kernel_manager import get_kernel_manager
+from taskmates.core.actions.code_execution.code_cells.execution.markdown_executor import MarkdownExecutor
 from taskmates.workflow_engine.run import RUN
 
 pytestmark = pytest.mark.slow

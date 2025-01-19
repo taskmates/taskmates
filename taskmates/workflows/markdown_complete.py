@@ -9,10 +9,12 @@ from taskmates.core.compute_separator import compute_separator
 from taskmates.lib.not_set.not_set import NOT_SET
 from taskmates.logging import logger
 from taskmates.types import Chat
+from taskmates.workflow_engine.base_signals import fork_signals
+from taskmates.workflow_engine.environment_signals import EnvironmentSignals
 from taskmates.workflow_engine.fulfills import fulfills
 from taskmates.workflow_engine.run import RUN, Run
 from taskmates.workflow_engine.workflow import Workflow
-from taskmates.workflows.actions.markdown_completion_action import MarkdownCompletionAction
+from taskmates.workflows.actions.markdown_completion_step_action import MarkdownCompleteSectionAction
 from taskmates.workflows.contexts.run_context import RunContext
 from taskmates.workflows.daemons.interrupt_request_daemon import InterruptRequestDaemon
 from taskmates.workflows.daemons.interrupted_or_killed_daemon import InterruptedOrKilledDaemon
@@ -55,8 +57,7 @@ class MarkdownComplete(Workflow):
 
     @fulfills(outcome="signals")
     async def create_signals(self):
-        return {
-        }
+        return {}
 
     @fulfills(outcome="state")
     async def create_state(self) -> MarkdownCompleteState:
@@ -95,39 +96,51 @@ class MarkdownComplete(Workflow):
     async def steps(self, markdown_chat: str) -> str:
         logger.debug(f"Starting MarkdownComplete with markdown:\n{markdown_chat}")
 
-        markdown_complete_run = RUN.get()
-        context = markdown_complete_run.context
-        state = markdown_complete_run.state
+        current_run = RUN.get()
+        context = current_run.context
+        state = current_run.state
+
+        # current_run.objective.print_graph()
 
         while True:
-            result = await self.get_completion(markdown_chat)
-            if result is None:
+            parent_signals: EnvironmentSignals = current_run.signals
+            # completion_signals = fork_signals(parent_signals)
+            completion_signals = parent_signals
+
+            markdown_section_completion = await self.complete_section(markdown_chat, completion_signals)
+            if markdown_section_completion is None:
                 break
-            markdown_chat = result
+            markdown_chat += markdown_section_completion
+            await self.on_after_step()
 
         response_format = context["runner_config"]["format"]
         response = state["markdown_chat"].get()[response_format]
         return response
 
-    @fulfills(outcome="completion")
-    async def get_completion(self, markdown_chat: str):
-        completion_run = RUN.get()
-        state = completion_run.state
+    # TODO outcome hooks?
+    @fulfills(outcome="markdown_section_completion")
+    async def complete_section(self, markdown_chat: str, completion_signals: EnvironmentSignals):
+        current_run = RUN.get()
+        output_streams = completion_signals["output_streams"]
 
+        state = current_run.state
         state["current_step"].increment()
+
         chat = await self.get_markdown_chat(markdown_chat)
+        await output_streams.artifact.send_async({"name": "parsed_chat.json", "content": chat})
 
         next_completion = await self.compute_next_completion(chat)
         if not next_completion:
-            await self.end_markdown_completion(chat, completion_run.context, completion_run)
+            await self.end_markdown_completion(chat, current_run.context, current_run)
             return None
 
-        step = MarkdownCompletionAction()
-        await step.perform(chat, next_completion)
+        step = MarkdownCompleteSectionAction()
+        await step.perform(chat, next_completion, completion_signals)
 
-        await self.on_after_step()
+        # current_run.objective.print_graph()
 
-        return state["markdown_chat"].get()["full"]
+        # TODO: return a rich result here
+        return state["markdown_chat"].get()["completion"]
 
     async def on_after_step(self):
         run = RUN.get()
