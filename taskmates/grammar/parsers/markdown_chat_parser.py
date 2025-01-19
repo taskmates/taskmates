@@ -11,8 +11,9 @@ pp.ParserElement.set_default_whitespace_chars("")
 
 
 def markdown_chat_parser(implicit_role: str = "user"):
-    # We no longer ignore comments globally
-    return (pp.Opt(front_matter_parser()) + messages_parser(implicit_role=implicit_role) + pp.StringEnd())
+    comments = pp.Suppress(LineStart() + pp.Literal("[//]: #") + pp.restOfLine)
+    return (pp.Opt(front_matter_parser()) + messages_parser(implicit_role=implicit_role) + pp.StringEnd()).ignore(
+        comments)
 
 
 def test_no_line_end():
@@ -124,75 +125,3 @@ def test_markdown_with_code_cell_execution():
             'content': '\n\n1 + 1 equals 2.\n\n',
             'name': 'assistant'
         }]
-
-
-def test_markdown_comments_outside_code_blocks():
-    input = textwrap.dedent("""\
-        **user>** Here's a message with a comment.
-        [//]: # (This comment should be ignored)
-        
-        **assistant>** Here's another message.
-        """)
-
-    results = markdown_chat_parser().parseString(input).as_dict()
-
-    assert results["messages"] == [
-        {
-            'content': "Here's a message with a comment.\n\n",
-            'name': 'user'
-        },
-        {
-            'content': "Here's another message.\n",
-            'name': 'assistant'
-        }
-    ]
-
-
-def test_markdown_comments_inside_code_blocks():
-    input = textwrap.dedent("""\
-        **user>** Here's a code block with a comment:
-        
-        ```python
-        # This is a Python comment
-        [//]: # (This comment should be preserved)
-        print("Hello")
-        ```
-        """)
-
-    results = markdown_chat_parser().parseString(input).as_dict()
-
-    assert results["messages"] == [
-        {
-            'content': "Here's a code block with a comment:\n\n"
-                      "```python\n"
-                      "# This is a Python comment\n"
-                      "[//]: # (This comment should be preserved)\n"
-                      'print("Hello")\n'
-                      "```\n",
-            'name': 'user'
-        }
-    ]
-
-
-def test_markdown_comments_inside_pre_tags():
-    input = textwrap.dedent("""\
-        **user>** Here's a pre block with a comment:
-        
-        <pre>
-        [//]: # (This comment should be preserved)
-        Some content
-        </pre>
-        """)
-
-    results = markdown_chat_parser().parseString(input).as_dict()
-
-    assert results["messages"] == [
-        {
-            'content': "Here's a pre block with a comment:\n\n"
-                      "<pre>\n"
-                      "[//]: # (This comment should be preserved)\n"
-                      "Some content\n"
-                      "</pre>\n",
-            'name': 'user'
-        }
-    ]
