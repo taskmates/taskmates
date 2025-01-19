@@ -14,7 +14,7 @@ from taskmates.lib.opentelemetry_.tracing import tracer
 from taskmates.server.streamed_response import StreamedResponse
 from taskmates.workflow_engine.environment_signals import EnvironmentSignals
 from taskmates.workflow_engine.run import RUN, Run
-
+from loguru import logger
 
 @typechecked
 async def api_request(client, request_payload: dict, completion_signals: EnvironmentSignals) -> dict:
@@ -52,11 +52,16 @@ async def api_request(client, request_payload: dict, completion_signals: Environ
     await output_streams.artifact.send_async({"name": "response.json", "content": response})
 
     if not response['choices']:
+        logger.debug(f"Empty response['choices']. Cancelling request.")
         # NOTE: this seems to happen when the request is cancelled before any response is received
         raise asyncio.CancelledError
 
+    logger.debug(f"Finish Reason: {response['choices'][0]['finish_reason']}")
+
     if response['choices'][0]['finish_reason'] == 'length':
         raise Exception("OpenAI API response was truncated.")
+
+
 
     return response
 
