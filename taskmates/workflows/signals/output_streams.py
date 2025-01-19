@@ -63,39 +63,3 @@ async def test_error_completion():
     assert "**error>** Test error: ValueError" in received[0]
     assert "<pre>" in received[0]
     assert "Traceback (most recent call last):" in received[0]
-
-
-@pytest.mark.asyncio
-async def test_output_streams_copy():
-    # Create original signals
-    original = OutputStreams()
-
-    # Create a copy
-    copy = original.copy()
-
-    # Verify they are different instances
-    assert original is not copy
-    assert original.namespace is not copy.namespace
-
-    # Verify the signals are properly connected
-    received_by_original = []
-    received_by_copy = []
-
-    @original.stdout.connect
-    async def original_handler(sender):
-        received_by_original.append(sender)
-
-    @copy.stdout.connect
-    async def copy_handler(sender):
-        received_by_copy.append(sender)
-
-    # Send a signal from the original
-    await original.stdout.send_async('original')
-    # In UPSTREAM mode, original signals should not propagate to copy
-    assert received_by_original == ['original']
-    assert received_by_copy == []
-
-    # Send a signal from the copy
-    await copy.stdout.send_async('copy')
-    assert received_by_original == ['original', 'copy']
-    assert received_by_copy == ['copy']

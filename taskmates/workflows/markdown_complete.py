@@ -9,7 +9,6 @@ from taskmates.core.compute_separator import compute_separator
 from taskmates.lib.not_set.not_set import NOT_SET
 from taskmates.logging import logger
 from taskmates.types import Chat
-from taskmates.workflow_engine.base_signals import fork_signals
 from taskmates.workflow_engine.environment_signals import EnvironmentSignals
 from taskmates.workflow_engine.fulfills import fulfills
 from taskmates.workflow_engine.run import RUN, Run
