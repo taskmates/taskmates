@@ -15,7 +15,7 @@ from taskmates.workflows.signals.output_streams import OutputStreams
 
 class ChatCompletionProvider(CompletionProvider):
     def can_complete(self, chat):
-        if self.has_truncated_response(chat):
+        if self.has_truncated_code_cell(chat):
             return True
 
         last_message = chat["messages"][-1]
@@ -27,7 +27,7 @@ class ChatCompletionProvider(CompletionProvider):
         contexts = RUN.get().context
         output_streams: OutputStreams = completion_signals["output_streams"]
 
-        chat_completion_markdown_appender = ChatCompletionMarkdownAppender(chat, self.has_truncated_response(chat),
+        chat_completion_markdown_appender = ChatCompletionMarkdownAppender(chat, self.has_truncated_code_cell(chat),
                                                                            output_streams)
 
         async def restream_completion_chunk(chat_completion_chunk):

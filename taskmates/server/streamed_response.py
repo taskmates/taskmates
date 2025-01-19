@@ -9,6 +9,7 @@ from typeguard import typechecked
 
 class StreamedResponse:
     def __init__(self):
+        self.accepted_chunks = []
         self.final_json = {}
         self.current_tool_call_id = None
         self.tool_calls_by_id = {}
@@ -19,6 +20,8 @@ class StreamedResponse:
     @typechecked
     async def accept(self, chat_completion_chunk: Union[ChatCompletionChunk, ChatCompletionChunkModel]):
         chat_completion_chunk_dict = chat_completion_chunk.model_dump()
+        self.accepted_chunks.append(chat_completion_chunk_dict)
+
         delta = chat_completion_chunk_dict.get('choices', [{}])[0].get('delta', {})
         tool_calls = delta.get('tool_calls', []) or []
         content = delta.get('content', '')

@@ -9,6 +9,7 @@ from taskmates.workflow_engine.environment import environment
 from taskmates.workflow_engine.run import to_daemons_dict, RUN, Objective, ObjectiveKey
 from taskmates.workflows.context_builders.api_context_builder import ApiContextBuilder
 from taskmates.workflows.markdown_complete import MarkdownComplete
+from taskmates.workflows.signals.sinks.file_system_artifacts_sink import FileSystemArtifactsSink
 from taskmates.workflows.signals.sinks.web_socket_completion_streamer import WebSocketCompletionStreamer
 from taskmates.workflows.signals.sources.web_socket_interrupt_and_kill_controller import \
     WebSocketInterruptAndKillController
@@ -27,6 +28,7 @@ class ApiCompletionRunner:
                 'daemons': lambda: to_daemons_dict([
                     WebSocketInterruptAndKillController(self.resources["websocket"]),
                     WebSocketCompletionStreamer(self.resources["websocket"]),
+                    FileSystemArtifactsSink()
                 ]),
                 'state': lambda: {},
                 'results': lambda: {},

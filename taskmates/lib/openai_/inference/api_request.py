@@ -2,6 +2,7 @@ import asyncio
 
 import pytest
 from httpx import ReadError
+from loguru import logger
 from typeguard import typechecked
 
 from taskmates.core.actions.chat_completion.openai_adapters.anthropic_openai_adapter.response.chat_completion_pre_processor import \
@@ -13,8 +14,8 @@ from taskmates.lib.openai_.inference.interruptible_request import InterruptibleR
 from taskmates.lib.opentelemetry_.tracing import tracer
 from taskmates.server.streamed_response import StreamedResponse
 from taskmates.workflow_engine.environment_signals import EnvironmentSignals
-from taskmates.workflow_engine.run import RUN, Run
-from loguru import logger
+from taskmates.workflow_engine.run import RUN
+
 
 @typechecked
 async def api_request(client, request_payload: dict, completion_signals: EnvironmentSignals) -> dict:
@@ -30,9 +31,12 @@ async def api_request(client, request_payload: dict, completion_signals: Environ
             if request_payload.get("stream", False):
                 output_streams.chat_completion.connect(streamed_response.accept, weak=False)
 
+                received_chunk = False
+
                 try:
                     async for chat_completion_chunk in \
                             ChatCompletionWithUsername(ChatCompletionPreProcessor(chat_completion)):
+                        received_chunk = True
                         if request.interrupted_or_killed:
                             break
                         await output_streams.chat_completion.send_async(chat_completion_chunk)
@@ -46,22 +50,19 @@ async def api_request(client, request_payload: dict, completion_signals: Environ
                         {"name": "response_read_error.json", "content": str(e)})
 
                 response = streamed_response.payload
+                if not response['choices']:
+                    logger.debug(f"Empty response['choices']. Cancelling request. received_chunk={received_chunk}")
+                    # NOTE: this seems to happen when the request is cancelled before any response is received
+                    raise asyncio.CancelledError
+
             else:
                 response = chat_completion.model_dump()
 
     await output_streams.artifact.send_async({"name": "response.json", "content": response})
-
-    if not response['choices']:
-        logger.debug(f"Empty response['choices']. Cancelling request.")
-        # NOTE: this seems to happen when the request is cancelled before any response is received
-        raise asyncio.CancelledError
-
     logger.debug(f"Finish Reason: {response['choices'][0]['finish_reason']}")
 
     if response['choices'][0]['finish_reason'] == 'length':
         raise Exception("OpenAI API response was truncated.")
-
-
 
     return response
 
