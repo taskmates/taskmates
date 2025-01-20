@@ -35,9 +35,24 @@ def message_parser():
 
 
 def message_content_parser():
-    text_content = pp.Regex(fr"({NOT_BEGINNING_OF_SECTION_AHEAD}.)+", re.DOTALL | re.MULTILINE)
+    # Define markdown comments pattern
+    comment_pattern = pp.LineStart() + pp.Literal("[//]: #") + pp.restOfLine + pp.LineEnd()
+    
+    # Code cells and pre tags (which should not ignore comments)
     code_cell = code_cell_parser()
     pre_tag = pre_tag_parser()
+    
+    # Regular text content that's not inside special blocks
+    def remove_comments(text):
+        lines = text.split('\n')
+        filtered_lines = [line for line in lines if not line.strip().startswith('[//]: #')]
+        return '\n'.join(filtered_lines)
+    
+    text_content = (
+        pp.Regex(fr"({NOT_BEGINNING_OF_SECTION_AHEAD}.)+", re.DOTALL | re.MULTILINE)
+        .setParseAction(lambda t: remove_comments(t[0]))
+    )
+    
     return pp.Combine(
         (text_content | code_cell | pre_tag)[...]
     )("content")
@@ -621,3 +636,44 @@ def test_messages_parser_with_partial_pre_tag():
         'name': 'assistant',
         'content': 'Message with unclosed pre tag\n\n<pre>\nsome content\n',
     }
+
+
+def test_messages_parser_with_markdown_comments():
+    input = textwrap.dedent('''\
+        **user>** Here's a message with comments
+        [//]: # (This comment should be ignored)
+        
+        ```python
+        # This is a Python comment
+        [//]: # (This comment should be preserved)
+        print("hello")
+        ```
+        
+        <pre>
+        [//]: # (This comment should be preserved)
+        Some content
+        </pre>
+        
+        [//]: # (This comment should be ignored)
+        ''')
+
+    expected_messages = [
+        {
+            'name': 'user',
+            'content': "Here's a message with comments\n\n"
+                      "```python\n"
+                      "# This is a Python comment\n"
+                      "[//]: # (This comment should be preserved)\n"
+                      'print("hello")\n'
+                      "```\n\n"
+                      "<pre>\n"
+                      "[//]: # (This comment should be preserved)\n"
+                      "Some content\n"
+                      "</pre>\n\n"
+        }
+    ]
+
+    results = messages_parser().parseString(input)
+    parsed_messages = [m.as_dict() for m in results.messages]
+
+    assert parsed_messages == expected_messages
