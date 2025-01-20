@@ -107,9 +107,9 @@ class MarkdownComplete(Workflow):
             completion_signals = parent_signals
 
             markdown_section_completion = await self.complete_section(markdown_chat, completion_signals)
-            if markdown_section_completion is None:
+            if not markdown_section_completion:
                 break
-            markdown_chat += markdown_section_completion
+            markdown_chat = state["markdown_chat"].get()["full"]
             await self.on_after_step()
 
         response_format = context["runner_config"]["format"]
@@ -131,7 +131,7 @@ class MarkdownComplete(Workflow):
         next_completion = await self.compute_next_completion(chat)
         if not next_completion:
             await self.end_markdown_completion(chat, current_run.context, current_run)
-            return None
+            return False
 
         step = MarkdownCompleteSectionAction()
         await step.perform(chat, next_completion, completion_signals)
@@ -139,7 +139,7 @@ class MarkdownComplete(Workflow):
         # current_run.objective.print_graph()
 
         # TODO: return a rich result here
-        return state["markdown_chat"].get()["completion"]
+        return True
 
     async def on_after_step(self):
         run = RUN.get()

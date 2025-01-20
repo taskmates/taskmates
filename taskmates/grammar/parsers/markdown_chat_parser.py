@@ -76,6 +76,49 @@ def test_markdown_with_tool_execution():
     ]
 
 
+def test_markdown_with_code_cell():
+    input = textwrap.dedent("""\
+        print(1 + 1)
+        
+        **assistant>**
+        
+        print(1 + 1)
+        
+        ```python .eval
+        print(1 + 1)
+        ```
+
+        ###### Cell Output: stdout [cell_0]
+    
+        <pre>
+        2
+        </pre>
+    
+        """)
+
+    results = markdown_chat_parser().parseString(input).as_dict()
+
+    assert results["messages"] == [
+        {
+            'content': 'print(1 + 1)\n\n', 'name': 'user'
+        },
+        {
+            'content': '\n'
+                       'print(1 + 1)\n'
+                       '\n'
+                       '```python .eval\n'
+                       'print(1 + 1)\n'
+                       '```\n'
+                       '\n'
+            ,
+            'name': 'assistant'
+        },
+        {'code_cell_id': 'cell_0',
+         'content': '\n<pre>\n2\n</pre>\n\n',
+         'role': 'cell_output',
+         'name': 'stdout'},
+    ]
+
 def test_markdown_with_code_cell_execution():
     input = textwrap.dedent("""\
         print(1 + 1)
