@@ -1,18 +1,35 @@
 import textwrap
+from typing import Optional
 
 import pyparsing as pp
-from pyparsing import LineStart
+from pydantic import BaseModel
+from pyparsing import ParseResults
 
 from taskmates.grammar.parsers.front_matter_parser import front_matter_parser
-from taskmates.grammar.parsers.messages_parser import messages_parser
+from taskmates.grammar.parsers.messages_parser import messages_parser, MessageNode
 
 pp.enable_all_warnings()
 pp.ParserElement.set_default_whitespace_chars("")
 
 
+class ChatNode(BaseModel):
+    front_matter: Optional[dict] = None
+    messages: list[MessageNode]
+
+    @classmethod
+    def from_tokens(cls, tokens: ParseResults):
+        tokens.as_list()
+        tokens["messages"].as_list()
+        return cls(**tokens.as_dict())
+
+    def as_dict(self):
+        return self.model_dump(exclude_unset=True)
+
+
 def markdown_chat_parser(implicit_role: str = "user"):
-    # We no longer ignore comments globally
-    return (pp.Opt(front_matter_parser()) + messages_parser(implicit_role=implicit_role) + pp.StringEnd())
+    return (pp.Opt(front_matter_parser())
+            + messages_parser(implicit_role=implicit_role)
+            + pp.StringEnd()).set_parse_action(ChatNode.from_tokens)
 
 
 def test_no_line_end():
@@ -26,9 +43,29 @@ def test_no_line_end():
                          {'content': 'Short answer. 1+1=',
                           'name': 'assistant'}]
 
-    results = markdown_chat_parser().parseString(input).as_dict()
+    results = markdown_chat_parser().parseString(input)[0].as_dict()
 
     assert results["messages"] == expected_messages
+
+
+def test_with_front_matter():
+    input = textwrap.dedent("""\
+        ---
+        key1: value1
+        key2:
+          - item1
+          - item2
+        ---
+        
+        **user>** Message
+        """)
+
+    results = markdown_chat_parser().parseString(input)[0].as_dict()
+
+    assert results == {
+        'front_matter': {'key1': 'value1', 'key2': ['item1', 'item2']},
+        'messages': [{'content': 'Message\n', 'name': 'user'}]
+    }
 
 
 def test_markdown_with_tool_execution():
@@ -47,7 +84,7 @@ def test_markdown_with_tool_execution():
         **user>** Here is another message.
         """)
 
-    results = markdown_chat_parser().parseString(input).as_dict()
+    results = markdown_chat_parser().parseString(input)[0].as_dict()
 
     assert results["messages"] == [
         {
@@ -95,7 +132,7 @@ def test_markdown_with_code_cell():
     
         """)
 
-    results = markdown_chat_parser().parseString(input).as_dict()
+    results = markdown_chat_parser().parseString(input)[0].as_dict()
 
     assert results["messages"] == [
         {
@@ -110,13 +147,20 @@ def test_markdown_with_code_cell():
                        '```\n'
                        '\n'
             ,
-            'name': 'assistant'
+            'name': 'assistant',
+            'code_cells': [{
+                'source': '```python .eval\nprint(1 + 1)\n```\n',
+                'content': 'print(1 + 1)\n',
+                'language': 'python',
+                'eval': True
+            }]
         },
         {'code_cell_id': 'cell_0',
          'content': '\n<pre>\n2\n</pre>\n\n',
          'role': 'cell_output',
          'name': 'stdout'},
     ]
+
 
 def test_markdown_with_code_cell_execution():
     input = textwrap.dedent("""\
@@ -142,7 +186,7 @@ def test_markdown_with_code_cell_execution():
 
         """)
 
-    results = markdown_chat_parser().parseString(input).as_dict()
+    results = markdown_chat_parser().parseString(input)[0].as_dict()
 
     assert results["messages"] == [
         {
@@ -157,7 +201,13 @@ def test_markdown_with_code_cell_execution():
                        '```\n'
                        '\n'
             ,
-            'name': 'assistant'
+            'name': 'assistant',
+            'code_cells': [{
+                'source': '```python .eval\nprint(1 + 1)\n```\n',
+                'content': 'print(1 + 1)\n',
+                'language': 'python',
+                'eval': True
+            }]
         },
         {'code_cell_id': 'cell_0',
          'content': '\n<pre>\n2\n</pre>\n\n',
@@ -177,7 +227,7 @@ def test_markdown_comments_outside_code_blocks():
         **assistant>** Here's another message.
         """)
 
-    results = markdown_chat_parser().parseString(input).as_dict()
+    results = markdown_chat_parser().parseString(input)[0].as_dict()
 
     assert results["messages"] == [
         {
@@ -202,16 +252,16 @@ def test_markdown_comments_inside_code_blocks():
         ```
         """)
 
-    results = markdown_chat_parser().parseString(input).as_dict()
+    results = markdown_chat_parser().parseString(input)[0].as_dict()
 
     assert results["messages"] == [
         {
             'content': "Here's a code block with a comment:\n\n"
-                      "```python\n"
-                      "# This is a Python comment\n"
-                      "[//]: # (This comment should be preserved)\n"
-                      'print("Hello")\n'
-                      "```\n",
+                       "```python\n"
+                       "# This is a Python comment\n"
+                       "[//]: # (This comment should be preserved)\n"
+                       'print("Hello")\n'
+                       "```\n",
             'name': 'user'
         }
     ]
@@ -227,15 +277,15 @@ def test_markdown_comments_inside_pre_tags():
         </pre>
         """)
 
-    results = markdown_chat_parser().parseString(input).as_dict()
+    results = markdown_chat_parser().parseString(input)[0].as_dict()
 
     assert results["messages"] == [
         {
             'content': "Here's a pre block with a comment:\n\n"
-                      "<pre>\n"
-                      "[//]: # (This comment should be preserved)\n"
-                      "Some content\n"
-                      "</pre>\n",
+                       "<pre>\n"
+                       "[//]: # (This comment should be preserved)\n"
+                       "Some content\n"
+                       "</pre>\n",
             'name': 'user'
         }
     ]

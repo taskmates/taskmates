@@ -13,8 +13,8 @@ def front_matter_parser():
         return yaml.safe_load(t[0])
 
     front_matter = (pp.QuotedString('---\n', multiline=True, unquoteResults=True)
-                    .set_parse_action(convert_to_yaml)
-                    .set_results_name("front_matter") + pp.ZeroOrMore(pp.Suppress(pp.Literal("\n"))))
+                    + pp.ZeroOrMore(pp.Suppress(pp.Literal("\n")))
+                    ).set_parse_action(convert_to_yaml)("front_matter")
     return front_matter
 
 

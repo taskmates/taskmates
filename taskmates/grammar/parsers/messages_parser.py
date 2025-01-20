@@ -1,10 +1,14 @@
 import re
 import textwrap
+from dataclasses import dataclass
+from typing import Optional, List
 
 import pyparsing as pp
+from pydantic import BaseModel
+from pyparsing import ParseResults
 
 from taskmates.grammar.parsers.header.headers import headers_parser
-from taskmates.grammar.parsers.message.code_cell_parser import code_cell_parser
+from taskmates.grammar.parsers.message.code_cell_parser import code_cell_parser, CodeCellNode
 from taskmates.grammar.parsers.message.pre_tag_parser import pre_tag_parser
 from taskmates.grammar.parsers.message.tool_calls_parser import tool_calls_parser
 
@@ -22,51 +26,81 @@ NOT_BEGINNING_OF_SECTION_AHEAD = fr"(?!{BEGINING_OF_SECTION})"
 END_OF_STRING = r"\Z"
 
 
-def message_parser():
-    message_content = message_content_parser()
+class MessageNode(BaseModel):
+    name: str
+    content: str
+    role: Optional[str] = None
+    code_cell_id: Optional[str] = None
+    tool_call_id: Optional[str] = None
+    tool_calls: Optional[list] = None
+    attributes: Optional[dict] = None
+    code_cells: Optional[List[CodeCellNode]] = None
 
-    message = pp.Group(
-        pp.LineStart()
-        + headers_parser()
-        + message_content
-        + pp.Optional(tool_calls_parser())
-    )
-    return message
+    @classmethod
+    def create(cls, s, loc, tokens: ParseResults):
+        dct = tokens.as_dict()
+        child_nodes = dct.pop("child_nodes")
+        dct["content"] = "".join(n.source for n in child_nodes)
+        dct["code_cells"] = [n for n in child_nodes if isinstance(n, CodeCellNode) and n.eval]
+        if not dct["code_cells"]:
+            del dct["code_cells"]
+        return MessageNode(**dct)
+
+    def as_dict(self):
+        return self.model_dump(exclude_unset=True)
+
+
+@dataclass
+class TextContentNode:
+    source: str
+
+    @classmethod
+    def from_tokens(cls, tokens):
+        return cls(source=remove_comments(tokens[0]))
+
+
+# Regular text content that's not inside special blocks
+def remove_comments(text):
+    lines = text.split('\n')
+    filtered_lines = [line for line in lines if not line.strip().startswith('[//]: #')]
+    return '\n'.join(filtered_lines)
 
 
 def message_content_parser():
-    # Define markdown comments pattern
-    comment_pattern = pp.LineStart() + pp.Literal("[//]: #") + pp.restOfLine + pp.LineEnd()
-    
     # Code cells and pre tags (which should not ignore comments)
     code_cell = code_cell_parser()
     pre_tag = pre_tag_parser()
-    
-    # Regular text content that's not inside special blocks
-    def remove_comments(text):
-        lines = text.split('\n')
-        filtered_lines = [line for line in lines if not line.strip().startswith('[//]: #')]
-        return '\n'.join(filtered_lines)
-    
+
     text_content = (
         pp.Regex(fr"({NOT_BEGINNING_OF_SECTION_AHEAD}.)+", re.DOTALL | re.MULTILINE)
-        .setParseAction(lambda t: remove_comments(t[0]))
-    )
-    
-    return pp.Combine(
+    ).set_parse_action(TextContentNode.from_tokens)
+
+    return pp.Group(
         (text_content | code_cell | pre_tag)[...]
-    )("content")
+    )("child_nodes")
 
 
 def first_message_parser(implicit_role: str = "user"):
     message_content = message_content_parser()
     implicit_header = (pp.LineStart() + pp.Empty().setParseAction(lambda: implicit_role)("name"))
-    first_message = pp.Group(
-        (headers_parser() | implicit_header)
-        + message_content
-        + pp.Optional(tool_calls_parser())
+    first_message = (
+            (headers_parser() | implicit_header)
+            + message_content
+            + pp.Optional(tool_calls_parser())
     )
-    return first_message
+    return first_message.set_parse_action(MessageNode.create)
+
+
+def message_parser():
+    message_content = message_content_parser()
+
+    message = (
+            pp.LineStart()
+            + headers_parser()
+            + message_content
+            + pp.Optional(tool_calls_parser())
+    )
+    return message.set_parse_action(MessageNode.create)
 
 
 def messages_parser(implicit_role: str = "user"):
@@ -144,7 +178,7 @@ def test_messages_with_no_line_end():
     assert [m.as_dict() for m in results.messages] == expected_messages
 
 
-def test_messages_parser_mutiple_messages():
+def test_messages_parser_multiple_messages():
     input = textwrap.dedent("""\
         **user>** Hello, assistant!
         
@@ -153,16 +187,19 @@ def test_messages_parser_mutiple_messages():
         **assistant>** Hi, user!
         
         This is the response.
+        
+        **user>** Hi again.
+        
+        This is a reply.
         """)
-
-    expected_messages = [{'content': 'Hello, assistant!\n\nThis is a multiline message.\n\n',
-                          'name': 'user'},
-                         {'content': 'Hi, user!\n\nThis is the response.\n',
-                          'name': 'assistant'}]
 
     results = messages_parser().parseString(input)
 
-    assert [m.as_dict() for m in results.messages] == expected_messages
+    assert [m.as_dict() for m in results.messages] == [
+        {'content': 'Hello, assistant!\n\nThis is a multiline message.\n\n',
+         'name': 'user'},
+        {'content': 'Hi, user!\n\nThis is the response.\n\n', 'name': 'assistant'},
+        {'content': 'Hi again.\n\nThis is a reply.\n', 'name': 'user'}]
 
 
 def test_messages_parser_with_multiple_tool_calls():
@@ -378,6 +415,12 @@ def test_messages_parser_with_code_cell_execution():
                        '```\n'
                        '\n',
             'name': 'user',
+            'code_cells': [{
+                'source': '```python .eval\nprint(1 + 1)\n```\n',
+                'content': 'print(1 + 1)\n',
+                'language': 'python',
+                'eval': True
+            }]
         }, {
             'role': 'cell_output',
             'name': 'stdout',
@@ -428,7 +471,13 @@ def test_messages_parser_with_false_header_in_code_cell():
     expected_messages = [
         {
             'name': 'user',
-            'content': 'Here\'s a code block with a false header:\n\n```python .eval\nprint("""\n**assistant>** This is a false positive.\n""")\n```\n\n'
+            'content': 'Here\'s a code block with a false header:\n\n```python .eval\nprint("""\n**assistant>** This is a false positive.\n""")\n```\n\n',
+            'code_cells': [{
+                'source': '```python .eval\nprint("""\n**assistant>** This is a false positive.\n""")\n```\n',
+                'content': 'print("""\n**assistant>** This is a false positive.\n""")\n',
+                'language': 'python',
+                'eval': True
+            }]
         },
         {
             'name': 'assistant',
@@ -464,7 +513,13 @@ def test_messages_parser_with_code_cell():
     expected_messages = [
         {
             'name': 'user',
-            'content': expected
+            'content': expected,
+            'code_cells': [{
+                'source': '```python .eval\nprint("hello")\n```\n',
+                'content': 'print("hello")\n',
+                'language': 'python',
+                'eval': True
+            }]
         }
     ]
 
@@ -485,7 +540,11 @@ def test_messages_parser_code_cell_only_message():
     expected_messages = [
         {
             'name': 'user',
-            'content': input
+            'content': input,
+            'code_cells': [{'content': 'print("hello")\n',
+                            'eval': True,
+                            'language': 'python',
+                            'source': '```python .eval\nprint("hello")\n```\n'}]
         }
     ]
 
@@ -504,7 +563,13 @@ def test_messages_parser_code_cell_with_no_new_line():
     expected_messages = [
         {
             'name': 'user',
-            'content': input
+            'content': input,
+            'code_cells': [{
+                'source': '```python .eval\nprint("hello")\n```',
+                'content': 'print("hello")\n',
+                'language': 'python',
+                'eval': True
+            }]
         }
     ]
 
@@ -661,15 +726,15 @@ def test_messages_parser_with_markdown_comments():
         {
             'name': 'user',
             'content': "Here's a message with comments\n\n"
-                      "```python\n"
-                      "# This is a Python comment\n"
-                      "[//]: # (This comment should be preserved)\n"
-                      'print("hello")\n'
-                      "```\n\n"
-                      "<pre>\n"
-                      "[//]: # (This comment should be preserved)\n"
-                      "Some content\n"
-                      "</pre>\n\n"
+                       "```python\n"
+                       "# This is a Python comment\n"
+                       "[//]: # (This comment should be preserved)\n"
+                       'print("hello")\n'
+                       "```\n\n"
+                       "<pre>\n"
+                       "[//]: # (This comment should be preserved)\n"
+                       "Some content\n"
+                       "</pre>\n\n"
         }
     ]
 

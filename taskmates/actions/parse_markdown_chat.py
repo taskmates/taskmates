@@ -7,13 +7,11 @@ import pytest
 from loguru import logger
 from typeguard import typechecked
 
-from taskmates.core.actions.code_execution.code_cells.parsing.parse_notebook import parse_notebook
 from taskmates.formats.markdown.metadata.get_available_tools import get_available_tools
 from taskmates.formats.markdown.metadata.prepend_recipient_system import prepend_recipient_system
 from taskmates.formats.markdown.parsing.parse_front_matter_and_messages import parse_front_matter_and_messages
 from taskmates.formats.markdown.participants.compute_participants import compute_participants
 from taskmates.formats.markdown.participants.format_username_prompt import format_username_prompt
-from taskmates.formats.openai.get_text_content import get_text_content
 from taskmates.lib.digest_.get_digest import get_digest
 from taskmates.types import Chat
 
@@ -63,10 +61,6 @@ async def parse_markdown_chat(markdown_chat: str,
     recipient_config.pop("role", None)
 
     run_opts = {**recipient_config, **chat_front_matter}
-    notebook, code_cells = parse_notebook(get_text_content(messages[-1]))
-
-    if code_cells:
-        messages[-1]["code_cells"] = code_cells
 
     return {
         'markdown_chat': markdown_chat,
@@ -275,26 +269,3 @@ async def test_partial_assistant_response(markdown_path, taskmates_dir):
     assert result['messages'][1]['content'] == 'Hello, how are you?\n\n'
     assert result['messages'][2]['role'] == 'assistant'
     assert result['messages'][2]['content'] == "I'm doing w\n"
-
-
-@pytest.mark.asyncio
-async def test_partial_assistant_response_debug(markdown_path, taskmates_dir):
-    markdown_chat_content = """\
-    ---
-    participants: {}
-    ---
-
-    **user>** Hello, how are you?
-
-    **assistant>** I'm doing w
-    """
-    markdown_path.write_text(textwrap.dedent(markdown_chat_content))
-
-    result = await parse_markdown_chat(textwrap.dedent(markdown_chat_content), markdown_path, [taskmates_dir])
-
-    import sys
-    # Debug print
-    for i, msg in enumerate(result['messages']):
-        sys.stderr.write(f"Message {i}: {msg}\n")
-        if 'recipient' in msg:
-            sys.stderr.write(f"Message {i} recipient: {msg['recipient']}\n")

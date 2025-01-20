@@ -44,7 +44,7 @@ async def parse_front_matter_and_messages(source_file: Path,
         {"name": f"{start_time}-parsed-{source_file.name}", "content": content})
 
     try:
-        parsed_chat = parser.parse_string(content)
+        parsed_chat = parser.parse_string(content)[0]
     except pyparsing.exceptions.ParseSyntaxException as e:
         await artifact_signals.send_async(
             {"name": f"[parse_front_matter_and_messages_error] {start_time}-parsed-{source_file.name}",
@@ -78,8 +78,10 @@ async def parse_front_matter_and_messages(source_file: Path,
                    **attributes}
 
         if "tool_calls" in message_dict:
-            tool_calls = message_dict["tool_calls"]
-            message["tool_calls"] = tool_calls
+            message["tool_calls"] = message_dict["tool_calls"]
+
+        if "code_cells" in message_dict:
+            message["code_cells"] = message_dict["code_cells"]
 
         text_content = get_text_content(message_dict)
 
