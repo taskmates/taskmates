@@ -72,25 +72,22 @@ def taskmates_runtime():
 
 
 @pytest.fixture
-def run_opts():
-    return {
-        "model": "quote",
-        "max_steps": 1
-    }
+def run_opts(request):
+    if "integration" in request.node.keywords:
+        return {
+            "model": "claude-3-5-sonnet-20241022",
+            "max_steps": 100
+        }
+    else:
+        return {
+            "model": "quote",
+            "max_steps": 2
+        }
 
 
 @pytest.fixture
 def context(request, taskmates_runtime, run_opts, tmp_path):
-    context = TestContextBuilder(tmp_path).build(run_opts)
-
-    if "integration" in request.node.keywords:
-        context["run_opts"]["model"] = "claude-3-5-sonnet-20241022"
-        context["run_opts"]["max_steps"] = 100
-    else:
-        context["run_opts"]["model"] = "quote"
-        context["run_opts"]["max_steps"] = 1
-
-    return context
+    return TestContextBuilder(tmp_path).build(run_opts)
 
 
 @pytest.fixture
