@@ -21,9 +21,34 @@ START_OF_CHAT_HEADER = fr"(\*\*{USERNAME}( {JSON})?>\*\*)"
 END_OF_CHAT_HEADER = r"(>\*\*[ \n])"
 END_OF_CHAT_HEADER_BEHIND = fr"((?<={END_OF_CHAT_HEADER}))"
 
-BEGINING_OF_SECTION = fr"(^({START_OF_CHAT_HEADER}|```|<pre|</pre|###### (Steps|Execution|Cell Output)))"
-NOT_BEGINNING_OF_SECTION_AHEAD = fr"(?!{BEGINING_OF_SECTION})"
+BEGINNING_OF_SECTION = fr"(^({START_OF_CHAT_HEADER}|```|<pre|</pre|###### (Steps|Execution|Cell Output)))"
+NOT_BEGINNING_OF_SECTION_AHEAD = fr"(?!{BEGINNING_OF_SECTION})"
 END_OF_STRING = r"\Z"
+
+
+class MetaNode(BaseModel):
+    key: str
+    value: float
+
+    @classmethod
+    def from_tokens(cls, tokens: ParseResults):
+        return cls(key=tokens.key, value=float(tokens.value))
+
+
+def meta_line_parser():
+    key = pp.Word(pp.alphas + '_')('key')
+    value = pp.Word(pp.nums + '.')('value')
+    meta_line = (
+            pp.LineStart()
+            + pp.Literal('[//]: # (meta:')
+            + key
+            + pp.Literal('=').suppress()
+            + value
+            + pp.Literal(')')
+            + pp.LineEnd()
+    ).set_parse_action(MetaNode.from_tokens)
+
+    return meta_line
 
 
 class MessageNode(BaseModel):
@@ -35,6 +60,7 @@ class MessageNode(BaseModel):
     tool_calls: Optional[list] = None
     attributes: Optional[dict] = None
     code_cells: Optional[List[CodeCellNode]] = None
+    meta: Optional[List[MetaNode]] = None
 
     @classmethod
     def create(cls, s, loc, tokens: ParseResults):
@@ -742,3 +768,78 @@ def test_messages_parser_with_markdown_comments():
     parsed_messages = [m.as_dict() for m in results.messages]
 
     assert parsed_messages == expected_messages
+
+# TODO
+# def test_messages_parser_with_invalid_metadata():
+#     input = textwrap.dedent('''\
+#         **user>** Here's a message with invalid metadata
+#
+#         This is the message content.
+#
+#         [//]: # (meta:invalid_format)
+#         [//]: # (meta:temperature=invalid)
+#         ''')
+#
+#     expected_messages = [
+#         {
+#             'name': 'user',
+#             'content': "Here's a message with invalid metadata\n\nThis is the message content.\n\n[//]: # (meta:invalid_format)\n[//]: # (meta:temperature=invalid)\n"
+#         }
+#     ]
+#
+#     results = messages_parser().parseString(input)
+#     parsed_messages = [m.as_dict() for m in results.messages]
+#
+#     assert parsed_messages == expected_messages
+#
+#
+# def test_messages_parser_with_metadata_at_start():
+#     input = textwrap.dedent('''\
+#         **user>** [//]: # (meta:temperature=0.7)
+#         [//]: # (meta:top_p=0.9)
+#
+#         Here's a message with metadata at the start.
+#         ''')
+#
+#     expected_messages = [
+#         {
+#             'name': 'user',
+#             'content': "\nHere's a message with metadata at the start.\n",
+#             'meta': [
+#                 {'key': 'temperature', 'value': 0.7},
+#                 {'key': 'top_p', 'value': 0.9}
+#             ]
+#         }
+#     ]
+#
+#     results = messages_parser().parseString(input)
+#     parsed_messages = [m.as_dict() for m in results.messages]
+#
+#     assert parsed_messages == expected_messages
+#
+#
+# def test_messages_parser_with_mixed_metadata():
+#     input = textwrap.dedent('''\
+#         **user>** Here's a message with mixed metadata
+#
+#         [//]: # (meta:temperature=0.7)
+#         This is some content.
+#         [//]: # (meta:top_p=0.9)
+#         More content.
+#         ''')
+#
+#     expected_messages = [
+#         {
+#             'name': 'user',
+#             'content': "Here's a message with mixed metadata\n\nThis is some content.\nMore content.\n",
+#             'meta': [
+#                 {'key': 'temperature', 'value': 0.7},
+#                 {'key': 'top_p', 'value': 0.9}
+#             ]
+#         }
+#     ]
+#
+#     results = messages_parser().parseString(input)
+#     parsed_messages = [m.as_dict() for m in results.messages]
+#
+#     assert parsed_messages == expected_messages
