@@ -1,12 +1,12 @@
 import re
 import textwrap
 from dataclasses import dataclass
-from typing import Optional, List
+from typing import Optional, List, Any
 
 import pyparsing as pp
+import pytest
 from pydantic import BaseModel
 from pyparsing import ParseResults
-
 from taskmates.grammar.parsers.header.headers import headers_parser
 from taskmates.grammar.parsers.message.code_cell_parser import code_cell_parser, CodeCellNode
 from taskmates.grammar.parsers.message.pre_tag_parser import pre_tag_parser
@@ -21,34 +21,53 @@ START_OF_CHAT_HEADER = fr"(\*\*{USERNAME}( {JSON})?>\*\*)"
 END_OF_CHAT_HEADER = r"(>\*\*[ \n])"
 END_OF_CHAT_HEADER_BEHIND = fr"((?<={END_OF_CHAT_HEADER}))"
 
-BEGINNING_OF_SECTION = fr"(^({START_OF_CHAT_HEADER}|```|<pre|</pre|###### (Steps|Execution|Cell Output)))"
+BEGINNING_OF_SECTION = fr"(^({START_OF_CHAT_HEADER}|```|<pre|</pre|###### (Steps|Execution|Cell Output)|(\[//\]: #)))"
 NOT_BEGINNING_OF_SECTION_AHEAD = fr"(?!{BEGINNING_OF_SECTION})"
 END_OF_STRING = r"\Z"
 
 
+@dataclass
+class TextContentNode:
+    source: str
+
+    @classmethod
+    def from_tokens(cls, tokens):
+        return cls(source=tokens[0])
+
+
+@dataclass
+class CommentNode:
+    source: str
+
+    @classmethod
+    def from_tokens(cls, tokens):
+        return cls(source=tokens[0])
+
+
+@dataclass
+class PreTagNode:
+    source: str
+
+    @classmethod
+    def from_tokens(cls, tokens):
+        return cls(source=tokens[0])
+
+
 class MetaNode(BaseModel):
     key: str
-    value: float
+    value: Any
 
     @classmethod
     def from_tokens(cls, tokens: ParseResults):
-        return cls(key=tokens.key, value=float(tokens.value))
-
-
-def meta_line_parser():
-    key = pp.Word(pp.alphas + '_')('key')
-    value = pp.Word(pp.nums + '.')('value')
-    meta_line = (
-            pp.LineStart()
-            + pp.Literal('[//]: # (meta:')
-            + key
-            + pp.Literal('=').suppress()
-            + value
-            + pp.Literal(')')
-            + pp.LineEnd()
-    ).set_parse_action(MetaNode.from_tokens)
-
-    return meta_line
+        import toml
+        meta_str = tokens.meta_str.strip()
+        try:
+            meta_dict = toml.loads(meta_str)
+            # TOML will parse into a dict, get the first key/value pair
+            key, value = next(iter(meta_dict.items()))
+            return cls(key=key, value=value)
+        except Exception as e:
+            raise ValueError(f"Invalid TOML in meta: {meta_str}") from e
 
 
 class MessageNode(BaseModel):
@@ -60,49 +79,81 @@ class MessageNode(BaseModel):
     tool_calls: Optional[list] = None
     attributes: Optional[dict] = None
     code_cells: Optional[List[CodeCellNode]] = None
-    meta: Optional[List[MetaNode]] = None
+    meta: Optional[dict] = None
 
     @classmethod
-    def create(cls, s, loc, tokens: ParseResults):
+    def create(cls, tokens: ParseResults):
         dct = tokens.as_dict()
         child_nodes = dct.pop("child_nodes")
-        dct["content"] = "".join(n.source for n in child_nodes)
+        dct["meta"] = {}
+
+        # Filter out CommentNodes that are not inside code blocks or pre tags
+        filtered_content = []
+        inside_special_block = False
+
+        for node in child_nodes:
+            if isinstance(node, (CodeCellNode, PreTagNode)):
+                inside_special_block = True
+                filtered_content.append(node.source)
+            elif isinstance(node, (CommentNode, MetaNode)) and not inside_special_block:
+                if isinstance(node, MetaNode):
+                    dct["meta"][node.key] = node.value
+                # Skip comments outside special blocks
+                continue
+            else:
+                filtered_content.append(node.source)
+                inside_special_block = False
+
+        dct["content"] = "".join(filtered_content)
         dct["code_cells"] = [n for n in child_nodes if isinstance(n, CodeCellNode) and n.eval]
         if not dct["code_cells"]:
             del dct["code_cells"]
+        if not dct["meta"]:
+            del dct["meta"]
         return MessageNode(**dct)
 
     def as_dict(self):
         return self.model_dump(exclude_unset=True)
 
 
-@dataclass
-class TextContentNode:
-    source: str
+def comment_line_parser():
+    return (
+            pp.LineStart()
+            + pp.Literal('[//]: #')
+            + pp.restOfLine
+            + pp.LineEnd()
+    ).set_parse_action(CommentNode.from_tokens)
 
-    @classmethod
-    def from_tokens(cls, tokens):
-        return cls(source=remove_comments(tokens[0]))
 
+def meta_line_parser():
+    meta_content = pp.Regex(r'[^)]+')('meta_str')
+    meta_line = (
+            pp.LineStart()
+            + pp.Literal('[//]: # (meta:')
+            - meta_content
+            - pp.Literal(')')
+            - pp.LineEnd()
+    ).set_parse_action(MetaNode.from_tokens)
 
-# Regular text content that's not inside special blocks
-def remove_comments(text):
-    lines = text.split('\n')
-    filtered_lines = [line for line in lines if not line.strip().startswith('[//]: #')]
-    return '\n'.join(filtered_lines)
+    return meta_line
 
 
 def message_content_parser():
     # Code cells and pre tags (which should not ignore comments)
     code_cell = code_cell_parser()
-    pre_tag = pre_tag_parser()
+    pre_tag = pre_tag_parser().set_parse_action(PreTagNode.from_tokens)
 
+    # Comments and metadata
+    comment = comment_line_parser()
+    meta = meta_line_parser()
+
+    # Regular text content
     text_content = (
         pp.Regex(fr"({NOT_BEGINNING_OF_SECTION_AHEAD}.)+", re.DOTALL | re.MULTILINE)
     ).set_parse_action(TextContentNode.from_tokens)
 
     return pp.Group(
-        (text_content | code_cell | pre_tag)[...]
+        (code_cell | pre_tag | meta | comment | text_content)[...]
     )("child_nodes")
 
 
@@ -769,77 +820,87 @@ def test_messages_parser_with_markdown_comments():
 
     assert parsed_messages == expected_messages
 
-# TODO
-# def test_messages_parser_with_invalid_metadata():
-#     input = textwrap.dedent('''\
-#         **user>** Here's a message with invalid metadata
-#
-#         This is the message content.
-#
-#         [//]: # (meta:invalid_format)
-#         [//]: # (meta:temperature=invalid)
-#         ''')
-#
-#     expected_messages = [
-#         {
-#             'name': 'user',
-#             'content': "Here's a message with invalid metadata\n\nThis is the message content.\n\n[//]: # (meta:invalid_format)\n[//]: # (meta:temperature=invalid)\n"
-#         }
-#     ]
-#
-#     results = messages_parser().parseString(input)
-#     parsed_messages = [m.as_dict() for m in results.messages]
-#
-#     assert parsed_messages == expected_messages
-#
-#
-# def test_messages_parser_with_metadata_at_start():
-#     input = textwrap.dedent('''\
-#         **user>** [//]: # (meta:temperature=0.7)
-#         [//]: # (meta:top_p=0.9)
-#
-#         Here's a message with metadata at the start.
-#         ''')
-#
-#     expected_messages = [
-#         {
-#             'name': 'user',
-#             'content': "\nHere's a message with metadata at the start.\n",
-#             'meta': [
-#                 {'key': 'temperature', 'value': 0.7},
-#                 {'key': 'top_p', 'value': 0.9}
-#             ]
-#         }
-#     ]
-#
-#     results = messages_parser().parseString(input)
-#     parsed_messages = [m.as_dict() for m in results.messages]
-#
-#     assert parsed_messages == expected_messages
-#
-#
-# def test_messages_parser_with_mixed_metadata():
-#     input = textwrap.dedent('''\
-#         **user>** Here's a message with mixed metadata
-#
-#         [//]: # (meta:temperature=0.7)
-#         This is some content.
-#         [//]: # (meta:top_p=0.9)
-#         More content.
-#         ''')
-#
-#     expected_messages = [
-#         {
-#             'name': 'user',
-#             'content': "Here's a message with mixed metadata\n\nThis is some content.\nMore content.\n",
-#             'meta': [
-#                 {'key': 'temperature', 'value': 0.7},
-#                 {'key': 'top_p', 'value': 0.9}
-#             ]
-#         }
-#     ]
-#
-#     results = messages_parser().parseString(input)
-#     parsed_messages = [m.as_dict() for m in results.messages]
-#
-#     assert parsed_messages == expected_messages
+
+def test_messages_parser_simple_metadata():
+    input = textwrap.dedent('''\
+        Hello
+        
+        [//]: # (meta:foo='bar')
+        ''')
+
+    expected_messages = [
+        {
+            'name': 'user',
+            'content': "Hello\n\n",
+            'meta': {'foo': 'bar'}
+        }
+    ]
+
+    results = messages_parser().parseString(input)
+    parsed_messages = [m.as_dict() for m in results.messages]
+
+    assert parsed_messages == expected_messages
+
+
+def test_messages_parser_invalid_metadata():
+    input = textwrap.dedent('''\
+        Hello
+        
+        [//]: # (meta:foo=bar)
+        ''')
+
+    with pytest.raises(ValueError):
+        messages_parser().parseString(input)
+
+
+def test_messages_parser_with_mixed_metadata():
+    input = textwrap.dedent('''\
+        **user>** Here's a message with mixed metadata
+
+        [//]: # (meta:temperature = 0.7)
+        This is some content.
+        [//]: # (meta:top_p = 0.9)
+        More content.
+        ''')
+
+    expected_messages = [
+        {
+            'name': 'user',
+            'content': "Here's a message with mixed metadata\n\nThis is some content.\nMore content.\n",
+            'meta': {'temperature': 0.7, 'top_p': 0.9}
+        }
+    ]
+
+    results = messages_parser().parseString(input)
+    parsed_messages = [m.as_dict() for m in results.messages]
+
+    assert parsed_messages == expected_messages
+
+
+def test_messages_parser_with_complex_metadata():
+    input = textwrap.dedent('''\
+        Hello
+        
+        [//]: # (meta:model = "gpt-4")
+        [//]: # (meta:temperature = 0.7)
+        [//]: # (meta:max_tokens = 100)
+        [//]: # (meta:stop = ["END"])
+        ''')
+
+    expected_messages = [
+        {
+            'name': 'user',
+            'content': "Hello\n\n",
+            'meta': {
+                'model': 'gpt-4',
+                'temperature': 0.7,
+                'max_tokens': 100,
+                'stop': ['END']
+            }
+        }
+    ]
+
+    results = messages_parser().parseString(input)
+    parsed_messages = [m.as_dict() for m in results.messages]
+
+    assert parsed_messages == expected_messages

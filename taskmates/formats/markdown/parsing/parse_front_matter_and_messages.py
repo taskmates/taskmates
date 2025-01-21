@@ -67,6 +67,9 @@ async def parse_front_matter_and_messages(source_file: Path,
 
     for parsed_message in parsed_chat.messages:
         message_dict = parsed_message.as_dict()
+
+        meta = message_dict.get("meta")
+
         name = message_dict["name"]
         attributes = message_dict.get("attributes", {})
 
