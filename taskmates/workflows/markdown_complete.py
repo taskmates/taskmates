@@ -1,5 +1,7 @@
 from typing import TypedDict
 
+from typeguard import typechecked
+
 from taskmates.actions.parse_markdown_chat import parse_markdown_chat
 from taskmates.core.completion_provider import CompletionProvider
 from taskmates.core.compute_next_completion import compute_next_completion
@@ -24,7 +26,6 @@ from taskmates.workflows.states.interrupted import Interrupted
 from taskmates.workflows.states.interrupted_or_killed import InterruptedOrKilled
 from taskmates.workflows.states.markdown_chat import MarkdownChat
 from taskmates.workflows.states.return_value import ReturnValue
-from typeguard import typechecked
 
 
 class CompletionRunEnvironment(TypedDict):
@@ -108,11 +109,13 @@ class MarkdownComplete(Workflow):
             # completion_signals = fork_signals(parent_signals)
             completion_signals = parent_signals
 
-            markdown_section_completion = await self.complete_section(markdown_chat, completion_signals)
-            if not markdown_section_completion:
+            should_continue = await self.complete_section(markdown_chat, completion_signals)
+            if not should_continue:
                 break
             markdown_chat = state["markdown_chat"].get()["full"]
             await self.on_after_step()
+
+        await self.end_markdown_completion(markdown_chat, current_run.context, current_run)
 
         response_format = context["runner_config"]["format"]
         response = state["markdown_chat"].get()[response_format]
@@ -132,7 +135,6 @@ class MarkdownComplete(Workflow):
 
         next_completion = await self.compute_next_completion(chat)
         if not next_completion:
-            await self.end_markdown_completion(chat, current_run.context, current_run)
             return False
 
         step = MarkdownCompleteSectionAction()
@@ -195,7 +197,9 @@ class MarkdownComplete(Workflow):
             inputs=run.objective.key['inputs'])
         return chat
 
-    async def end_markdown_completion(self, chat: Chat, contexts: RunContext, run: Run):
+    async def end_markdown_completion(self, markdown_chat: str, contexts: RunContext, run: Run):
+        chat = await self.get_markdown_chat(markdown_chat)
+
         if CompletionProvider.has_truncated_code_cell(chat):
             logger.debug(f"Truncated completion assistance")
             return
