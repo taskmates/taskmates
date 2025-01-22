@@ -61,8 +61,8 @@ async def api_request(client, request_payload: dict, completion_signals: Environ
     await output_streams.artifact.send_async({"name": "response.json", "content": response})
     logger.debug(f"Finish Reason: {response['choices'][0]['finish_reason']}")
 
-    if response['choices'][0]['finish_reason'] == 'length':
-        raise Exception("OpenAI API response was truncated.")
+    if response['choices'][0]['finish_reason'] not in ('stop', 'tool_calls'):
+        raise Exception(f"API response has been truncated: finish_reason={response['choices'][0]['finish_reason']}")
 
     return response
 
