@@ -1,7 +1,5 @@
 from typing import TypedDict
 
-from typeguard import typechecked
-
 from taskmates.actions.parse_markdown_chat import parse_markdown_chat
 from taskmates.core.completion_provider import CompletionProvider
 from taskmates.core.compute_next_completion import compute_next_completion
@@ -20,11 +18,13 @@ from taskmates.workflows.daemons.interrupted_or_killed_daemon import Interrupted
 from taskmates.workflows.daemons.markdown_chat_daemon import MarkdownChatDaemon
 from taskmates.workflows.daemons.return_value_daemon import ReturnValueDaemon
 from taskmates.workflows.rules.max_steps_check import MaxStepsCheck
+from taskmates.workflows.signals.output_streams import OutputStreams
 from taskmates.workflows.states.current_step import CurrentStep
 from taskmates.workflows.states.interrupted import Interrupted
 from taskmates.workflows.states.interrupted_or_killed import InterruptedOrKilled
 from taskmates.workflows.states.markdown_chat import MarkdownChat
 from taskmates.workflows.states.return_value import ReturnValue
+from typeguard import typechecked
 
 
 class CompletionRunEnvironment(TypedDict):
@@ -98,7 +98,9 @@ class MarkdownComplete(Workflow):
         current_run = RUN.get()
         context = current_run.context
         state = current_run.state
+        output_streams: OutputStreams = current_run.signals["output_streams"]
 
+        await self.append_trailing_newlines(markdown_chat, output_streams)
         # current_run.objective.print_graph()
 
         while True:
@@ -144,15 +146,20 @@ class MarkdownComplete(Workflow):
     async def on_after_step(self):
         run = RUN.get()
         state = run.state
+        output_streams: OutputStreams = run.signals["output_streams"]
+
         chat = await self.get_markdown_chat(state["markdown_chat"].get()["full"])
 
         if CompletionProvider.has_truncated_code_cell(chat):
             return
 
         markdown_completion = run.state["markdown_chat"].outputs["completion"]
-        separator = compute_separator(markdown_completion)
+        await self.append_trailing_newlines(markdown_completion, output_streams)
+
+    async def append_trailing_newlines(self, markdown_chat: str, output_streams: OutputStreams):
+        separator = compute_separator(markdown_chat)
         if separator:
-            await run.signals["output_streams"].response.send_async(separator)
+            await output_streams.formatting.send_async(separator)
 
     async def compute_next_completion(self, chat):
         finished = await self.check_finished()
@@ -193,7 +200,6 @@ class MarkdownComplete(Workflow):
             logger.debug(f"Truncated completion assistance")
             return
 
-        await self.append_trailing_newlines(chat, run)
         await self.append_next_responder(chat, contexts, run)
         await run.signals["status"].success.send_async({})
         logger.debug(f"Finished completion assistance")
@@ -204,8 +210,3 @@ class MarkdownComplete(Workflow):
             recipient = chat["messages"][-1]["recipient"]
             if recipient:
                 await run.signals["output_streams"].next_responder.send_async(f"**{recipient}>** ")
-
-    async def append_trailing_newlines(self, chat, run):
-        separator = compute_separator(chat["markdown_chat"])
-        if separator:
-            await run.signals["output_streams"].formatting.send_async(separator)
