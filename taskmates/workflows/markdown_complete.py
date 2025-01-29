@@ -26,6 +26,7 @@ from taskmates.workflows.rules.max_steps_check import MaxStepsCheck
 from taskmates.workflows.signals.chat_completion_signals import ChatCompletionSignals
 from taskmates.workflows.signals.code_cell_output_signals import CodeCellOutputSignals
 from taskmates.workflows.signals.control_signals import ControlSignals
+from taskmates.workflows.signals.input_streams import InputStreams
 from taskmates.workflows.signals.markdown_completion_signals import MarkdownCompletionSignals
 from taskmates.workflows.signals.status_signals import StatusSignals
 from taskmates.workflows.states.current_step import CurrentStep
@@ -61,7 +62,9 @@ class MarkdownComplete(Workflow):
             "return_value": ReturnValueDaemon(),
             "markdown_chat": MarkdownChatDaemon(),
         }
-        signals = {}
+        signals = {
+            'input_streams': InputStreams(),
+        }
         state = {
             "interrupted": Interrupted(),
             "interrupted_or_killed": InterruptedOrKilled(),
@@ -72,8 +75,6 @@ class MarkdownComplete(Workflow):
         }
         super().__init__(context=context, daemons=daemons, signals=signals, state=state)
 
-    # TODO: remove this @fulfills
-    @fulfills(outcome="markdown_completion")
     async def steps(self, markdown_chat: str) -> str:
         logger.debug(f"Starting MarkdownComplete with markdown:\n{markdown_chat}")
 
@@ -106,7 +107,7 @@ class MarkdownComplete(Workflow):
                     "code_cell_output": CodeCellOutputSignals(),
                 },
                 state=current_run.state,
-                daemons=current_run.daemons
+                daemons={}
             )
 
             with (
