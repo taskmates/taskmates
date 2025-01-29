@@ -1,13 +1,13 @@
 import asyncio
 import signal
 
-from taskmates.workflow_engine.daemon import Daemon
+from taskmates.workflow_engine.composite_context_manager import CompositeContextManager
 from taskmates.workflows.contexts.run_context import RunContext
 from taskmates.workflow_engine.run import RUN
 from taskmates.workflow_engine.run import Run
 
 
-class SigIntAndSigTermController(Daemon):
+class SigIntAndSigTermController(CompositeContextManager):
     def __init__(self):
         super().__init__()
         self.received_signal = None

@@ -1,12 +1,12 @@
 import functools
 
-from taskmates.workflow_engine.daemon import Daemon
+from taskmates.workflow_engine.composite_context_manager import CompositeContextManager
 from taskmates.workflow_engine.run import RUN, Run, Objective, ObjectiveKey
 from taskmates.lib.contextlib_.stacked_contexts import stacked_contexts
 from taskmates.workflows.contexts.run_context import RunContext
 
 
-class InterruptedOrKilledDaemon(Daemon):
+class InterruptedOrKilledDaemon(CompositeContextManager):
     async def handle_interrupted(self, _sender, run: Run):
         run.state["interrupted_or_killed"].set(True)
 

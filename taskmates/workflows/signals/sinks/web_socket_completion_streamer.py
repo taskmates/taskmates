@@ -2,11 +2,11 @@ import json
 
 from loguru import logger
 
-from taskmates.workflow_engine.daemon import Daemon
+from taskmates.workflow_engine.composite_context_manager import CompositeContextManager
 from taskmates.workflow_engine.run import RUN
 
 
-class WebSocketCompletionStreamer(Daemon):
+class WebSocketCompletionStreamer(CompositeContextManager):
     def __init__(self, websocket):
         super().__init__()
         self.websocket = websocket
@@ -25,5 +25,5 @@ class WebSocketCompletionStreamer(Daemon):
         await self.websocket.send(dump)
 
     def __enter__(self):
-        stdout = RUN.get().signals["output_streams"].stdout
+        stdout = RUN.get().signals["execution_environment"].stdout
         self.exit_stack.enter_context(stdout.connected_to(self.handle_completion))

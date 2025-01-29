@@ -1,9 +1,9 @@
-from taskmates.workflow_engine.daemon import Daemon
+from taskmates.workflow_engine.composite_context_manager import CompositeContextManager
 from taskmates.workflow_engine.run import RUN
 from taskmates.lib.contextlib_.stacked_contexts import stacked_contexts
 
 
-class HistorySink(Daemon):
+class HistorySink(CompositeContextManager):
     def __init__(self, path):
         super().__init__()
         self.path = path
@@ -23,7 +23,7 @@ class HistorySink(Daemon):
         connections = [
             run.signals["input_streams"].incoming_message.connected_to(self.process_chunk),
             run.signals["input_streams"].formatting.connected_to(self.process_chunk),
-            run.signals["output_streams"].stdout.connected_to(self.process_chunk)
+            run.signals["execution_environment"].stdout.connected_to(self.process_chunk)
         ]
 
         self.exit_stack.enter_context(stacked_contexts(connections))

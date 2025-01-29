@@ -1,13 +1,13 @@
 import functools
 
 from taskmates.lib.contextlib_.stacked_contexts import stacked_contexts
-from taskmates.workflow_engine.daemon import Daemon
+from taskmates.workflow_engine.composite_context_manager import CompositeContextManager
 from taskmates.workflow_engine.run import RUN, Run, Objective, ObjectiveKey
 from taskmates.workflows.contexts.run_context import RunContext
 from taskmates.workflows.signals.status_signals import StatusSignals
 
 
-class ReturnValueDaemon(Daemon):
+class ReturnValueDaemon(CompositeContextManager):
     async def handle_stdout_chunk(self, chunk: str, run: Run):
         run.state["return_value"].append_stdout_chunk(chunk)
 

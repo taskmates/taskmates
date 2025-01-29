@@ -1,36 +1,49 @@
 from typing import Mapping, Tuple, List
 
 from nbformat import NotebookNode
+from typeguard import typechecked
 
 from taskmates.core.actions.code_execution.code_cells.execution.bash_script_handler import BashScriptHandler
 from taskmates.core.actions.code_execution.code_cells.execution.cell_executor import CellExecutor
 from taskmates.core.actions.code_execution.code_cells.execution.cell_status import KernelCellTracker
-from taskmates.core.actions.code_execution.code_cells.jupyter_notebook_logger import jupyter_notebook_logger
 from taskmates.core.actions.code_execution.code_cells.execution.kernel_manager import KernelManager, get_kernel_manager
 from taskmates.core.actions.code_execution.code_cells.execution.message_handler import MessageHandler
-from taskmates.core.actions.code_execution.code_cells.parsing.parse_notebook import parse_notebook
 from taskmates.core.actions.code_execution.code_cells.execution.signal_handler import SignalHandler
-from taskmates.workflow_engine.run import Run
+from taskmates.core.actions.code_execution.code_cells.jupyter_notebook_logger import jupyter_notebook_logger
+from taskmates.core.actions.code_execution.code_cells.parsing.parse_notebook import parse_notebook
+from taskmates.workflows.signals.code_cell_output_signals import CodeCellOutputSignals
+from taskmates.workflows.signals.control_signals import ControlSignals
+from taskmates.workflows.signals.status_signals import StatusSignals
 
 
+@typechecked
 class MarkdownExecutor:
     """Coordinates the execution of markdown content as Jupyter notebook cells."""
 
-    def __init__(self, run: Run, kernel_manager: KernelManager = None, bash_script_handler: BashScriptHandler = None):
-        self.run = run
+    def __init__(self,
+                 control: ControlSignals,
+                 status: StatusSignals,
+                 code_cell_output: CodeCellOutputSignals,
+                 kernel_manager: KernelManager | None = None,
+                 bash_script_handler: BashScriptHandler | None = None):
         self.kernel_manager = kernel_manager or get_kernel_manager()
         self.bash_script_handler = bash_script_handler or BashScriptHandler()
         self.message_handler: MessageHandler | None = None
         self.signal_handler: SignalHandler | None = None
         self.cell_executor: CellExecutor | None = None
+        self.control: ControlSignals = control
+        self.status: StatusSignals = status
+        self.code_cell_output: CodeCellOutputSignals = code_cell_output
 
-    async def setup(self, content: str, cwd: str = None, markdown_path: str = None, env: Mapping = None) -> Tuple[
+    async def setup(self, content: str, cwd: str | None = None, markdown_path: str | None = None,
+                    env: Mapping | None = None) -> Tuple[
         List[str], List[NotebookNode]]:
         """Sets up all components needed for execution."""
-        kernel_instance, kernel_client, setup_msgs = await self.kernel_manager.get_or_start_kernel(cwd, markdown_path,
+        kernel_instance, kernel_client, setup_msgs = await self.kernel_manager.get_or_start_kernel(cwd,
+                                                                                                   markdown_path,
                                                                                                    env)
 
-        self.message_handler = MessageHandler(kernel_client, self.run)
+        self.message_handler = MessageHandler(kernel_client, self.status)
         await self.message_handler.start()
 
         # Get or create cell tracker for this kernel
@@ -39,8 +52,9 @@ class MarkdownExecutor:
             self.kernel_manager._cell_trackers[key] = KernelCellTracker()
         cell_tracker = self.kernel_manager._cell_trackers[key]
 
-        self.signal_handler = SignalHandler(kernel_instance, self.message_handler, self.run)
-        self.cell_executor = CellExecutor(self.message_handler, self.bash_script_handler, cell_tracker, self.run)
+        self.signal_handler = SignalHandler(kernel_instance, self.message_handler, self.status)
+        self.cell_executor = CellExecutor(self.message_handler, self.bash_script_handler, cell_tracker,
+                                          self.code_cell_output)
 
         # Parse notebook cells
         notebook, code_cells = parse_notebook(content)
@@ -54,14 +68,17 @@ class MarkdownExecutor:
         if self.message_handler:
             self.message_handler.cancel_tasks()
 
-    async def execute(self, content: str, cwd: str = None, markdown_path: str = None, env: Mapping = None):
+    async def execute(self, content: str,
+                      cwd: str | None = None,
+                      markdown_path: str | None = None,
+                      env: Mapping | None = None):
         """Executes markdown content as Jupyter notebook cells."""
         jupyter_notebook_logger.debug(f"Starting execution for markdown_path={markdown_path}, cwd={cwd}")
 
         setup_msgs, code_cells = await self.setup(content, cwd, markdown_path, env)
 
-        with self.run.signals["control"].interrupt.connected_to(self.signal_handler.handle_interrupt), \
-                self.run.signals["control"].kill.connected_to(self.signal_handler.handle_kill):
+        with self.control.interrupt.connected_to(self.signal_handler.handle_interrupt), \
+                self.control.kill.connected_to(self.signal_handler.handle_kill):
 
             try:
                 for cell_index, cell in enumerate(code_cells):
@@ -89,9 +106,9 @@ async def test_markdown_executor_simple_execution(tmp_path: Path):
     async def capture_chunk(chunk):
         chunks.append(chunk)
 
-    run.signals["output_streams"].code_cell_output.connect(capture_chunk)
+    run.signals["code_cell_output"].code_cell_output.connect(capture_chunk)
 
-    executor = MarkdownExecutor(run)
+    executor = MarkdownExecutor(run.signals["control"], run.signals["status"], run.signals["code_cell_output"])
 
     input_md = textwrap.dedent("""\
         ```python .eval
@@ -115,9 +132,9 @@ async def test_markdown_executor_error_handling(tmp_path: Path):
     async def capture_chunk(chunk):
         chunks.append(chunk)
 
-    run.signals["output_streams"].code_cell_output.connect(capture_chunk)
+    run.signals["code_cell_output"].code_cell_output.connect(capture_chunk)
 
-    executor = MarkdownExecutor(run)
+    executor = MarkdownExecutor(run.signals["control"], run.signals["status"], run.signals["code_cell_output"])
 
     input_md = textwrap.dedent("""\
         ```python .eval
@@ -146,10 +163,10 @@ async def test_markdown_executor_interrupt(tmp_path: Path):
     async def capture_status(signal):
         status_signals.append(signal)
 
-    run.signals["output_streams"].code_cell_output.connect(capture_chunk)
+    run.signals["code_cell_output"].code_cell_output.connect(capture_chunk)
     run.signals["status"].interrupted.connect(capture_status)
 
-    executor = MarkdownExecutor(run)
+    executor = MarkdownExecutor(run.signals["control"], run.signals["status"], run.signals["code_cell_output"])
 
     input_md = textwrap.dedent("""\
         ```python .eval

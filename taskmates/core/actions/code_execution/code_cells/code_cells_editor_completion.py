@@ -6,16 +6,17 @@ from typeguard import typechecked
 
 from taskmates.core.actions.code_execution.code_cells.code_execution_output_appender import CodeExecutionOutputAppender
 from taskmates.core.actions.code_execution.code_cells.execution.code_execution import CodeExecution
-from taskmates.workflow_engine.environment_signals import EnvironmentSignals
+from taskmates.workflows.signals.markdown_completion_signals import MarkdownCompletionSignals
 
 
 @typechecked
 class CodeCellsEditorCompletion:
-    def __init__(self, project_dir, chat_file, completion_signals: EnvironmentSignals):
+    def __init__(self, project_dir, chat_file,
+                 markdown_completion_signals: MarkdownCompletionSignals):
         self.state = {}
         self.project_dir = project_dir
         self.chat_file: Path = Path(chat_file)
-        self.completion_signals = completion_signals
+        self.markdown_completion_signals = markdown_completion_signals
         self.appended_completions = []
         self.processed_code_cells = set()
 
@@ -137,4 +138,4 @@ class CodeCellsEditorCompletion:
 
     async def append(self, text):
         self.appended_completions.append(text)
-        await self.completion_signals["output_streams"].response.send_async(text)
+        await self.markdown_completion_signals.response.send_async(text)

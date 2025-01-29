@@ -46,6 +46,7 @@ async def test_chat_completion(app, tmp_path):
         "runner_environment": RUN.get().context["runner_environment"],
         "run_opts": {
             "model": "quote",
+            "max_steps": 1,
         },
     }
 
@@ -83,6 +84,7 @@ async def test_chat_completion_with_mention(app, tmp_path):
         "runner_environment": RUN.get().context["runner_environment"],
         "run_opts": {
             "model": "quote",
+            "max_steps": 1,
         }
     }
 
@@ -127,6 +129,7 @@ async def test_tool_completion(app, tmp_path):
         "runner_environment": RUN.get().context["runner_environment"],
         "run_opts": {
             "model": "quote",
+            "max_steps": 1,
         },
     }
 
@@ -169,6 +172,7 @@ async def test_code_cell_completion(app, tmp_path):
         "runner_environment": RUN.get().context["runner_environment"],
         "run_opts": {
             "model": "quote",
+            "max_steps": 1,
         },
     }
 
@@ -263,6 +267,7 @@ async def test_interrupt_tool(app, tmp_path):
         "runner_environment": RUN.get().context["runner_environment"],
         "run_opts": {
             "model": "quote",
+            "max_steps": 1,
         },
     }
 
@@ -316,6 +321,7 @@ async def test_code_cell_no_output(app, tmp_path):
         "runner_environment": RUN.get().context["runner_environment"],
         "run_opts": {
             "model": "quote",
+            "max_steps": 1,
         },
     }
 
@@ -373,6 +379,7 @@ async def test_interrupt_code_cell(app, tmp_path):
         "runner_environment": RUN.get().context["runner_environment"],
         "run_opts": {
             "model": "quote",
+            "max_steps": 1,
         },
     }
 
@@ -431,6 +438,7 @@ async def test_kill_tool(app, tmp_path):
         "runner_environment": RUN.get().context["runner_environment"],
         "run_opts": {
             "model": "quote",
+            "max_steps": 1,
         },
     }
 
@@ -481,6 +489,7 @@ async def test_kill_code_cell(app, tmp_path):
         "runner_environment": RUN.get().context["runner_environment"],
         "run_opts": {
             "model": "quote",
+            "max_steps": 1,
         },
     }
 
@@ -561,6 +570,7 @@ async def test_client_disconnect(app, tmp_path):
         "runner_environment": RUN.get().context["runner_environment"],
         "run_opts": {
             "model": "quote",
+            "max_steps": 1,
         },
     }
 

@@ -1,19 +1,21 @@
 import signal
 
 from jupyter_client import AsyncKernelManager
-from taskmates.core.actions.code_execution.code_cells.jupyter_notebook_logger import jupyter_notebook_logger
+from typeguard import typechecked
+
 from taskmates.core.actions.code_execution.code_cells.execution.message_handler import MessageHandler
-from taskmates.workflow_engine.run import Run
+from taskmates.core.actions.code_execution.code_cells.jupyter_notebook_logger import jupyter_notebook_logger
+from taskmates.workflows.signals.status_signals import StatusSignals
 
 
+@typechecked
 class SignalHandler:
     """Handles interrupt and kill signals for the kernel execution."""
 
-    def __init__(self, kernel_manager: AsyncKernelManager, message_handler: MessageHandler, run: Run):
+    def __init__(self, kernel_manager: AsyncKernelManager, message_handler: MessageHandler, status: StatusSignals):
         self.kernel_manager = kernel_manager
         self.message_handler = message_handler
-        self.run = run
-        self.status = run.signals["status"]
+        self.status = status
 
     async def handle_interrupt(self, sender):
         """Handles the interrupt signal."""
@@ -39,13 +41,14 @@ async def test_signal_handler(tmp_path):
     from taskmates.workflow_engine.run import RUN
 
     run = RUN.get()
+    status = run.signals["status"]
     status_signals = []
 
     async def capture_status(signal):
         status_signals.append(signal)
 
-    run.signals["status"].interrupted.connect(capture_status)
-    run.signals["status"].killed.connect(capture_status)
+    status.interrupted.connect(capture_status)
+    status.killed.connect(capture_status)
 
     # Create kernel manager
     kernel_manager = AsyncKernelManager(kernel_name='python3')
@@ -55,11 +58,11 @@ async def test_signal_handler(tmp_path):
     await kernel_client.wait_for_ready()
 
     # Create message handler
-    message_handler = MessageHandler(kernel_client, run)
+    message_handler = MessageHandler(kernel_client, status)
     await message_handler.start()
 
     # Create signal handler
-    signal_handler = SignalHandler(kernel_manager, message_handler, run)
+    signal_handler = SignalHandler(kernel_manager, message_handler, status)
 
     # Test interrupt
     await signal_handler.handle_interrupt(None)

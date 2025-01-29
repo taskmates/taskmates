@@ -1,18 +1,21 @@
 import re
 from typing import Dict
 
+from typeguard import typechecked
+
 from taskmates.types import Chat
-from taskmates.workflows.signals.output_streams import OutputStreams
+from taskmates.workflows.signals.markdown_completion_signals import MarkdownCompletionSignals
 
 
 def snake_case_to_title_case(text: str) -> str:
     return re.sub(r'_([a-z])', lambda x: x.group(1).upper(), text.replace('_', ' ')).title()
 
 
+@typechecked
 class ChatCompletionMarkdownAppender:
-    def __init__(self, chat: Chat, is_resume_request: bool, output_streams: OutputStreams):
+    def __init__(self, chat: Chat, is_resume_request: bool, markdown_completion_signals: MarkdownCompletionSignals):
         self.chat = chat
-        self.output_streams = output_streams
+        self.markdown_completion_signals = markdown_completion_signals
         self.recipient = None
         self.role = None
         self.name = None
@@ -75,7 +78,7 @@ class ChatCompletionMarkdownAppender:
             self.role = delta['role']
             recipient = self.chat["messages"][-1]["recipient"]
             if not self.is_resume_request:
-                await self.output_streams.responder.send_async(f"**{recipient}>** ")
+                await self.markdown_completion_signals.responder.send_async(f"**{recipient}>** ")
 
     async def append(self, text: str):
-        await self.output_streams.response.send_async(text)
+        await self.markdown_completion_signals.response.send_async(text)

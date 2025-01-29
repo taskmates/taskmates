@@ -2,7 +2,7 @@ import contextlib
 from contextlib import AbstractContextManager
 
 
-class Daemon(AbstractContextManager):
+class CompositeContextManager(AbstractContextManager):
     def __init__(self):
         self.exit_stack = contextlib.ExitStack()
 

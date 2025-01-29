@@ -12,24 +12,30 @@ from taskmates.core.actions.chat_completion.openai_adapters.anthropic_openai_ada
 from taskmates.formats.markdown.metadata.get_model_client import get_model_client
 from taskmates.lib.openai_.inference.interruptible_request import InterruptibleRequest
 from taskmates.lib.opentelemetry_.tracing import tracer
+from taskmates.logging import file_logger
 from taskmates.server.streamed_response import StreamedResponse
-from taskmates.workflow_engine.environment_signals import EnvironmentSignals
 from taskmates.workflow_engine.run import RUN
+from taskmates.workflows.signals.chat_completion_signals import ChatCompletionSignals
+from taskmates.workflows.signals.control_signals import ControlSignals
+from taskmates.workflows.signals.status_signals import StatusSignals
 
 
 @typechecked
-async def api_request(client, request_payload: dict, completion_signals: EnvironmentSignals) -> dict:
+async def api_request(client, request_payload: dict,
+                      control_signals: ControlSignals,
+                      status_signals: StatusSignals,
+                      chat_completion_signals: ChatCompletionSignals
+                      ) -> dict:
     streamed_response = StreamedResponse()
-    output_streams = completion_signals["output_streams"]
-    control = completion_signals["control"]
-    status = completion_signals["status"]
+
+    file_logger.debug("request_payload.json", content=request_payload)
 
     with tracer().start_as_current_span(name="chat-completion"):
-        async with InterruptibleRequest(status=status, control=control) as request:
+        async with InterruptibleRequest(status=status_signals, control=control_signals) as request:
             chat_completion = await client.chat.completions.create(**request_payload)
 
             if request_payload.get("stream", False):
-                output_streams.chat_completion.connect(streamed_response.accept, weak=False)
+                chat_completion_signals.chat_completion.connect(streamed_response.accept, weak=False)
 
                 received_chunk = False
 
@@ -39,15 +45,13 @@ async def api_request(client, request_payload: dict, completion_signals: Environ
                         received_chunk = True
                         if request.interrupted_or_killed:
                             break
-                        await output_streams.chat_completion.send_async(chat_completion_chunk)
+                        await chat_completion_signals.chat_completion.send_async(chat_completion_chunk)
 
                 except asyncio.CancelledError:
-                    await output_streams.artifact.send_async(
-                        {"name": "response_cancelled.json", "content": str(True)})
+                    file_logger.debug("response_cancelled.json", content=str(True))
                     raise
                 except ReadError as e:
-                    await output_streams.artifact.send_async(
-                        {"name": "response_read_error.json", "content": str(e)})
+                    file_logger.debug("response_read_error.json", content=str(e))
 
                 response = streamed_response.payload
                 if not response['choices']:
@@ -58,7 +62,7 @@ async def api_request(client, request_payload: dict, completion_signals: Environ
             else:
                 response = chat_completion.model_dump()
 
-    await output_streams.artifact.send_async({"name": "response.json", "content": response})
+    file_logger.debug("response.json", content=response)
     logger.debug(f"Finish Reason: {response['choices'][0]['finish_reason']}")
 
     if response['choices'][0]['finish_reason'] not in ('stop', 'tool_calls'):
@@ -71,21 +75,22 @@ async def api_request(client, request_payload: dict, completion_signals: Environ
 @pytest.mark.asyncio
 async def test_api_request_happy_path(run):
     # Define the model configuration and parameters as per your actual use case
-    model_conf = {
-        "model": "echo"
+    request_payload = {
+        "model": "echo",
+        "stream": True,
+        "messages": [
+            {"role": "user", "content": "Answer with a single number. 1 + 1="},
+        ]
     }
-    model_params = {
-        # Add any additional parameters required by your model here
-    }
-    messages = [
-        # Add the messages that you want to send to the model here
-        {"role": "user", "content": "Answer with a single number. 1 + 1="},
-    ]
 
     # Call the api_request function with the defined parameters
     contexts = RUN.get().context
-    client = get_model_client(model_conf["model"], contexts["runner_config"]["taskmates_dirs"])
-    response = await api_request(client, messages, model_conf, model_params, run)
+    client = get_model_client(request_payload["model"], contexts["runner_config"]["taskmates_dirs"])
+    response = await api_request(client, request_payload,
+                                 run.signals["control"],
+                                 run.signals["status"],
+                                 run.signals["chat_completion"]
+                                 )
 
     # Assert that the response is as expected
     assert 'choices' in response
@@ -99,42 +104,41 @@ async def test_api_request_happy_path(run):
 @pytest.mark.asyncio
 async def test_api_request_with_complex_payload(run):
     # Define the complex payload based on the JSON you provided
-    messages = [
-        {
-            "content": "what is on https://asurprisingimage.com?\n",
-            "role": "user"
-        },
-        {
-            "content": None,
-            "role": "assistant",
-            "tool_calls": [
-                {
-                    "function": {
-                        "arguments": "{\"url\":\"https://asurprisingimage.com\"}",
-                        "name": "visit_page"
-                    },
-                    "id": "tool_call_1701668882083",
-                    "type": "function"
-                }
-            ]
-        },
-        {
-            "content": "[cat.jpeg](..%2F..%2F..%2F..%2F..%2FDownloads%2Fcat.jpeg)\n",
-            "name": "visit_page",
-            "role": "tool",
-            "tool_call_id": "tool_call_1701668882083"
-        },
-        {
-            "role": "assistant",
-            "content": "![[/Users/ralphus/Downloads/cat.jpeg]]\n\nI can see a cat in the image."
-        }
-    ]
-
-    model_conf = {
+    request_payload = {
         "model": "gpt-3.5-turbo",
         "stream": True,
         "temperature": 0.2,
         "max_tokens": 4096,
+        "messages": [
+            {
+                "content": "what is on https://asurprisingimage.com?\n",
+                "role": "user"
+            },
+            {
+                "content": None,
+                "role": "assistant",
+                "tool_calls": [
+                    {
+                        "function": {
+                            "arguments": "{\"url\":\"https://asurprisingimage.com\"}",
+                            "name": "visit_page"
+                        },
+                        "id": "tool_call_1701668882083",
+                        "type": "function"
+                    }
+                ]
+            },
+            {
+                "content": "[cat.jpeg](..%2F..%2F..%2F..%2F..%2FDownloads%2Fcat.jpeg)\n",
+                "name": "visit_page",
+                "role": "tool",
+                "tool_call_id": "tool_call_1701668882083"
+            },
+            {
+                "role": "assistant",
+                "content": "![[/Users/ralphus/Downloads/cat.jpeg]]\n\nI can see a cat in the image."
+            }
+        ],
         "tools": [{
             "type": "function",
             "function": {
@@ -152,12 +156,15 @@ async def test_api_request_with_complex_payload(run):
             }
         }]
     }
-    model_params = {}
 
     # Call the api_request function with the defined parameters
     contexts = RUN.get().context
-    client = get_model_client(model_conf["model"], contexts["runner_config"]["taskmates_dirs"])
-    response = await api_request(client, messages, model_conf, model_params, run)
+    client = get_model_client(request_payload["model"], contexts["runner_config"]["taskmates_dirs"])
+    response = await api_request(client, request_payload,
+                                 run.signals["control"],
+                                 run.signals["status"],
+                                 run.signals["chat_completion"]
+                                 )
 
     # Assert that the response is as expected
     assert 'choices' in response

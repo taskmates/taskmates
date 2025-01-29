@@ -3,14 +3,14 @@ import functools
 from loguru import logger
 
 from taskmates.lib.contextlib_.stacked_contexts import stacked_contexts
-from taskmates.workflow_engine.daemon import Daemon
+from taskmates.workflow_engine.composite_context_manager import CompositeContextManager
 from taskmates.workflow_engine.run import RUN, Run, Objective, ObjectiveKey
 from taskmates.workflows.contexts.run_context import RunContext
 from taskmates.workflows.signals.control_signals import ControlSignals
 from taskmates.workflows.states.interrupted import Interrupted
 
 
-class InterruptRequestDaemon(Daemon):
+class InterruptRequestDaemon(CompositeContextManager):
     async def handle_interrupt_request(self, _sender, run: Run):
         interrupted = run.state["interrupted"]
         control = run.signals["control"]

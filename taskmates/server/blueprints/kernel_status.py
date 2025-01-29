@@ -109,7 +109,7 @@ async def test_kernel_status_with_executed_cell(tmp_path):
     from taskmates.workflow_engine.run import RUN
 
     run = RUN.get()
-    executor = MarkdownExecutor(run)
+    executor = MarkdownExecutor(run.signals["control"], run.signals["status"], run.signals["code_cell_output"])
 
     input_md = """\
 ```python .eval

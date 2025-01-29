@@ -1,12 +1,12 @@
 import functools
 
-from taskmates.workflow_engine.daemon import Daemon
+from taskmates.workflow_engine.composite_context_manager import CompositeContextManager
 from taskmates.workflow_engine.run import RUN, Run
 from taskmates.workflow_engine.base_signals import BaseSignals
 from taskmates.lib.contextlib_.stacked_contexts import stacked_contexts
 
 
-class CapturedSignalsDaemon(Daemon):
+class CapturedSignalsDaemon(CompositeContextManager):
     def __init__(self):
         super().__init__()
 

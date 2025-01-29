@@ -1,11 +1,11 @@
 import functools
 
-from taskmates.workflow_engine.daemon import Daemon
+from taskmates.workflow_engine.composite_context_manager import CompositeContextManager
 from taskmates.workflow_engine.run import RUN, Run
 from taskmates.lib.contextlib_.stacked_contexts import stacked_contexts
 
 
-class MarkdownChatDaemon(Daemon):
+class MarkdownChatDaemon(CompositeContextManager):
     async def process_chunk(self, markdown: str, format: str, run: Run):
         run.state["markdown_chat"].append_to_format(format, markdown)
 
@@ -18,7 +18,9 @@ class MarkdownChatDaemon(Daemon):
             run.state["markdown_chat"].append_to_format("full", incoming_markdown_chat)
 
         input_streams = run.signals["input_streams"]
-        output_streams = run.signals["output_streams"]
+        execution_environment = run.signals["execution_environment"]
+        markdown_completion = run.signals["markdown_completion"]
+
         connections.extend([
             input_streams.history.connected_to(
                 functools.partial(self.process_chunk, format="full", run=run)),
@@ -26,24 +28,24 @@ class MarkdownChatDaemon(Daemon):
                 functools.partial(self.process_chunk, format="full", run=run)),
             input_streams.formatting.connected_to(
                 functools.partial(self.process_chunk, format="full", run=run)),
-            output_streams.formatting.connected_to(
+            markdown_completion.formatting.connected_to(
                 functools.partial(self.process_chunk, format="full", run=run)),
-            output_streams.response.connected_to(
+            markdown_completion.response.connected_to(
                 functools.partial(self.process_chunk, format="full", run=run)),
-            output_streams.responder.connected_to(
+            markdown_completion.responder.connected_to(
                 functools.partial(self.process_chunk, format="full", run=run)),
-            output_streams.error.connected_to(
+            execution_environment.error.connected_to(
                 functools.partial(self.process_chunk, format="full", run=run))
         ])
         connections.extend([
-            output_streams.responder.connected_to(
+            markdown_completion.responder.connected_to(
                 functools.partial(self.process_chunk, format="completion", run=run)),
-            output_streams.response.connected_to(
+            markdown_completion.response.connected_to(
                 functools.partial(self.process_chunk, format="completion", run=run)),
-            output_streams.error.connected_to(
+            execution_environment.error.connected_to(
                 functools.partial(self.process_chunk, format="completion", run=run))
         ])
-        connections.append(output_streams.response.connected_to(
+        connections.append(markdown_completion.response.connected_to(
             functools.partial(self.process_chunk, format="text", run=run)))
 
         self.exit_stack.enter_context(stacked_contexts(connections))

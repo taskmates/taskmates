@@ -1,36 +1,36 @@
-import contextlib
-import functools
+import asyncio
 from contextlib import contextmanager
-from typing import List
+from typing import List, Tuple, TypeAlias
 
-from blinker import Namespace, Signal
+import pytest
+from blinker import Namespace
 
-
-def relay(self_signals, other_signals):
-    for signal_group_name, signal_group in vars(other_signals).items():
-        if isinstance(signal_group, BaseSignals):
-            for signal_name, other_signal in signal_group.namespace.items():
-                self_signal = self_signals.__getattribute__(signal_name)
-                self_signal.connect(functools.partial(other_signal, signal_name), weak=False)
-                # other_signal.connect(functools.partial(self_signal, signal_name), weak=False)
+SignalPair: TypeAlias = Tuple['BaseSignals', 'BaseSignals']
 
 
-def disconnect_relay(self_signals, other_signals):
-    for signal_group_name, signal_group in vars(other_signals).items():
-        if isinstance(signal_group, BaseSignals):
-            for signal_name, other_signal in signal_group.namespace.items():
-                self_signal = self_signals.__getattribute__(signal_name)
-                self_signal.disconnect(other_signal)
-                # other_signal.disconnect(self_signal)
+def relay(signal_pairs: List[SignalPair]):
+    connected_handlers = []
+    for from_signals, to_signals in signal_pairs:
+        for name, signal in from_signals.namespace.items():
+            source = from_signals.namespace[name]
+            target = to_signals.namespace[name]
+            receiver = source.connect(target.send_async, weak=False)
+            connected_handlers.append((source, receiver))
+    return connected_handlers
+
+
+def disconnect_relay(handlers):
+    for signal, handler in handlers:
+        signal.disconnect(handler)
 
 
 @contextmanager
-def connected_signals(this_signals: list['BaseSignals'], other_signals: list['BaseSignals']):
-    relay(this_signals, other_signals)
+def connected_signals(signal_pairs: List[SignalPair]):
+    handlers = relay(signal_pairs)
     try:
         yield
     finally:
-        disconnect_relay(this_signals, other_signals)
+        disconnect_relay(handlers)
 
 
 class BaseSignals:
@@ -38,31 +38,67 @@ class BaseSignals:
         self.namespace = Namespace()
 
     def __del__(self):
-        # Clear signal receivers on GC
         for name, signal in self.namespace.items():
             signal.receivers.clear()
 
-    @contextlib.contextmanager
-    def connected_to(self, objs: List[Signal], handler: callable):
-        try:
-            for obj in objs:
-                obj.connect(handler)
-            yield self
-        finally:
-            for obj in objs:
-                obj.disconnect(handler)
 
-    def connect_all(self, signals: 'BaseSignals'):
-        for signal_group_name, signal_group in vars(signals).items():
-            if isinstance(signal_group, BaseSignals):
-                for signal_name, signal in signal_group.namespace.items():
-                    signal.connect(
-                        functools.partial(self.__getattribute__(signal_name), signal_name),
-                        weak=False
-                    )
+# Tests
+class TestSignals(BaseSignals):
+    def __init__(self):
+        super().__init__()
+        self.message_received = self.namespace.signal('message_received')
+        self.message_processed = self.namespace.signal('message_processed')
+        self.received_messages = []
+        self.processed_messages = []
 
-    def disconnect_all(self, signals: 'BaseSignals'):
-        for signal_group_name, signal_group in vars(signals).items():
-            if isinstance(signal_group, BaseSignals):
-                for signal_name, signal in signal_group.namespace.items():
-                    signal.disconnect(self.__getattribute__(signal_name))
+        async def on_message_received(sender, **kw):
+            self.received_messages.append(kw['message'])
+
+        async def on_message_processed(sender, **kw):
+            self.processed_messages.append(kw['message'])
+
+        self.message_received.connect(on_message_received, weak=False)
+        self.message_processed.connect(on_message_processed, weak=False)
+
+
+@pytest.mark.asyncio
+async def test_signal_relay():
+    signals1 = TestSignals()
+    signals2 = TestSignals()
+    signals3 = TestSignals()
+
+    signal_pairs = [(signals1, signals2), (signals1, signals3)]
+
+    with connected_signals(signal_pairs):
+        await signals1.message_received.send_async(signals1, message='test message')
+        # Give the event loop a chance to process all signals
+        await asyncio.sleep(0)
+
+        assert signals1.received_messages == ['test message']
+        assert signals2.received_messages == ['test message']
+        assert signals3.received_messages == ['test message']
+
+    await signals1.message_received.send_async(signals1, message='after disconnect')
+    await asyncio.sleep(0)
+
+    assert signals1.received_messages == ['test message', 'after disconnect']
+    assert signals2.received_messages == ['test message']
+    assert signals3.received_messages == ['test message']
+
+
+@pytest.mark.asyncio
+async def test_multiple_signals():
+    signals1 = TestSignals()
+    signals2 = TestSignals()
+
+    signal_pairs = [(signals1, signals2)]
+
+    with connected_signals(signal_pairs):
+        await signals1.message_received.send_async(signals1, message='received')
+        await signals1.message_processed.send_async(signals1, message='processed')
+        await asyncio.sleep(0)
+
+        assert signals1.received_messages == ['received']
+        assert signals1.processed_messages == ['processed']
+        assert signals2.received_messages == ['received']
+        assert signals2.processed_messages == ['processed']

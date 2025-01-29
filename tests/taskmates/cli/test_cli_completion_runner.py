@@ -30,7 +30,7 @@ def cli_runner(tmp_path):
 
 
 def test_chat_completion(cli_runner, tmp_path):
-    args = ["complete", "--model=quote", "Short answer. 1+1="]
+    args = ["complete", "--model=quote", "--max-steps=1", "Short answer. 1+1="]
     stdout, stderr, returncode = cli_runner(args)
 
     expected_response = textwrap.dedent("""
@@ -50,7 +50,7 @@ def test_chat_completion_with_mention(cli_runner, tmp_path):
     (taskmates_home / "taskmates").mkdir(parents=True)
     (taskmates_home / "taskmates" / "jeff.md").write_text("You're a helpful assistant\n")
 
-    args = ["complete", "--model=quote", "Hey @jeff short answer. 1+1="]
+    args = ["complete", "--model=quote", "--max-steps=1", "Hey @jeff short answer. 1+1="]
     stdout, stderr, returncode = cli_runner(args)
 
     expected_response = textwrap.dedent("""
@@ -79,7 +79,7 @@ def test_tool_completion(cli_runner, tmp_path):
 
     """)
 
-    args = ["complete", "--model=quote", markdown_chat]
+    args = ["complete", "--model=quote", "--max-steps=1", markdown_chat]
     stdout, stderr, returncode = cli_runner(args)
 
     expected_response = textwrap.dedent("""\
@@ -113,7 +113,7 @@ def test_code_cell_completion(cli_runner, tmp_path):
     
     """)
 
-    args = ["complete", "--model=quote", markdown_chat]
+    args = ["complete", "--model=quote", "--max-steps=1", markdown_chat]
     stdout, stderr, returncode = cli_runner(args)
 
     expected_completion = textwrap.dedent("""\
@@ -152,7 +152,7 @@ def test_interrupt_tool(cli_runner, tmp_path):
 
     """)
 
-    args = ["complete", "--model=quote", markdown_chat]
+    args = ["complete", "--model=quote", "--max-steps=1", markdown_chat]
     process = subprocess.Popen(
         ["taskmates"] + args,
         stdout=subprocess.PIPE,
@@ -216,7 +216,7 @@ def test_kill_tool(cli_runner, tmp_path):
 
     """)
 
-    args = ["complete", "--model=quote", markdown_chat]
+    args = ["complete", "--model=quote", "--max-steps=1", markdown_chat]
     process = subprocess.Popen(
         ["taskmates"] + args,
         stdout=subprocess.PIPE,
@@ -252,7 +252,7 @@ def test_code_cell_no_output(cli_runner, tmp_path):
 
     """)
 
-    args = ["complete", "--model=quote", markdown_chat]
+    args = ["complete", "--model=quote", "--max-steps=1", markdown_chat]
     stdout, stderr, returncode = cli_runner(args)
 
     expected_completion = textwrap.dedent("""\
@@ -282,7 +282,7 @@ def test_kill_code_cell(cli_runner, tmp_path):
     
     """)
 
-    args = ["complete", "--model=quote", markdown_chat]
+    args = ["complete", "--model=quote", "--max-steps=1", markdown_chat]
     process = subprocess.Popen(
         ["taskmates"] + args,
         stdout=subprocess.PIPE,
@@ -316,7 +316,7 @@ def test_chat_completion_from_stdin(tmp_path):
     env = os.environ.copy()
     env["TASKMATES_HOME"] = str(taskmates_home)
 
-    cmd = ["taskmates", "complete", "--model=quote"]
+    cmd = ["taskmates", "complete", "--model=quote", "--max-steps=1"]
     process = subprocess.Popen(
         cmd,
         stdin=subprocess.PIPE,
@@ -350,7 +350,7 @@ def test_cli_completion_with_history(cli_runner, tmp_path):
     incoming_message = "Incoming message"
 
     # Run the CLI command
-    args = ["complete", "--model=quote", "--history", str(history_file), incoming_message]
+    args = ["complete", "--model=quote", "--max-steps=1", "--history", str(history_file), incoming_message]
     stdout, stderr, returncode = cli_runner(args)
 
     # Check the command output

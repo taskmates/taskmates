@@ -1,10 +1,10 @@
 from taskmates.core.compute_separator import compute_separator
-from taskmates.workflow_engine.daemon import Daemon
+from taskmates.workflow_engine.composite_context_manager import CompositeContextManager
 from taskmates.workflow_engine.run import RUN
 from taskmates.lib.contextlib_.stacked_contexts import stacked_contexts
 
 
-class IncomingMessagesFormattingProcessor(Daemon):
+class IncomingMessagesFormattingProcessor(CompositeContextManager):
     def __enter__(self):
         run = RUN.get()
         self.exit_stack.enter_context(stacked_contexts([

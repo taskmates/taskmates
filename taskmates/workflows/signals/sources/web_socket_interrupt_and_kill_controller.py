@@ -3,12 +3,12 @@ import json
 
 from loguru import logger
 
-from taskmates.workflow_engine.daemon import Daemon
+from taskmates.workflow_engine.composite_context_manager import CompositeContextManager
 from taskmates.workflow_engine.run import RUN
 from taskmates.lib.json_.json_utils import snake_case
 
 
-class WebSocketInterruptAndKillController(Daemon):
+class WebSocketInterruptAndKillController(CompositeContextManager):
     def __init__(self, websocket):
         super().__init__()
         self.websocket = websocket

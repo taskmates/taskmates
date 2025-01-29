@@ -21,7 +21,7 @@ async def stream_output(fd, stream: TextIO, run: Run):
         if not line:
             break
         with restore_stdout_and_stderr():
-            await run.signals["output_streams"].response.send_async(line)
+            await run.signals["markdown_completion"].response.send_async(line)
 
 
 async def run_shell_command(cmd: str) -> str:
@@ -86,7 +86,7 @@ async def test_run_shell_command(capsys):
     async def capture_chunk(chunk):
         chunks.append(chunk)
 
-    run.signals["output_streams"].response.connect(capture_chunk)
+    run.signals["markdown_completion"].response.connect(capture_chunk)
 
     if platform.system() == "Windows":
         cmd = "echo Hello, World!"
@@ -107,7 +107,7 @@ async def test_run_shell_command_interrupt(capsys):
     async def capture_chunk(chunk):
         chunks.append(chunk)
 
-    run.signals["output_streams"].response.connect(capture_chunk)
+    run.signals["markdown_completion"].response.connect(capture_chunk)
 
     async def send_interrupt():
         while len(chunks) < 5:
@@ -140,7 +140,7 @@ async def test_run_shell_command_kill(capsys):
     async def capture_chunk(chunk):
         chunks.append(chunk)
 
-    run.signals["output_streams"].response.connect(capture_chunk)
+    run.signals["markdown_completion"].response.connect(capture_chunk)
 
     async def send_kill():
         while len(chunks) < 3:

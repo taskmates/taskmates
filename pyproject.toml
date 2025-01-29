@@ -94,6 +94,7 @@ python-dotenv = "^1.0.1"
 toml = "^0.10.2"
 python-on-whales = "^0.73.0"
 
+pytest-env = "^1.1.5"
 [tool.poetry.group.dev.dependencies]
 pytest-socket = "^0.7.0"
 icecream = "^2.1.3"
@@ -125,4 +126,10 @@ taskmates-code-ast = "lib.cli_ide.code_ast:main"
 taskmates-google-search = "tools.google_.google_search:main"
 taskmates = "taskmates.cli.main:main"
 
+[tool.pytest_env]
+TASKMATES_ENV = "test"
+TASKMATES_LOG_LEVEL = "WARNING"
+TASKMATES_TELEMETRY_ENABLED = 0
+
 [tool.setuptools_scm]
+

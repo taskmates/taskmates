@@ -7,6 +7,7 @@ import sys
 from loguru import logger
 
 from taskmates.lib.resources_.resources import dump_resource
+from taskmates.workflow_engine.run import RUN
 
 level = os.environ.get("TASKMATES_LOG_LEVEL", "WARNING").upper()
 
@@ -28,7 +29,7 @@ base_dir = os.environ.get("TASKMATES_HOME", str(Path.home() / ".taskmates"))
 file_logger = file_logger.patch(lambda record: record["extra"].setdefault("base_dir",
                                                                           base_dir))
 file_logger = file_logger.patch(lambda record: record["extra"].setdefault("content", None))
-file_logger = file_logger.patch(lambda record: record["extra"].setdefault("request_id", None))
+file_logger = file_logger.patch(lambda record: record["extra"].setdefault("request_id", RUN.get().context["runner_environment"]["request_id"]))
 
 PATH_FORMAT = "{extra[base_dir]}/logs/[{extra[request_id]}][{time:YYYY-MM-DD_HH-mm-ss-SSS}][{module}] {message}"
 

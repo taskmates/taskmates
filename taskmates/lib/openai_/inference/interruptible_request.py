@@ -1,8 +1,11 @@
-import pytest
 from dataclasses import dataclass, field
-from typing import Any, Callable, Awaitable
+from typing import Any
 
+import pytest
 from typeguard import typechecked
+
+from taskmates.workflows.signals.control_signals import ControlSignals
+from taskmates.workflows.signals.status_signals import StatusSignals
 
 
 @typechecked
@@ -11,8 +14,8 @@ class InterruptibleRequest:
     """
     A class that manages the interrupt/kill logic for a request.
     """
-    status: Any
-    control: Any
+    status: StatusSignals
+    control: ControlSignals
     response: Any = field(default=None)
     interrupted_or_killed: bool = field(default=False)
 

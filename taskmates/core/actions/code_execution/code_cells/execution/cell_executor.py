@@ -5,18 +5,18 @@ from taskmates.core.actions.code_execution.code_cells.execution.cell_status impo
 from taskmates.core.actions.code_execution.code_cells.jupyter_notebook_logger import jupyter_notebook_logger
 from taskmates.core.actions.code_execution.code_cells.execution.message_handler import MessageHandler
 from taskmates.workflow_engine.run import Run
+from taskmates.workflows.signals.code_cell_output_signals import CodeCellOutputSignals
 
 
 class CellExecutor:
     """Handles the execution of a single notebook cell."""
 
     def __init__(self, message_handler: MessageHandler, bash_script_handler: BashScriptHandler,
-                 cell_tracker: KernelCellTracker, run: Run):
+                 cell_tracker: KernelCellTracker, code_cell_output: CodeCellOutputSignals):
         self.message_handler = message_handler
         self.bash_script_handler = bash_script_handler
         self.cell_tracker = cell_tracker
-        self.run = run
-        self.output_streams = run.signals["output_streams"]
+        self.code_cell_output = code_cell_output
 
     async def execute_cell(self, cell: NotebookNode, cell_index: int, total_cells: int, setup_msgs: list[str]) -> bool:
         """
@@ -99,7 +99,7 @@ class CellExecutor:
                 continue
 
             jupyter_notebook_logger.debug(f"Sending message to output streams: {msg['msg_type']}")
-            await self.output_streams.code_cell_output.send_async({
+            await self.code_cell_output.code_cell_output.send_async({
                 "msg_id": parent_msg_id,
                 "cell_source": source,
                 "msg": msg
@@ -118,7 +118,7 @@ async def test_cell_executor(tmp_path):
     async def capture_chunk(chunk):
         chunks.append(chunk)
 
-    run.signals["output_streams"].code_cell_output.connect(capture_chunk)
+    run.signals["code_cell_output"].code_cell_output.connect(capture_chunk)
 
     # Create a simple cell
     cell = NotebookNode({
@@ -136,14 +136,14 @@ async def test_cell_executor(tmp_path):
     kernel_client.start_channels()
     await kernel_client.wait_for_ready()
 
-    message_handler = MessageHandler(kernel_client, run)
+    message_handler = MessageHandler(kernel_client, run.signals["status"])
     await message_handler.start()
 
     # Create cell tracker
     cell_tracker = KernelCellTracker()
 
     # Create cell executor
-    cell_executor = CellExecutor(message_handler, BashScriptHandler(), cell_tracker, run)
+    cell_executor = CellExecutor(message_handler, BashScriptHandler(), cell_tracker, run.signals["code_cell_output"])
 
     # Execute cell
     should_continue = await cell_executor.execute_cell(cell, 0, 1, [])
@@ -177,7 +177,7 @@ async def test_cell_executor_error(tmp_path):
     async def capture_chunk(chunk):
         chunks.append(chunk)
 
-    run.signals["output_streams"].code_cell_output.connect(capture_chunk)
+    run.signals["code_cell_output"].code_cell_output.connect(capture_chunk)
 
     # Create a cell with an error
     cell = NotebookNode({
@@ -195,14 +195,14 @@ async def test_cell_executor_error(tmp_path):
     kernel_client.start_channels()
     await kernel_client.wait_for_ready()
 
-    message_handler = MessageHandler(kernel_client, run)
+    message_handler = MessageHandler(kernel_client, run.signals["status"])
     await message_handler.start()
 
     # Create cell tracker
     cell_tracker = KernelCellTracker()
 
     # Create cell executor
-    cell_executor = CellExecutor(message_handler, BashScriptHandler(), cell_tracker, run)
+    cell_executor = CellExecutor(message_handler, BashScriptHandler(), cell_tracker, run.signals["code_cell_output"])
 
     # Execute cell
     should_continue = await cell_executor.execute_cell(cell, 0, 1, [])
@@ -236,7 +236,7 @@ async def test_cell_executor_bash(tmp_path):
     async def capture_chunk(chunk):
         chunks.append(chunk)
 
-    run.signals["output_streams"].code_cell_output.connect(capture_chunk)
+    run.signals["code_cell_output"].code_cell_output.connect(capture_chunk)
 
     # Create a bash cell
     cell = NotebookNode({
@@ -254,14 +254,14 @@ async def test_cell_executor_bash(tmp_path):
     kernel_client.start_channels()
     await kernel_client.wait_for_ready()
 
-    message_handler = MessageHandler(kernel_client, run)
+    message_handler = MessageHandler(kernel_client, run.signals["status"])
     await message_handler.start()
 
     # Create cell tracker
     cell_tracker = KernelCellTracker()
 
     # Create cell executor
-    cell_executor = CellExecutor(message_handler, BashScriptHandler(), cell_tracker, run)
+    cell_executor = CellExecutor(message_handler, BashScriptHandler(), cell_tracker, run.signals["code_cell_output"])
 
     # Execute cell
     should_continue = await cell_executor.execute_cell(cell, 0, 1, [])

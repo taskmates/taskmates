@@ -18,7 +18,7 @@ pytestmark = pytest.mark.slow
 async def execute_markdown_on_local_kernel(content, markdown_path: str = None, cwd: str = None, env: Mapping = None):
     """Main execution function that coordinates the execution of markdown content as Jupyter notebook cells."""
     run = RUN.get()
-    executor = MarkdownExecutor(run)
+    executor = MarkdownExecutor(run.signals["control"], run.signals["status"], run.signals["code_cell_output"])
     await executor.execute(content, cwd=cwd, markdown_path=markdown_path, env=env)
 
 
@@ -46,7 +46,7 @@ async def test_code_cells_no_code():
     async def capture_chunk(chunk):
         chunks.append(chunk)
 
-    run.signals["output_streams"].code_cell_output.connect(capture_chunk)
+    run.signals["code_cell_output"].code_cell_output.connect(capture_chunk)
 
     input_md = textwrap.dedent("""\
         # This is a markdown text
@@ -64,7 +64,7 @@ async def test_single_cell():
     async def capture_chunk(chunk):
         chunks.append(chunk)
 
-    run.signals["output_streams"].code_cell_output.connect(capture_chunk)
+    run.signals["code_cell_output"].code_cell_output.connect(capture_chunk)
 
     input_md = textwrap.dedent("""\
         ```python .eval
@@ -86,7 +86,7 @@ async def test_multiple_cells(tmp_path):
     async def capture_chunk(chunk):
         chunks.append(chunk)
 
-    run.signals["output_streams"].code_cell_output.connect(capture_chunk)
+    run.signals["code_cell_output"].code_cell_output.connect(capture_chunk)
 
     content = textwrap.dedent("""\
     One cell:
@@ -114,7 +114,7 @@ async def test_cell_error():
     async def capture_chunk(chunk):
         chunks.append(chunk)
 
-    run.signals["output_streams"].code_cell_output.connect(capture_chunk)
+    run.signals["code_cell_output"].code_cell_output.connect(capture_chunk)
 
     input_md = textwrap.dedent("""\
         ```python .eval
@@ -139,7 +139,7 @@ async def test_cwd(tmp_path):
         jupyter_notebook_logger.debug(f"Captured chunk: {chunk}")
         chunks.append(chunk)
 
-    run.signals["output_streams"].code_cell_output.connect(capture_chunk)
+    run.signals["code_cell_output"].code_cell_output.connect(capture_chunk)
 
     # Markdown content that gets the current working directory
     input_md = textwrap.dedent(f"""\
@@ -175,7 +175,7 @@ async def test_interrupt(capsys):
     async def capture_chunk(chunk):
         chunks.append(chunk)
 
-    run.signals["output_streams"].code_cell_output.connect(capture_chunk)
+    run.signals["code_cell_output"].code_cell_output.connect(capture_chunk)
 
     input_md = textwrap.dedent("""\
         ```python .eval
@@ -218,7 +218,7 @@ async def test_kill(capsys):
     async def capture_chunk(chunk):
         chunks.append(chunk)
 
-    run.signals["output_streams"].code_cell_output.connect(capture_chunk)
+    run.signals["code_cell_output"].code_cell_output.connect(capture_chunk)
 
     input_md = textwrap.dedent("""\
         ```python .eval
@@ -265,7 +265,7 @@ async def test_custom_env():
     async def capture_chunk(chunk):
         chunks.append(chunk)
 
-    run.signals["output_streams"].code_cell_output.connect(capture_chunk)
+    run.signals["code_cell_output"].code_cell_output.connect(capture_chunk)
 
     custom_env = os.environ.copy()
     custom_env['CUSTOM_VAR'] = 'test_value'
@@ -301,7 +301,7 @@ async def test_bash_heredoc(capsys):
     async def capture_chunk(chunk):
         chunks.append(chunk)
 
-    run.signals["output_streams"].code_cell_output.connect(capture_chunk)
+    run.signals["code_cell_output"].code_cell_output.connect(capture_chunk)
 
     input_md = textwrap.dedent('''
         ```python .eval

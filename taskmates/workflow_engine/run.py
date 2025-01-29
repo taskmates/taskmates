@@ -1,7 +1,7 @@
 import asyncio
-import contextlib
 import contextvars
 import importlib
+from contextlib import AbstractContextManager, ExitStack
 from typing import Any, Dict, Optional, List, Union, Self, TypeVar
 
 import pytest
@@ -9,8 +9,6 @@ from blinker import Namespace, Signal
 from opentelemetry import trace
 from ordered_set import OrderedSet
 from pydantic import BaseModel, Field, ConfigDict, model_validator, field_serializer, field_validator
-from typeguard import typechecked
-
 from taskmates.lib.context_.temp_context import temp_context
 from taskmates.lib.contextlib_.stacked_contexts import stacked_contexts
 from taskmates.lib.opentelemetry_.format_span_name import format_span_name
@@ -18,10 +16,11 @@ from taskmates.lib.opentelemetry_.tracing import tracer
 from taskmates.lib.str_.to_snake_case import to_snake_case
 from taskmates.taskmates_runtime import TASKMATES_RUNTIME
 from taskmates.workflow_engine.base_signals import BaseSignals
-from taskmates.workflow_engine.daemon import Daemon
+from taskmates.workflow_engine.composite_context_manager import CompositeContextManager
 from taskmates.workflow_engine.default_environment_signals import default_environment_signals
 from taskmates.workflow_engine.runner import Runner
 from taskmates.workflows.contexts.run_context import RunContext, default_taskmates_dirs
+from typeguard import typechecked
 
 Signal.set_class = OrderedSet
 
@@ -158,11 +157,11 @@ class Run(BaseModel):
     signals: Dict[str, BaseSignals] = Field(default_factory=dict)
     state: Dict[str, Any] = Field(default_factory=dict)
 
-    daemons: Dict[str, Daemon] = Field(default_factory=dict)
+    daemons: Dict[str, AbstractContextManager] = Field(default_factory=dict)
 
     # Runtime-only fields, excluded from serialization
     namespace: Namespace = Field(default_factory=Namespace, exclude=True)
-    exit_stack: contextlib.ExitStack = Field(default_factory=contextlib.ExitStack, exclude=True)
+    exit_stack: ExitStack = Field(default_factory=ExitStack, exclude=True)
 
     @model_validator(mode='before')
     @classmethod
@@ -195,7 +194,7 @@ class Run(BaseModel):
         return value
 
     @field_serializer('daemons')
-    def serialize_daemons(self, daemons: Dict[str, Daemon]) -> Dict[str, str]:
+    def serialize_daemons(self, daemons: Dict[str, AbstractContextManager]) -> Dict[str, str]:
         """Serialize daemons by storing their class paths"""
         return {
             name: f"{daemon.__class__.__module__}.{daemon.__class__.__name__}"
@@ -204,7 +203,7 @@ class Run(BaseModel):
 
     @field_validator('daemons', mode='before')
     @classmethod
-    def deserialize_daemons(cls, value: Any) -> Dict[str, Daemon]:
+    def deserialize_daemons(cls, value: Any) -> Dict[str, AbstractContextManager]:
         """Reconstruct daemons from their class paths"""
         if isinstance(value, dict) and all(isinstance(v, str) for v in value.values()):
             daemons = {}
@@ -247,7 +246,10 @@ class Run(BaseModel):
                 return await runner.get_result()
 
 
-def to_daemons_dict(jobs: Optional[Union[List[Daemon], Dict[str, Daemon], None]]) -> Dict[str, Daemon]:
+def to_daemons_dict(jobs: Optional[Union[
+    List[AbstractContextManager],
+    Dict[str, AbstractContextManager], None]]) \
+        -> Dict[str, AbstractContextManager]:
     if jobs is None:
         return {}
     if isinstance(jobs, Run):
@@ -265,15 +267,15 @@ RUN: contextvars.ContextVar[Run] = contextvars.ContextVar(Run.__class__.__name__
 # Tests
 
 
-class MockDaemon(Daemon):  # type: ignore[misc, type-arg]
+class MockDaemon(CompositeContextManager):  # type: ignore[misc, type-arg]
     pass
 
 
-class MockDaemon1(Daemon):  # type: ignore[misc, type-arg]
+class MockDaemon1(CompositeContextManager):  # type: ignore[misc, type-arg]
     pass
 
 
-class MockDaemon2(Daemon):  # type: ignore[misc, type-arg]
+class MockDaemon2(CompositeContextManager):  # type: ignore[misc, type-arg]
     pass
 
 
@@ -626,6 +628,7 @@ def test_objective_get_root():
     # Test with a single objective (is its own root)
     single = Objective(key=ObjectiveKey(outcome="single"))
     assert single._get_root() is single
+
 
 def test_objective_dump_graph_with_current():
     # Create a root objective

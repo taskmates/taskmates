@@ -1,5 +1,7 @@
 from abc import ABC
+from contextlib import AbstractContextManager
 from typing import Any
+from typing import Optional
 
 import pytest
 
@@ -8,11 +10,20 @@ from taskmates.lib.str_.to_snake_case import to_snake_case
 from taskmates.workflow_engine.create_sub_run import create_sub_run
 from taskmates.workflow_engine.plan import Plan
 from taskmates.workflow_engine.run import RUN, Objective, ObjectiveKey, Run
+from taskmates.workflows.contexts.run_context import RunContext
 
 
-# TODO: make Workflow extend Run?
-# TODO: or make Run use Workflow (instead of Workflow using Run)? E.g Run.from_workflow
 class Workflow(Plan, ABC):
+    def __init__(self,
+                 context: Optional[RunContext] = None,
+                 signals: Optional[dict[str, Any]] = None,
+                 daemons: Optional[dict[str, AbstractContextManager]] = None,
+                 state: Optional[dict[str, Any]] = None):
+        self.context = context
+        self.signals = signals or {}
+        self.daemons = daemons or {}
+        self.state = state or {}
+
     async def fulfill(self, **kwargs) -> Any:
         workflow_name = to_snake_case(self.__class__.__name__)
 
@@ -30,16 +41,12 @@ class Workflow(Plan, ABC):
                 ))
             current_objective.sub_objectives[sub_objective.key] = sub_objective
 
-            # TODO: problem
-            #   - detach create_* from Run constructor
-            #   - move context/daemons/signals/state into objective as sub_objectives
-
             sub_run = Run(
                 objective=sub_objective,
-                context=coalesce(await self.create_context(**kwargs), current_run.context),
-                daemons=await self.create_daemons(),
-                signals={**current_run.signals, **await self.create_signals()},
-                state={**current_run.state, **await self.create_state()}
+                context=coalesce(self.context, current_run.context),
+                daemons=self.daemons,
+                signals={**current_run.signals, **self.signals},
+                state={**current_run.state, **self.state}
             )
 
             return await sub_run.run_steps(self.steps)
@@ -53,22 +60,10 @@ async def test_workflow_execution(context):
     from taskmates.workflow_engine.run import Run
 
     class TestWorkflow(Workflow):
-        async def create_context(self, **kwargs):
-            return context
-
         async def steps(self, **kwargs):
             return sum(kwargs.values())
 
-        async def create_daemons(self):
-            return {}
-
-        async def create_signals(self):
-            return {}
-
-        async def create_state(self):
-            return {}
-
-    workflow = TestWorkflow()
+    workflow = TestWorkflow(context=context)
     parent_run = Run(
         objective=Objective(key=ObjectiveKey(outcome="test")),
         context=context,

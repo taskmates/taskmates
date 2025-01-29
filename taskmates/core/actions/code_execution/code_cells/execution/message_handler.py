@@ -3,14 +3,17 @@ from queue import Empty
 from typing import Optional
 
 from jupyter_client import AsyncKernelClient
+from typeguard import typechecked
+
 from taskmates.core.actions.code_execution.code_cells.jupyter_notebook_logger import jupyter_notebook_logger
-from taskmates.workflow_engine.run import Run
+from taskmates.workflows.signals.status_signals import StatusSignals
 
 
+@typechecked
 class MessageHandler:
-    def __init__(self, kernel_client: AsyncKernelClient, run: Run):
+    def __init__(self, kernel_client: AsyncKernelClient, status: StatusSignals):
         self.kernel_client = kernel_client
-        self.run = run
+        self.status = status
         self.msg_queue = asyncio.Queue()
         self.notebook_finished = False
         self.cell_finished = False
@@ -42,7 +45,8 @@ class MessageHandler:
         while True:
             try:
                 msg = await self.kernel_client.get_shell_msg(timeout=0.1)
-                jupyter_notebook_logger.debug(f"Shell message: type={msg['msg_type']}, msg_id={msg['parent_header'].get('msg_id')}")
+                jupyter_notebook_logger.debug(
+                    f"Shell message: type={msg['msg_type']}, msg_id={msg['parent_header'].get('msg_id')}")
                 await self.msg_queue.put(msg)
             except Empty:
                 pass
@@ -52,7 +56,8 @@ class MessageHandler:
         while True:
             try:
                 msg = await self.kernel_client.get_iopub_msg(timeout=0.1)
-                jupyter_notebook_logger.debug(f"IOPub message: type={msg['msg_type']}, msg_id={msg['parent_header'].get('msg_id')}")
+                jupyter_notebook_logger.debug(
+                    f"IOPub message: type={msg['msg_type']}, msg_id={msg['parent_header'].get('msg_id')}")
                 await self.msg_queue.put(msg)
             except Empty:
                 pass
@@ -62,12 +67,13 @@ class MessageHandler:
         while True:
             try:
                 msg = await self.kernel_client.get_control_msg(timeout=0.1)
-                jupyter_notebook_logger.debug(f"Control message: type={msg['msg_type']}, msg_id={msg['parent_header'].get('msg_id')}")
+                jupyter_notebook_logger.debug(
+                    f"Control message: type={msg['msg_type']}, msg_id={msg['parent_header'].get('msg_id')}")
 
                 if msg['msg_type'] == 'shutdown_reply':
                     jupyter_notebook_logger.debug("Kernel shutdown acknowledged")
                     self.notebook_finished = True
-                    await self.run.signals["status"].killed.send_async(None)
+                    await self.status.killed.send_async(None)
                     break
 
                 await self.msg_queue.put(msg)

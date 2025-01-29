@@ -17,7 +17,7 @@ async def stream_output(stream_name, stream, run: Run):
         if not line:
             break
         with restore_stdout_and_stderr():
-            await run.signals["output_streams"].response.send_async(line)
+            await run.signals["markdown_completion"].response.send_async(line)
 
 
 async def invoke_function(function, arguments, context: RunnerEnvironment, run: Run):
