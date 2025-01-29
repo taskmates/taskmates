@@ -90,6 +90,7 @@ class MarkdownComplete(Workflow):
         while True:
             step += 1
 
+            step_context = current_run.context.copy()
             step_run = Run(
                 objective=Objective(
                     key=ObjectiveKey(
@@ -98,7 +99,7 @@ class MarkdownComplete(Workflow):
                         requesting_run=current_run
                     )
                 ),
-                context=current_run.context,
+                context=step_context,
                 signals={
                     "control": ControlSignals(),
                     "status": StatusSignals(),
