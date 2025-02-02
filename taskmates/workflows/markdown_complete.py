@@ -163,7 +163,7 @@ class MarkdownComplete(Workflow):
                            completion_signals["code_cell_output"],
                            completion_signals["status"])
 
-        await self.end_section()
+        await self.end_section(state, completion_signals["markdown_completion"])
 
         return True
 
@@ -200,12 +200,9 @@ class MarkdownComplete(Workflow):
             inputs=run.objective.key['inputs'])
         return chat
 
-    async def end_section(self):
-        run = RUN.get()
-        signals = run.signals
-
-        markdown_completion = run.state["markdown_chat"].outputs["completion"]
-        await self.append_trailing_newlines(markdown_completion, signals["markdown_completion"])
+    async def end_section(self, state, markdown_completion_signals: MarkdownCompletionSignals):
+        markdown_completion = state["markdown_chat"].outputs["completion"]
+        await self.append_trailing_newlines(markdown_completion, markdown_completion_signals)
 
     async def end_markdown_completion(self,
                                       markdown_chat: str,
