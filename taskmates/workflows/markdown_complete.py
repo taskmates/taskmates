@@ -124,7 +124,13 @@ class MarkdownComplete(Workflow):
                 should_continue = await self.complete_section(markdown_chat,
                                                               step_run.state,
                                                               step_run.signals)
+
                 markdown_chat = state["markdown_chat"].get()["full"]
+
+                await self.end_section(markdown_chat, step_run.signals["markdown_completion"])
+
+                markdown_chat = state["markdown_chat"].get()["full"]
+
                 if not should_continue:
                     break
 
@@ -163,8 +169,6 @@ class MarkdownComplete(Workflow):
                            completion_signals["code_cell_output"],
                            completion_signals["status"])
 
-        await self.end_section(state, completion_signals["markdown_completion"])
-
         return True
 
     async def compute_next_completion(self, chat):
@@ -200,9 +204,8 @@ class MarkdownComplete(Workflow):
             inputs=run.objective.key['inputs'])
         return chat
 
-    async def end_section(self, state, markdown_completion_signals: MarkdownCompletionSignals):
-        markdown_completion = state["markdown_chat"].outputs["completion"]
-        await self.append_trailing_newlines(markdown_completion, markdown_completion_signals)
+    async def end_section(self, markdown_chat: str, markdown_completion_signals: MarkdownCompletionSignals):
+        await self.append_trailing_newlines(markdown_chat, markdown_completion_signals)
 
     async def end_markdown_completion(self,
                                       markdown_chat: str,
