@@ -117,3 +117,13 @@ async def teardown_after_all_tests(taskmates_runtime):
     kernel_manager._kernel_pool.clear()
     kernel_manager._client_pool.clear()
     kernel_manager._cell_trackers.clear()
+
+
+# @pytest.fixture(autouse=True)
+# def event_loop_fixture():
+#     """Fixture to properly handle event loop cleanup."""
+#     import asyncio
+#     loop = asyncio.new_event_loop()
+#     asyncio.set_event_loop(loop)
+#     yield loop
+#     loop.close()
