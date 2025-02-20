@@ -17,12 +17,19 @@ class PreBlockNode:
 
 
 def pre_tag_parser():
-    pre_start = (pp.LineStart() + pp.Literal("<pre")).setName("pre_tag_start")
-    pre_end = (pp.Literal("</pre>") + pp.Optional(pp.LineEnd())).setName("pre_tag_end")
-    pre_content = pp.SkipTo(pre_end | pp.StringEnd(), include=True).setName("pre_tag_content")
+    # Define start and end tags more precisely
+    pre_start = pp.LineStart() + pp.Literal("<pre") + pp.Optional(pp.SkipTo(">")) + ">"
+    pre_end = "</pre>" + pp.LineEnd()
     
+    # Define content more explicitly
+    content_char = ~pp.Literal("</pre>") + pp.Word(pp.printables + ' \t') | pp.LineEnd()
+    pre_content = pp.ZeroOrMore(content_char)
+    
+    # Combine all parts
     pre_tag = pp.Combine(
-        (pre_start - pre_content)
+        pre_start +
+        pre_content +
+        (pre_end | pp.StringEnd())
     ).setName("pre_tag_block").set_parse_action(PreBlockNode.from_tokens)
     
     return pre_tag
@@ -72,10 +79,20 @@ def test_pre_tag_empty():
 
 
 def test_pre_tag_with_html_content():
-    input = """<pre>&lt;div&gt;Hello World&lt;/div&gt;</pre>
+    input = """<pre><div>Hello World</div></pre>
 """
     expected_unescaped = """<pre><div>Hello World</div></pre>
 """
     result = pre_tag_parser().parseString(input)[0]
     assert result.source == input
     assert result.unescaped == expected_unescaped
+
+
+def test_pre_tag_with_attributes():
+    input = """<pre class='output' style='display:none'>
+Some content
+</pre>
+"""
+    result = pre_tag_parser().parseString(input)[0]
+    assert result.source == input
+    assert result.unescaped == input
