@@ -141,7 +141,7 @@ def meta_line_parser():
 def message_content_parser():
     # Code cells and pre tags (which should not ignore comments)
     code_cell = code_cell_parser().setName("code_cell")
-    pre_tag = pre_tag_parser().setName("pre_tag").set_parse_action(PreTagNode.from_tokens)
+    pre_tag = pre_tag_parser().setName("pre_tag_with_content_parser").set_parse_action(PreTagNode.from_tokens)
 
     # Comments and metadata
     comment = comment_line_parser().setName("comment_line")
@@ -154,7 +154,7 @@ def message_content_parser():
 
     return pp.Group(
         (code_cell | pre_tag | meta | comment | text_content)[...]
-    ).setName("message_content")("child_nodes")
+    ).setName("message_content_alternatives_parser")("child_nodes")
 
 
 def first_message_parser(implicit_role: str = "user"):
@@ -162,7 +162,7 @@ def first_message_parser(implicit_role: str = "user"):
     implicit_header = (pp.LineStart().setName("first_message_start") + 
                       pp.Empty().setName("implicit_role").setParseAction(lambda: implicit_role)("name"))
     first_message = (
-            (headers_parser() | implicit_header).setName("first_message_header")
+            (headers_parser() | implicit_header).setName("message_header_parser")
             + message_content
             + pp.Optional(tool_calls_parser())
     ).setName("first_message")
@@ -174,10 +174,10 @@ def message_parser():
 
     message = (
             pp.LineStart()
-            + headers_parser()
+            + headers_parser().setName("message_header_parser")
             + message_content
             + pp.Optional(tool_calls_parser())
-    )
+    ).setName("message_parser")
     return message.set_parse_action(MessageNode.create)
 
 
