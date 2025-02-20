@@ -1,6 +1,7 @@
 import base64
 import hashlib
 import json
+import re
 
 from nbconvert.filters.ansi import strip_ansi
 
@@ -51,10 +52,24 @@ class CodeExecution:
         return text.replace('<', '&lt;').replace('>', '&gt;')
 
     @staticmethod
+    def strip_control_chars(text):
+        # First use strip_ansi to remove ANSI escape sequences
+        text = strip_ansi(text)
+        
+        # Remove carriage returns
+        text = text.replace("\r", "")
+        
+        # Remove other control characters except newlines and tabs
+        # This pattern matches any character that is a control character (ASCII 0-31)
+        # except for newline (\n, ASCII 10) and tab (\t, ASCII 9)
+        text = re.sub(r'[\x00-\x08\x0B-\x1F\x7F]', '', text)
+        
+        return text
+
+    @staticmethod
     def format_code_cell_output(result, is_preformatted):
         formatted = result if isinstance(result, str) else json.dumps(result)
-        formatted = strip_ansi(formatted)
-        formatted = formatted.replace("\r", "")
+        formatted = CodeExecution.strip_control_chars(formatted)
         if is_preformatted:
             formatted = CodeExecution.escape_pre_output(formatted)
         return formatted
@@ -63,3 +78,30 @@ class CodeExecution:
     def generate_code_cell_id(code_cell_content):
         digest = hashlib.sha256(code_cell_content.encode('utf-8')).digest()
         return base64.urlsafe_b64encode(digest).decode('utf-8').rstrip('=')
+
+
+def test_strip_control_chars():
+    # Test with various control characters
+    input_text = "Hello\x1B[31m World\x1B[0m\r\n\x00\x01\x02\tTest\n"
+    expected = "Hello World\n\tTest\n"
+    assert CodeExecution.strip_control_chars(input_text) == expected
+
+    # Test with just normal text
+    input_text = "Hello World"
+    assert CodeExecution.strip_control_chars(input_text) == "Hello World"
+
+    # Test with multiple carriage returns and newlines
+    input_text = "Hello\r\n\r\nWorld"
+    assert CodeExecution.strip_control_chars(input_text) == "Hello\n\nWorld"
+
+    # Test with escape sequences
+    input_text = "Hello\x1B[31mWorld\x1B[0m"
+    assert CodeExecution.strip_control_chars(input_text) == "HelloWorld"
+
+    # Test with null bytes and other control characters
+    input_text = "Hello\x00\x01\x02World"
+    assert CodeExecution.strip_control_chars(input_text) == "HelloWorld"
+
+    # Test with tabs (should preserve them)
+    input_text = "Hello\tWorld"
+    assert CodeExecution.strip_control_chars(input_text) == "Hello\tWorld"
