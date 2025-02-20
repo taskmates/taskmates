@@ -52,28 +52,26 @@ class CodeCellNode(BaseModel):
 def code_cell_parser():
     code_cell_start = pp.Group(
         pp.line_start
-        + pp.Regex(r"```")
-        + pp.Optional(pp.Regex(r"[a-zA-Z0-9]+", re.MULTILINE))("language")
+        + pp.Regex(r"```").setName("code_fence_start")
+        + pp.Optional(pp.Regex(r"[a-zA-Z0-9]+", re.MULTILINE).setName("language_identifier"))("language")
         + pp.Optional(" ")
-        + pp.Optional(pp.Literal(".eval"))("eval")
+        + pp.Optional(pp.Literal(".eval").setName("eval_marker"))("eval")
         + pp.line_end
-    )
+    ).setName("code_cell_header")
 
-    code_cell = pp.Forward()
-    code_cell_end = pp.Regex(r"^```(`*)(\n|\Z)", re.MULTILINE)("end")
+    code_cell = pp.Forward().setName("code_cell_recursive")
+    code_cell_end = pp.Regex(r"^```(`*)(\n|\Z)", re.MULTILINE).setName("code_fence_end")("end")
 
+    code_line = (pp.line_start + ~code_cell_end - (code_cell | pp.SkipTo(pp.line_end, include=True))).setName("code_line")
     code_cell_content = pp.Combine(pp.OneOrMore(
-        pp.Combine(
-            pp.line_start + ~code_cell_end
-            - (code_cell | pp.SkipTo(pp.line_end, include=True))
-        )
-    ))("content")
+        pp.Combine(code_line)
+    )).setName("code_cell_content")("content")
 
     code_cell <<= pp.Group(
         code_cell_start
         - code_cell_content
         - (code_cell_end | pp.StringEnd())
-    ).set_parse_action(CodeCellNode.from_tokens)
+    ).setName("code_cell_block").set_parse_action(CodeCellNode.from_tokens)
 
     return code_cell
 

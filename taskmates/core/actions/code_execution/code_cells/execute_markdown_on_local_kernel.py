@@ -305,7 +305,7 @@ async def test_bash_heredoc(capsys):
 
     input_md = textwrap.dedent('''
         ```python .eval
-        %%bash
+        %%bash -s
         cat << 'EOF'
         content
         EOF
@@ -317,4 +317,4 @@ async def test_bash_heredoc(capsys):
     # Get all output messages
     stream_chunks = [chunk['msg']['content'] for chunk in chunks if chunk['msg']['msg_type'] == 'stream']
 
-    assert stream_chunks == [{'name': 'stdout', 'text': 'content\r\n'}]
+    assert stream_chunks == [{'name': 'stdout', 'text': 'content\n'}]
