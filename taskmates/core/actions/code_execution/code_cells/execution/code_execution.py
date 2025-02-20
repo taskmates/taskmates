@@ -54,6 +54,7 @@ class CodeExecution:
     def format_code_cell_output(result, is_preformatted):
         formatted = result if isinstance(result, str) else json.dumps(result)
         formatted = strip_ansi(formatted)
+        formatted = formatted.replace("\r", "")
         if is_preformatted:
             formatted = CodeExecution.escape_pre_output(formatted)
         return formatted

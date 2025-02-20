@@ -480,7 +480,7 @@ async def test_kill_code_cell(app, tmp_path):
     
     """)
 
-    expected_response = '###### Cell Output: stdout [cell_0]\n\n<pre>\nStarting\r\n</pre>\n\n'
+    expected_response = '###### Cell Output: stdout [cell_0]\n\n<pre>\nStarting\n</pre>\n\n'
 
     test_payload: ApiRequest = {
         "type": "completions_request",
