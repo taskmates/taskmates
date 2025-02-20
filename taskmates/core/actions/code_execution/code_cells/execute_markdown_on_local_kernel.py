@@ -305,7 +305,7 @@ async def test_bash_heredoc(capsys):
 
     input_md = textwrap.dedent('''
         ```python .eval
-        %%bash
+        %%bash -s
         cat << 'EOF'
         content
         EOF
