@@ -140,31 +140,32 @@ def meta_line_parser():
 
 def message_content_parser():
     # Code cells and pre tags (which should not ignore comments)
-    code_cell = code_cell_parser()
-    pre_tag = pre_tag_parser().set_parse_action(PreTagNode.from_tokens)
+    code_cell = code_cell_parser().setName("code_cell")
+    pre_tag = pre_tag_parser().setName("pre_tag").set_parse_action(PreTagNode.from_tokens)
 
     # Comments and metadata
-    comment = comment_line_parser()
-    meta = meta_line_parser()
+    comment = comment_line_parser().setName("comment_line")
+    meta = meta_line_parser().setName("meta_line")
 
     # Regular text content
     text_content = (
         pp.Regex(fr"({NOT_BEGINNING_OF_SECTION_AHEAD}.)+", re.DOTALL | re.MULTILINE)
-    ).set_parse_action(TextContentNode.from_tokens)
+    ).setName("text_content").set_parse_action(TextContentNode.from_tokens)
 
     return pp.Group(
         (code_cell | pre_tag | meta | comment | text_content)[...]
-    )("child_nodes")
+    ).setName("message_content")("child_nodes")
 
 
 def first_message_parser(implicit_role: str = "user"):
     message_content = message_content_parser()
-    implicit_header = (pp.LineStart() + pp.Empty().setParseAction(lambda: implicit_role)("name"))
+    implicit_header = (pp.LineStart().setName("first_message_start") + 
+                      pp.Empty().setName("implicit_role").setParseAction(lambda: implicit_role)("name"))
     first_message = (
-            (headers_parser() | implicit_header)
+            (headers_parser() | implicit_header).setName("first_message_header")
             + message_content
             + pp.Optional(tool_calls_parser())
-    )
+    ).setName("first_message")
     return first_message.set_parse_action(MessageNode.create)
 
 
@@ -182,7 +183,7 @@ def message_parser():
 
 def messages_parser(implicit_role: str = "user"):
     first_message, message = first_message_parser(implicit_role=implicit_role), message_parser()
-    messages = (first_message + message[...]).set_results_name("messages")
+    messages = (first_message + message[...]).setName("messages_sequence").set_results_name("messages")
 
     return messages
 

@@ -17,10 +17,14 @@ class PreBlockNode:
 
 
 def pre_tag_parser():
+    pre_start = (pp.LineStart() + pp.Literal("<pre")).setName("pre_tag_start")
+    pre_end = (pp.Literal("</pre>") + pp.Optional(pp.LineEnd())).setName("pre_tag_end")
+    pre_content = pp.SkipTo(pre_end | pp.StringEnd(), include=True).setName("pre_tag_content")
+    
     pre_tag = pp.Combine(
-        (pp.LineStart() + pp.Literal("<pre")
-         - pp.SkipTo((pp.Literal("</pre>") + pp.Optional(pp.LineEnd())) | pp.StringEnd(), include=True))
-    ).set_parse_action(PreBlockNode.from_tokens)
+        (pre_start - pre_content)
+    ).setName("pre_tag_block").set_parse_action(PreBlockNode.from_tokens)
+    
     return pre_tag
 
 
