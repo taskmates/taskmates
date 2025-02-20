@@ -59,15 +59,30 @@ class MetaNode(BaseModel):
 
     @classmethod
     def from_tokens(cls, tokens: ParseResults):
-        import toml
         meta_str = tokens.meta_str.strip()
+        
+        # Extract key and value
         try:
-            meta_dict = toml.loads(meta_str)
-            # TOML will parse into a dict, get the first key/value pair
-            key, value = next(iter(meta_dict.items()))
+            # Split on first '=' and strip whitespace
+            if '=' not in meta_str:
+                raise ValueError("Missing '=' in metadata")
+            
+            key, value_str = [part.strip() for part in meta_str.split('=', 1)]
+            if not key:
+                raise ValueError("Empty key in metadata")
+            
+            # Parse the value
+            import ast
+            try:
+                # Try to parse as Python literal (for numbers, strings, lists, etc.)
+                value = ast.literal_eval(value_str)
+            except (ValueError, SyntaxError) as e:
+                # All values must be valid Python literals
+                raise ValueError(f"Invalid value format: {value_str}. Must be a valid Python literal (use quotes for strings)") from e
+                
             return cls(key=key, value=value)
         except Exception as e:
-            raise ValueError(f"Invalid TOML in meta: {meta_str}") from e
+            raise ValueError(f"Invalid metadata format: {meta_str}. Expected 'key = value' where value is a valid Python literal") from e
 
 
 class MessageNode(BaseModel):
@@ -87,7 +102,12 @@ class MessageNode(BaseModel):
         child_nodes = dct.pop("child_nodes")
         dct["meta"] = {}
 
-        # Filter out CommentNodes that are not inside code blocks or pre tags
+        # First pass: collect metadata
+        for node in child_nodes:
+            if isinstance(node, MetaNode):
+                dct["meta"][node.key] = node.value
+
+        # Second pass: build content
         filtered_content = []
         inside_special_block = False
 
@@ -96,9 +116,7 @@ class MessageNode(BaseModel):
                 inside_special_block = True
                 filtered_content.append(node.source)
             elif isinstance(node, (CommentNode, MetaNode)) and not inside_special_block:
-                if isinstance(node, MetaNode):
-                    dct["meta"][node.key] = node.value
-                # Skip comments outside special blocks
+                # Skip comments and metadata outside special blocks
                 continue
             else:
                 filtered_content.append(node.source)
@@ -126,34 +144,40 @@ def comment_line_parser():
 
 
 def meta_line_parser():
+    # Match the content between 'meta:' and ')'
     meta_content = pp.Regex(r'[^)]+')('meta_str')
+    
+    # The full meta line pattern
     meta_line = (
             pp.LineStart()
             + pp.Literal('[//]: # (meta:')
-            - meta_content
-            - pp.Literal(')')
-            - pp.LineEnd()
-    ).set_parse_action(MetaNode.from_tokens)
+            + meta_content
+            + pp.Literal(')')
+            + pp.LineEnd()
+    ).set_parse_action(lambda s, l, t: MetaNode.from_tokens(t))
 
     return meta_line
 
 
 def message_content_parser():
-    # Code cells and pre tags (which should not ignore comments)
-    code_cell = code_cell_parser().setName("code_cell")
-    pre_tag = pre_tag_parser().setName("pre_tag_with_content_parser").set_parse_action(PreTagNode.from_tokens)
-
-    # Comments and metadata
+    # Comments and metadata (strict line patterns)
     comment = comment_line_parser().setName("comment_line")
     meta = meta_line_parser().setName("meta_line")
 
-    # Regular text content
+    # Code cells and pre tags (specific start/end patterns)
+    code_cell = code_cell_parser().setName("code_cell")
+    pre_tag = pre_tag_parser().setName("pre_tag_with_content_parser").set_parse_action(PreTagNode.from_tokens)
+
+    # Regular text content (catch-all)
     text_content = (
         pp.Regex(fr"({NOT_BEGINNING_OF_SECTION_AHEAD}.)+", re.DOTALL | re.MULTILINE)
     ).setName("text_content").set_parse_action(TextContentNode.from_tokens)
 
+    # Define a single line that can be either metadata, comment, or text
+    line = (meta | comment | text_content)
+
     return pp.Group(
-        (code_cell | pre_tag | meta | comment | text_content)[...]
+        (line | code_cell | pre_tag)[...]
     ).setName("message_content_alternatives_parser")("child_nodes")
 
 
