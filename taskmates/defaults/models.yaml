@@ -8,7 +8,7 @@ default-openai:
   client_type: openai
   endpoint: https://api.openai.com/v1
   max_context_window: 128000
-  model_name: o1-preview
+  model_name: gpt-4o
 
 # openai
 
