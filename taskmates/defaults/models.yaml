@@ -2,7 +2,7 @@ default-anthropic:
   client_type: anthropic
   endpoint: https://api.anthropic.com
   max_context_window: 4096
-  model_name: claude-3-5-sonnet-20241022
+  model_name: claude-3-7-sonnet-20250219
 
 default-openai:
   client_type: openai
@@ -106,13 +106,19 @@ claude-3-sonnet-20240229:
   client_type: anthropic
   endpoint: https://api.anthropic.com
   max_context_window: 4096
-  model_name: claude-3-opus-20240229
+  model_name: claude-3-sonnet-20240229
 
 claude-3-5-sonnet-20241022:
   client_type: anthropic
   endpoint: https://api.anthropic.com
   max_context_window: 4096
-  model_name: claude-3-opus-20240229
+  model_name: claude-3-5-sonnet-20241022
+
+claude-3-7-sonnet-20250219:
+  client_type: anthropic
+  endpoint: https://api.anthropic.com
+  max_context_window: 4096
+  model_name: claude-3-7-sonnet-20250219
 
 
 # qwen
