@@ -65,6 +65,7 @@ def test_parameters():
                           'args': {
                               'default': [], 'type': 'array', 'items': {}},
                           'kargs': {
+                              'additionalProperties': True,
                               'default': {}, 'type': 'object'}
                       }, 'required': ['a']
                       }
