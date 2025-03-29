@@ -6,9 +6,9 @@ import pytest
 
 from taskmates.grammar.parsers.markdown_chat_parser import markdown_chat_parser
 from taskmates.lib.openai_.count_tokens import count_tokens
+from taskmates.grammar.parsers.profiling import profile_parser, print_profile_report
 
 pytestmark = pytest.mark.slow
-
 
 @pytest.mark.timeout(5)
 @pytest.mark.xdist_group(name="performance")
@@ -78,8 +78,10 @@ def test_performance():
         </pre>
         """)
 
-    markdown_chat_parser().parseString(generate_input_string(partial))
-
+    parser = markdown_chat_parser()
+    with profile_parser(parser):
+        parser.parseString(generate_input_string(partial))
+    print_profile_report("test_performance")
 
 @pytest.mark.timeout(5)
 @pytest.mark.xdist_group(name="performance")
@@ -89,10 +91,14 @@ def test_performance_single_lines():
     """)
 
     input_string = generate_input_string(partial)
-    execution_time = timeit.timeit(lambda: markdown_chat_parser().parseString(input_string), number=1)
-    print(f"Single lines message parsing time: {execution_time:.4f} seconds")
-    assert execution_time < 0.6, f"Parsing took too long: {execution_time:.4f} seconds"
+    parser = markdown_chat_parser()
 
+    with profile_parser(parser):
+        execution_time = timeit.timeit(lambda: parser.parseString(input_string), number=1)
+
+    print(f"Single lines message parsing time: {execution_time:.4f} seconds")
+    print_profile_report("test_performance_single_lines")
+    assert execution_time < 0.6, f"Parsing took too long: {execution_time:.4f} seconds"
 
 @pytest.mark.timeout(5)
 @pytest.mark.xdist_group(name="performance")
@@ -102,10 +108,14 @@ def test_performance_long_lines():
     """)
 
     input_string = generate_input_string(partial)
-    execution_time = timeit.timeit(lambda: markdown_chat_parser().parseString(input_string), number=1)
-    print(f"Long lines message parsing time: {execution_time:.4f} seconds")
-    assert execution_time < 0.6, f"Parsing took too long: {execution_time:.4f} seconds"
+    parser = markdown_chat_parser()
 
+    with profile_parser(parser):
+        execution_time = timeit.timeit(lambda: parser.parseString(input_string), number=1)
+
+    print(f"Long lines message parsing time: {execution_time:.4f} seconds")
+    print_profile_report("test_performance_long_lines")
+    assert execution_time < 0.6, f"Parsing took too long: {execution_time:.4f} seconds"
 
 @pytest.mark.timeout(5)
 @pytest.mark.xdist_group(name="performance")
@@ -116,10 +126,14 @@ def test_performance_single_lines_plus_new_line():
     """)
 
     input_string = generate_input_string(partial)
-    execution_time = timeit.timeit(lambda: markdown_chat_parser().parseString(input_string), number=1)
-    print(f"Single lines plus new line message parsing time: {execution_time:.4f} seconds")
-    assert execution_time < 0.6, f"Parsing took too long: {execution_time:.4f} seconds"
+    parser = markdown_chat_parser()
 
+    with profile_parser(parser):
+        execution_time = timeit.timeit(lambda: parser.parseString(input_string), number=1)
+
+    print(f"Single lines plus new line message parsing time: {execution_time:.4f} seconds")
+    print_profile_report("test_performance_single_lines_plus_new_line")
+    assert execution_time < 0.6, f"Parsing took too long: {execution_time:.4f} seconds"
 
 @pytest.mark.timeout(5)
 @pytest.mark.xdist_group(name="performance")
@@ -130,10 +144,14 @@ def test_performance_line_break_plus_message():
     """)
 
     input_string = generate_input_string(partial)
-    execution_time = timeit.timeit(lambda: markdown_chat_parser().parseString(input_string), number=1)
-    print(f"Line break plus message parsing time: {execution_time:.4f} seconds")
-    assert execution_time < 0.6, f"Parsing took too long: {execution_time:.4f} seconds"
+    parser = markdown_chat_parser()
 
+    with profile_parser(parser):
+        execution_time = timeit.timeit(lambda: parser.parseString(input_string), number=1)
+
+    print(f"Line break plus message parsing time: {execution_time:.4f} seconds")
+    print_profile_report("test_performance_line_break_plus_message")
+    assert execution_time < 0.6, f"Parsing took too long: {execution_time:.4f} seconds"
 
 @pytest.mark.timeout(5)
 @pytest.mark.xdist_group(name="performance")
@@ -146,10 +164,14 @@ def test_performance_multiple_lines():
     """)
 
     input_string = generate_input_string(partial)
-    execution_time = timeit.timeit(lambda: markdown_chat_parser().parseString(input_string), number=1)
-    print(f"Multiple lines message parsing time: {execution_time:.4f} seconds")
-    assert execution_time < 0.6, f"Parsing took too long: {execution_time:.4f} seconds"
+    parser = markdown_chat_parser()
 
+    with profile_parser(parser):
+        execution_time = timeit.timeit(lambda: parser.parseString(input_string), number=1)
+
+    print(f"Multiple lines message parsing time: {execution_time:.4f} seconds")
+    print_profile_report("test_performance_multiple_lines")
+    assert execution_time < 0.6, f"Parsing took too long: {execution_time:.4f} seconds"
 
 @pytest.mark.timeout(5)
 @pytest.mark.xdist_group(name="performance")
@@ -184,10 +206,14 @@ def test_performance_tool_calls():
     """)
 
     input_string = generate_input_string(partial)
-    execution_time = timeit.timeit(lambda: markdown_chat_parser().parseString(input_string), number=1)
-    print(f"Tool calls message parsing time: {execution_time:.4f} seconds")
-    assert execution_time < 0.6, f"Parsing took too long: {execution_time:.4f} seconds"
+    parser = markdown_chat_parser()
 
+    with profile_parser(parser):
+        execution_time = timeit.timeit(lambda: parser.parseString(input_string), number=1)
+
+    print(f"Tool calls message parsing time: {execution_time:.4f} seconds")
+    print_profile_report("test_performance_tool_calls")
+    assert execution_time < 0.6, f"Parsing took too long: {execution_time:.4f} seconds"
 
 @pytest.mark.timeout(5)
 @pytest.mark.xdist_group(name="performance")
@@ -207,10 +233,14 @@ def test_performance_code_cells():
     """)
 
     input_string = generate_input_string(partial)
-    execution_time = timeit.timeit(lambda: markdown_chat_parser().parseString(input_string), number=1)
-    print(f"Code cells message parsing time: {execution_time:.4f} seconds")
-    assert execution_time < 0.6, f"Parsing took too long: {execution_time:.4f} seconds"
+    parser = markdown_chat_parser()
 
+    with profile_parser(parser):
+        execution_time = timeit.timeit(lambda: parser.parseString(input_string), number=1)
+
+    print(f"Code cells message parsing time: {execution_time:.4f} seconds")
+    print_profile_report("test_performance_code_cells")
+    assert execution_time < 0.6, f"Parsing took too long: {execution_time:.4f} seconds"
 
 def generate_input_string(base_string: str, target_token_count: int = 10_000) -> str:
     result = ""
