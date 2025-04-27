@@ -121,6 +121,7 @@ def test_code_cell_completion(cli_runner, tmp_path):
 
     <pre>
     2
+    
     </pre>
 
     """)

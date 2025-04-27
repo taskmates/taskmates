@@ -122,11 +122,11 @@ async def test_markdown_code_cells_assistance_streaming(tmp_path):
                                         '<pre>\n'
                                         'Hello\n'
                                         'Beautiful\n'
-                                        '</pre>\n'
+                                        '\n</pre>\n'
                                         '\n'
                                         '###### Cell Output: stdout [cell_1]\n'
                                         '\n'
                                         '<pre>\n'
                                         'World\n'
-                                        '</pre>\n'
+                                        '\n</pre>\n'
                                         '\n')
