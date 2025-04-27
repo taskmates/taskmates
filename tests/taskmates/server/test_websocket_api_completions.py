@@ -161,6 +161,7 @@ async def test_code_cell_completion(app, tmp_path):
 
     <pre>
     2
+    
     </pre>
 
     **assistant>** ''')
@@ -355,7 +356,7 @@ async def test_interrupt_code_cell(app, tmp_path):
                          '\n'
                          '<pre>\n'
                          '2\n'
-                         '</pre>\n'
+                         '\n</pre>\n'
                          '\n'
                          '###### Cell Output: error [cell_0]\n'
                          '\n'
@@ -369,7 +370,7 @@ async def test_interrupt_code_cell(app, tmp_path):
                          "      4 print('fail')\n"
                          '\n'
                          'KeyboardInterrupt: \n'
-                         '</pre>\n'
+                         '\n</pre>\n'
                          '\n')
 
     test_payload: ApiRequest = {
@@ -480,7 +481,7 @@ async def test_kill_code_cell(app, tmp_path):
     
     """)
 
-    expected_response = '###### Cell Output: stdout [cell_0]\n\n<pre>\nStarting\n</pre>\n\n'
+    expected_response = '###### Cell Output: stdout [cell_0]\n\n<pre>\nStarting\n\n</pre>\n\n'
 
     test_payload: ApiRequest = {
         "type": "completions_request",

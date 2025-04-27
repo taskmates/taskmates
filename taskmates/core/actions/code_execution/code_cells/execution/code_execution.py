@@ -44,7 +44,7 @@ class CodeExecution:
         if was_empty:
             return "Done\n\n"
 
-        execution_footer = "</pre>\n\n" if was_preformatted else "\n"
+        execution_footer = "\n</pre>\n\n" if was_preformatted else "\n"
         return execution_footer
 
     @staticmethod
@@ -55,15 +55,15 @@ class CodeExecution:
     def strip_control_chars(text):
         # First use strip_ansi to remove ANSI escape sequences
         text = strip_ansi(text)
-        
+
         # Remove carriage returns
         text = text.replace("\r", "")
-        
+
         # Remove other control characters except newlines and tabs
         # This pattern matches any character that is a control character (ASCII 0-31)
         # except for newline (\n, ASCII 10) and tab (\t, ASCII 9)
         text = re.sub(r'[\x00-\x08\x0B-\x1F\x7F]', '', text)
-        
+
         return text
 
     @staticmethod
