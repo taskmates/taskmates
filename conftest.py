@@ -75,7 +75,7 @@ def taskmates_runtime():
 def run_opts(request):
     if "integration" in request.node.keywords:
         return {
-            "model": "claude-3-5-sonnet-20241022",
+            "model": "claude-3-7-sonnet-20250219",
             "max_steps": 100
         }
     else:

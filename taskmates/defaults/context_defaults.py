@@ -5,7 +5,7 @@ class ContextDefaults:
     @staticmethod
     def build(run_opts=None) -> RunContext:
         default_run_opts = {
-            "model": 'claude-3-5-sonnet-20241022',
+            "model": 'claude-3-7-sonnet-20250219',
             "max_steps": 10000,
         }
         run_opts = run_opts or default_run_opts
@@ -24,4 +24,4 @@ def test_default_context_builder():
     assert isinstance(contexts, dict)
     assert "runner_config" in contexts
     assert "run_opts" in contexts
-    assert contexts["run_opts"]["model"] == 'claude-3-5-sonnet-20241022'
+    assert contexts["run_opts"]["model"] == 'claude-3-7-sonnet-20250219'

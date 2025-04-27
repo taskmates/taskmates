@@ -18,7 +18,7 @@ class CompleteCommand:
         # parser.add_argument('--websocket-url', default='ws://localhost:8765',
         #                     help='WebSocket URL for websocket method')
 
-        parser.add_argument('--model', type=str, default='claude-3-5-sonnet-20241022', help='The model to use')
+        parser.add_argument('--model', type=str, default='claude-3-7-sonnet-20250219', help='The model to use')
         parser.add_argument('--workflow', type=str, default='cli_complete', help='The workflow to use')
         parser.add_argument('-n', '--max-steps', type=int, default=100,
                             help='The maximum number of steps')
