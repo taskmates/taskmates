@@ -1,5 +1,5 @@
-from dataclasses import dataclass
 import html
+from dataclasses import dataclass
 
 import pyparsing as pp
 
@@ -17,21 +17,14 @@ class PreBlockNode:
 
 
 def pre_tag_parser():
-    # Define start and end tags more precisely
     pre_start = pp.LineStart() + pp.Literal("<pre") + pp.Optional(pp.SkipTo(">")) + ">"
-    pre_end = "</pre>" + pp.LineEnd()
-    
-    # Define content more explicitly
-    content_char = ~pp.Literal("</pre>") + pp.Word(pp.printables + ' \t') | pp.LineEnd()
-    pre_content = pp.ZeroOrMore(content_char)
-    
-    # Combine all parts
+    pre_end = pp.Literal("</pre>") + pp.LineEnd()
+    pre_content = pp.SkipTo(pre_end | pp.StringEnd(), include=False, fail_on=None)
     pre_tag = pp.Combine(
         pre_start +
         pre_content +
         (pre_end | pp.StringEnd())
     ).setName("pre_tag_block").set_parse_action(PreBlockNode.from_tokens)
-    
     return pre_tag
 
 
@@ -63,7 +56,7 @@ def test_pre_tag_without_closing_tag():
 
 def test_pre_tag_with_special_characters():
     input = """<pre>
-Special chars: & < > " ' $ # @ ! % ^ * ( ) + = { } [ ] | \\ / ? , . ; :
+Special chars: & < > " ' $ # @ ! % ^ * ( ) + = { } [ ] | \\ / ? , . ; : ·
 </pre>
 """
     result = pre_tag_parser().parseString(input)[0]

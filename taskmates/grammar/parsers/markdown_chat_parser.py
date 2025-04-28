@@ -289,3 +289,23 @@ def test_markdown_comments_inside_pre_tags():
             'name': 'user'
         }
     ]
+
+
+def test_special_chars():
+    input = textwrap.dedent("""\
+        Special char
+                
+        ###### Cell Output: stdout [cell_0]
+        
+        <pre>
+            Special char: ·
+        </pre>
+        """)
+
+    results = markdown_chat_parser().parseString(input)[0].as_dict()
+
+    assert results["messages"] == [{'content': 'Special char\n\n', 'name': 'user'},
+                                   {'code_cell_id': 'cell_0',
+                                    'content': '\n<pre>\n    Special char: ·\n</pre>\n',
+                                    'name': 'stdout',
+                                    'role': 'cell_output'}]

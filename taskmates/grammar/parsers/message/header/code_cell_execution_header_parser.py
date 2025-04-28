@@ -9,7 +9,7 @@ CODE_EXECUTION_START_REGEX = r"^###### Cell Output: "
 def code_cell_execution_header_parser():
     execution_header = pp.Regex(CODE_EXECUTION_START_REGEX, re.MULTILINE).suppress()
 
-    code_cell_name = pp.Regex(f"[{pp.alphanums} <>]+(?= \[)")("name")
+    code_cell_name = pp.Regex(f"[{pp.alphanums}. <>]+(?= \[)")("name")
     code_cell_role = pp.Empty().setParseAction(lambda: "cell_output")("role")
 
     # noinspection PyTypeChecker
