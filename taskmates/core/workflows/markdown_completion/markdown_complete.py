@@ -31,6 +31,7 @@ from taskmates.core.workflows.states.return_value import ReturnValue
 from taskmates.lib.not_set.not_set import NOT_SET
 from taskmates.logging import logger, file_logger
 from taskmates.types import Chat
+import pytest
 
 
 # class CompletionRunEnvironment(TypedDict):
@@ -195,6 +196,12 @@ class MarkdownComplete(Workflow):
             markdown_path=(run.context["runner_environment"]["markdown_path"]),
             taskmates_dirs=(run.context["runner_config"]["taskmates_dirs"]),
             inputs=run.objective.key['inputs'])
+        
+        # Merge the parsed run_opts from markdown front matter into the runtime context
+        # This allows model and other configurations from the front matter to take effect
+        if chat.get("run_opts"):
+            run.context["run_opts"].update(chat["run_opts"])
+        
         return chat
 
     async def end_section(self, markdown_chat: str, markdown_completion_signals: MarkdownCompletionSignals):
@@ -241,3 +248,46 @@ class MarkdownComplete(Workflow):
         separator = compute_separator(markdown_chat)
         if separator:
             await markdown_completion.formatting.send_async(separator)
+
+
+@pytest.mark.asyncio
+async def test_markdown_front_matter_model_override(tmp_path):
+    """Test that model specified in markdown front matter overrides the default model in runtime context"""
+    from pathlib import Path
+    from taskmates.defaults.context_defaults import ContextDefaults
+    
+    # Create a markdown with model in front matter
+    markdown_with_model = """---
+model: echo
+---
+
+Test message
+"""
+    
+    # Set up the runtime context with default model
+    context = ContextDefaults().build()
+    initial_model = context["run_opts"]["model"]
+    
+    # Add required runner_environment and runner_config
+    context["runner_environment"]["markdown_path"] = str(tmp_path / "test.md")
+    context["runner_config"]["taskmates_dirs"] = [Path(__file__).parent.parent.parent.parent / "defaults"]
+    
+    # Create a run environment
+    objective = Objective(key=ObjectiveKey(outcome="test_front_matter", inputs={}))
+    run = Run(
+        objective=objective,
+        context=context,
+        signals={},
+        state={},
+        daemons={}
+    )
+    
+    with run:
+        workflow = MarkdownComplete()
+        
+        # Get the parsed chat
+        chat = await workflow.get_markdown_chat(markdown_with_model)
+        
+        # Verify the runtime context has been updated with the model from front matter
+        assert RUN.get().context["run_opts"]["model"] == "echo"
+        assert RUN.get().context["run_opts"]["model"] != initial_model
