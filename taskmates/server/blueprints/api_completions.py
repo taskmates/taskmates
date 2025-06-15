@@ -3,7 +3,7 @@ import json
 from quart import Blueprint, Response, websocket
 
 import taskmates
-from taskmates.workflows.runners.api_completion_runner import ApiCompletionRunner
+from taskmates.runtimes.api.api_completion_runner import ApiCompletionRunner
 from taskmates.lib.json_.json_utils import snake_case
 from taskmates.logging import logger
 from taskmates.taskmates_runtime import TASKMATES_RUNTIME
@@ -35,4 +35,4 @@ async def create_completion():
 
 @completions_bp.after_websocket
 async def cleanup(response: Response):
-    logger.info(f'Request Finished.')
+    logger.info('Request Finished.')

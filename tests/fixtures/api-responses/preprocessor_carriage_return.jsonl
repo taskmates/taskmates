@@ -1,0 +1,3 @@
+{"content": "Hello\r", "additional_kwargs": {}, "response_metadata": {"model_name": "test-model"}, "type": "AIMessageChunk", "name": null, "id": "test-1"}
+{"content": "World\r", "additional_kwargs": {}, "response_metadata": {"model_name": "test-model"}, "type": "AIMessageChunk", "name": null, "id": "test-1"}
+{"content": "", "additional_kwargs": {}, "response_metadata": {"model_name": "test-model", "finish_reason": "stop"}, "type": "AIMessageChunk", "name": null, "id": "test-1"}

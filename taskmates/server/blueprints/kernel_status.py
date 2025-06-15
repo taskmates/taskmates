@@ -1,8 +1,8 @@
 import pytest
 from quart import Blueprint, jsonify
 
-from taskmates.core.actions.code_execution.code_cells.execution.kernel_manager import get_kernel_manager
-from taskmates.core.actions.code_execution.code_cells.jupyter_notebook_logger import jupyter_notebook_logger
+from taskmates.core.workflows.markdown_completion.completions.code_cell_execution.execution.kernel_manager import get_kernel_manager
+from taskmates.core.workflows.markdown_completion.completions.code_cell_execution.jupyter_notebook_logger import jupyter_notebook_logger
 
 kernel_status_bp = Blueprint('kernel_status', __name__)
 
@@ -105,8 +105,8 @@ async def test_kernel_status_with_executed_cell(tmp_path):
     app.register_blueprint(kernel_status_bp)
 
     # Start a kernel and execute a cell
-    from taskmates.core.actions.code_execution.code_cells.execution.markdown_executor import MarkdownExecutor
-    from taskmates.workflow_engine.run import RUN
+    from taskmates.core.workflows.markdown_completion.completions.code_cell_execution.execution.markdown_executor import MarkdownExecutor
+    from taskmates.core.workflow_engine.run import RUN
 
     run = RUN.get()
     executor = MarkdownExecutor(run.signals["control"], run.signals["status"], run.signals["code_cell_output"])

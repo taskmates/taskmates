@@ -1,5 +1,4 @@
 import re
-import pytest
 
 
 def extract_links_with_coordinates(markdown_str):

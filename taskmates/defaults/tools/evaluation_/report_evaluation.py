@@ -1,6 +1,6 @@
 from typing import Optional
 
-from taskmates.workflow_engine.run import RUN
+from taskmates.core.workflow_engine.run import RUN
 
 
 async def report_evaluation(summary: Optional[str], result: bool):

@@ -6,7 +6,6 @@ from wrapt import resolve_path, wrap_function_wrapper
 
 from taskmates.lib.opentelemetry_._create_trace_wrapper import _create_trace_wrapper
 from taskmates.lib.opentelemetry_.default_exclusions import global_exclude_modules_regex
-from taskmates.lib.opentelemetry_.tracing import tracer
 
 
 def wrap_function(module,
@@ -26,8 +25,7 @@ def wrap_function(module,
     is_async = inspect.iscoroutinefunction(getattr(module, name))
     function_wrapper = wrap_function_wrapper(module=module,
                                              name=name,
-                                             wrapper=_create_trace_wrapper(tracer(),
-                                                                           is_async,
+                                             wrapper=_create_trace_wrapper(is_async,
                                                                            wrapped_module=module,
                                                                            span_name_fn=span_name_fn))
     function_wrapper._wrapped_with_tracer = True

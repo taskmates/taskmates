@@ -1,22 +1,38 @@
+import pytest
+from typing import Union
+from typeguard import typechecked
+
 from taskmates.config.find_config_file import find_config_file
 from taskmates.config.load_participant_config import load_yaml_config
 
 
-def load_model_config(model_alias: str, taskmates_dirs: list) -> dict:
+@typechecked
+def load_model_config(model_alias: Union[str, dict], taskmates_dirs: list) -> dict:
+    # Handle dict case
+    if isinstance(model_alias, dict):
+        model_name = model_alias.get("name")
+        if not model_name:
+            raise ValueError(f"Model dict must have a 'name' field: {model_alias}")
+    else:
+        model_name = model_alias
+    
     config_path = find_config_file("models.yaml", taskmates_dirs)
     if config_path is None:
         raise FileNotFoundError(
             f"Could not find models.yaml in any of the provided directories: {taskmates_dirs}")
     model_config = load_yaml_config(config_path) or {}
 
-    if model_alias not in model_config:
-        raise ValueError(f"Unknown model {model_alias!r}")
+    if model_name not in model_config:
+        raise ValueError(f"Unknown model {model_name!r}")
 
-    return model_config[model_alias]
+    config = model_config[model_name].copy()
+    
+    # If model_alias is a dict with kwargs, merge them into the config
+    if isinstance(model_alias, dict) and "kwargs" in model_alias:
+        config.update(model_alias["kwargs"])
+    
+    return config
 
-
-# Add tests
-import pytest
 
 
 @pytest.fixture

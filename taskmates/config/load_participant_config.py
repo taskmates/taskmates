@@ -8,7 +8,7 @@ import yaml
 from typeguard import typechecked
 
 from taskmates.config.find_config_file import find_config_file
-from taskmates.formats.markdown.parsing.parse_front_matter_and_messages import parse_front_matter_and_messages
+from taskmates.core.markdown_chat.parse_front_matter_and_messages import parse_front_matter_and_messages
 
 load_cache = {}
 

@@ -1,7 +1,5 @@
-import json
 import yaml
 
-from ruamel.yaml.scalarstring import LiteralScalarString
 
 
 def load_yaml(yaml_str):

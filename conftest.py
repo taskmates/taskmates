@@ -6,15 +6,15 @@ import pytest_socket
 import tiktoken
 
 from taskmates.config.load_participant_config import load_cache
-from taskmates.core.actions.code_execution.code_cells.execution.kernel_manager import get_kernel_manager
+from taskmates.core.workflows.markdown_completion.completions.code_cell_execution.execution.kernel_manager import get_kernel_manager
+from taskmates.runtimes.tests.test_context_builder import TestContextBuilder
+from taskmates.runtimes.tests.signals.captured_signals_daemon import CapturedSignalsDaemon
+from taskmates.runtimes.cli.signals.write_markdown_chat_to_stdout import WriteMarkdownChatToStdout
+from taskmates.core.workflows.states.captured_signals import CapturedSignals
 from taskmates.load_env_files import load_env_for_environment
 from taskmates.taskmates_runtime import TASKMATES_RUNTIME
-from taskmates.workflow_engine.default_environment_signals import default_environment_signals
-from taskmates.workflow_engine.run import Run, to_daemons_dict, Objective, ObjectiveKey
-from taskmates.workflows.context_builders.test_context_builder import TestContextBuilder
-from taskmates.workflows.daemons.captured_signals_daemon import CapturedSignalsDaemon
-from taskmates.workflows.signals.sinks.write_markdown_chat_to_stdout import WriteMarkdownChatToStdout
-from taskmates.workflows.states.captured_signals import CapturedSignals
+from taskmates.core.workflow_engine.default_environment_signals import default_environment_signals
+from taskmates.core.workflow_engine.run import Run, to_daemons_dict, Objective, ObjectiveKey
 
 
 # def pytest_configure(config):

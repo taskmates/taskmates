@@ -7,9 +7,10 @@ from opentelemetry.sdk.trace import Tracer
 from taskmates.lib.opentelemetry_.add_span_attributes import add_span_attributes
 from taskmates.lib.opentelemetry_.format_span_name import format_span_name
 
+tracer: Tracer = trace.get_tracer_provider().get_tracer(__name__)
 
-def _create_trace_wrapper(tracer: Tracer,
-                          is_async: False,
+
+def _create_trace_wrapper(is_async: False,
                           wrapped_module: None,
                           span_name_fn: Callable[[Callable, Any, tuple[Any],
                                                   dict[str, Any]], str] | None = None) -> Callable:
@@ -17,14 +18,14 @@ def _create_trace_wrapper(tracer: Tracer,
         with traced_call(wrapped, instance, args, kwargs) as span:
             result = await wrapped(*args, **kwargs)
             if span.is_recording():
-                span.set_attribute(f"call.return", repr(result))
+                span.set_attribute("call.return", repr(result))
             return result
 
     def sync_traced_call(wrapped, instance, args, kwargs):
         with traced_call(wrapped, instance, args, kwargs) as span:
             result = wrapped(*args, **kwargs)
             if span.is_recording():
-                span.set_attribute(f"call.return", repr(result))
+                span.set_attribute("call.return", repr(result))
             return result
 
     @contextlib.contextmanager

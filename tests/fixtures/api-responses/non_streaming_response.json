@@ -1,0 +1,48 @@
+{
+  "content": "1, 2, 3, 4, 5",
+  "additional_kwargs": {
+    "refusal": null
+  },
+  "response_metadata": {
+    "token_usage": {
+      "completion_tokens": 13,
+      "prompt_tokens": 14,
+      "total_tokens": 27,
+      "completion_tokens_details": {
+        "accepted_prediction_tokens": 0,
+        "audio_tokens": 0,
+        "reasoning_tokens": 0,
+        "rejected_prediction_tokens": 0
+      },
+      "prompt_tokens_details": {
+        "audio_tokens": 0,
+        "cached_tokens": 0
+      }
+    },
+    "model_name": "gpt-3.5-turbo-0125",
+    "system_fingerprint": null,
+    "id": "chatcmpl-BiFaPITfNtqqJ3FIPmHnINVRuGRZb",
+    "service_tier": "default",
+    "finish_reason": "stop",
+    "logprobs": null
+  },
+  "type": "ai",
+  "name": null,
+  "id": "run--14c99aea-7349-4fa7-ae5f-a1f4192980f0-0",
+  "example": false,
+  "tool_calls": [],
+  "invalid_tool_calls": [],
+  "usage_metadata": {
+    "input_tokens": 14,
+    "output_tokens": 13,
+    "total_tokens": 27,
+    "input_token_details": {
+      "audio": 0,
+      "cache_read": 0
+    },
+    "output_token_details": {
+      "audio": 0,
+      "reasoning": 0
+    }
+  }
+}

@@ -1,6 +1,6 @@
 import json
 
-from taskmates.workflows.runners.cli_completion_runner import CliCompletionRunner
+from taskmates.runtimes.cli.cli_completion_runner import CliCompletionRunner
 
 
 class CompleteCommand:

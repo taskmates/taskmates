@@ -1,4 +1,4 @@
-from taskmates.workflows.contexts.run_context import RunContext
+from taskmates.core.workflow_engine.run_context import RunContext
 
 
 class ContextDefaults:

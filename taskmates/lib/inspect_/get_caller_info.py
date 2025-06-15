@@ -60,7 +60,7 @@ def test_nested_function():
 
 
 def test_lambda_function():
-    lambda_func = lambda: get_caller_info(lambda frame, level: level >= 1)
+    lambda_func = lambda: get_caller_info(lambda frame, level: level >= 1) # noqa: E731
     info = lambda_func()
     assert info['function'] == '<lambda>'
     assert info['instance'] is None

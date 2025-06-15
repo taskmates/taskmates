@@ -1,4 +1,4 @@
-from taskmates.core.actions.code_execution.shell.run_shell_command import run_shell_command
+from taskmates.defaults.tools.shell_.run_shell_command import run_shell_command
 from taskmates.defaults.tools.chroma_.chromadb_search import chromadb_search
 from taskmates.defaults.tools.dalle_.convert_to_svg import convert_to_svg
 from taskmates.defaults.tools.dalle_.generate_images import generate_images

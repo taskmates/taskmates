@@ -1,15 +1,17 @@
 import copy
 import logging
 import os
+import sys
 from pathlib import Path
 
-import sys
 from loguru import logger
 
 from taskmates.lib.resources_.resources import dump_resource
-from taskmates.workflow_engine.run import RUN
+from taskmates.core.workflow_engine.run import RUN
 
 level = os.environ.get("TASKMATES_LOG_LEVEL", "WARNING").upper()
+
+telemetry_enabled = os.getenv('TASKMATES_TELEMETRY_ENABLED', 'false').lower() in ['true', '1', 't']
 
 logging.basicConfig(handlers=[logging.StreamHandler(sys.stderr)],
                     level=level,
@@ -20,16 +22,37 @@ anthropic_logger.setLevel(level)
 httpx_logger: logging.Logger = logging.getLogger("httpx")
 httpx_logger.setLevel(level)
 
-# TODO this doesn't look right
+# Remove all default loguru handlers to prevent duplicate console output
 logger.remove()
 file_logger = copy.deepcopy(logger)
-logger.add(sys.stderr, level=level)
+# Don't add stderr handler to logger - we'll use PropagateHandler to forward to standard logging
+
+
+class PropagateHandler(logging.Handler):
+    def emit(self, record: logging.LogRecord) -> None:
+        converted_record = logging.LogRecord(record.name,
+                                             record.levelno,
+                                             record.pathname,
+                                             record.lineno,
+                                             record.msg,
+                                             record.args,
+                                             record.exc_info,
+                                             record.funcName,
+                                             record.stack_info)
+        logging.getLogger(record.name).handle(converted_record)
+
+
+logger.add(PropagateHandler(), format="{message}", level=level)
+
+# Add default context
+# logger.configure(extra={"appname": "taskmates"})
 
 base_dir = os.environ.get("TASKMATES_HOME", str(Path.home() / ".taskmates"))
 file_logger = file_logger.patch(lambda record: record["extra"].setdefault("base_dir",
                                                                           base_dir))
 file_logger = file_logger.patch(lambda record: record["extra"].setdefault("content", None))
-file_logger = file_logger.patch(lambda record: record["extra"].setdefault("request_id", RUN.get().context["runner_environment"]["request_id"]))
+file_logger = file_logger.patch(
+    lambda record: record["extra"].setdefault("request_id", RUN.get().context["runner_environment"]["request_id"]))
 
 PATH_FORMAT = "{extra[base_dir]}/logs/[{extra[request_id]}][{time:YYYY-MM-DD_HH-mm-ss-SSS}][{module}] {message}"
 
@@ -47,9 +70,9 @@ file_logger.add(file_sink(path_format=PATH_FORMAT),
                 serialize=True,
                 level=level, )
 
-file_logger.add(sys.stderr,
-                # format=f"[file_logger][{{name}}] Writing to \"{PATH_FORMAT}\"",
-                level=level, )
+# file_logger.add(PropagateHandler(),
+#                 # format=f"[file_logger][{{name}}] Writing to \"{PATH_FORMAT}\"",
+#                 level=level, )
 
 # TODO
 # def test_file_logger(tmp_path):

@@ -15,7 +15,7 @@ async def chromadb_search(query: str, n_results: int = 5):
 
     path: str = os.getenv("CHROMADB_PATH", "/Users/ralphus/Development/ai/chat-intellij-sdk/data/.chromadb")
     collection: str = os.getenv("CHROMADB_COLLECTION", "docs")
-    topic: str = os.getenv("CHROMADB_TOPIC")
+    os.getenv("CHROMADB_TOPIC")
 
     chroma_client = get_chroma_client(path)
     chroma_collection = chroma_client.get_or_create_collection(name=collection)

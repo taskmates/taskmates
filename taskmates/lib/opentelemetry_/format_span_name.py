@@ -6,7 +6,6 @@ def format_span_name(wrapped, instance, wrapped_module=None):
 
     is_instance_method = not inspect.isclass(instance)
     callee_class = instance.__class__ if is_instance_method else instance
-    method_separator = "#" if is_instance_method else "."
 
     # Example: CapturedSignals@5408743568#filter_signals
     # span_name = f"{callee_class.__name__}@{id(instance)}{method_separator}{declaring_module}{wrapped.__name__}"

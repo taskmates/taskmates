@@ -1,9 +1,9 @@
 from wrapt import wrap_function_wrapper
 
-from taskmates.workflow_engine.run import RUN
-from taskmates.core.actions.code_execution.code_cells.code_cell_execution_completion_provider import \
+from taskmates.core.workflow_engine.run import RUN
+from taskmates.core.workflows.markdown_completion.completions.code_cell_execution.code_cell_execution_completion_provider import \
     CodeCellExecutionCompletionProvider
-from taskmates.core.actions.code_execution.tools.tool_execution_completion_provider import \
+from taskmates.core.workflows.markdown_completion.completions.tool_execution.tool_execution_completion_provider import \
     ToolExecutionCompletionProvider
 from taskmates.extensions.actions.get_dotenv_values import get_dotenv_values
 from taskmates.sdk import TaskmatesExtension

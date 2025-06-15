@@ -3,7 +3,7 @@ from pathlib import Path
 import sys
 
 from taskmates.defaults.tools.filesystem_.is_path_allowed import is_path_allowed
-from taskmates.workflow_engine.run import RUN
+from taskmates.core.workflow_engine.run import RUN
 
 
 def read_file(path):

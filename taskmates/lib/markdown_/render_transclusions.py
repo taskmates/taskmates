@@ -7,8 +7,8 @@ from urllib.parse import unquote
 import pytest
 from typeguard import typechecked
 
-from taskmates.formats.markdown.processing.extract_transclusion_links import extract_transclusion_links
-from taskmates.formats.markdown.processing.filter_comments import filter_comments
+from taskmates.core.markdown_chat.processing.extract_transclusion_links import extract_transclusion_links
+from taskmates.core.markdown_chat.processing.filter_comments import filter_comments
 from taskmates.lib.markdown_.first_sections_with_heading import first_sections_with_heading
 from taskmates.lib.markdown_.language_mappings import language_mappings
 from taskmates.lib.markdown_.transclusion_pattern import match_transclusion
@@ -153,7 +153,7 @@ def transclude(path):
 
 
 def format_transclusion(path, language, content):
-    language_hint = language_mappings.get(language, {}).get('language_hint', '')
+    language_mappings.get(language, {}).get('language_hint', '')
 
     return f"The following are the contents of the file {path}:\n\n" \
            f"\"\"\"\"\n{content}\n\"\"\"\"\n"

@@ -14,7 +14,7 @@ class ToolsCommand(Command):
         subparsers = parser.add_subparsers(dest='subcommand')
 
         # Subparser for the 'list' command
-        list_parser = subparsers.add_parser('list', help='List all functions as JSON')
+        subparsers.add_parser('list', help='List all functions as JSON')
 
         # Subparser for the 'invoke' command
         invoke_parser = subparsers.add_parser('invoke', help='Invoke a function by name with arguments')

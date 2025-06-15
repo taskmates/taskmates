@@ -3,10 +3,10 @@ import json
 import sys
 from io import StringIO
 
-from taskmates.actions.parse_markdown_chat import parse_markdown_chat
+from taskmates.core.markdown_chat.parse_markdown_chat import parse_markdown_chat
 from taskmates.cli.commands.base import Command
-from taskmates.workflows.context_builders.cli_context_builder import CliContextBuilder
-from taskmates.workflow_engine.run import Objective, ObjectiveKey
+from taskmates.runtimes.cli.cli_context_builder import CliContextBuilder
+from taskmates.core.workflow_engine.run import Objective, ObjectiveKey
 
 
 class ParseCommand(Command):

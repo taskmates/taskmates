@@ -6,7 +6,7 @@ import websockets
 from websockets.exceptions import ConnectionClosed
 
 from taskmates.types import RunnerConfig
-from taskmates.workflow_engine.run import RUN
+from taskmates.core.workflow_engine.run import RUN
 
 
 async def on_message(message):
