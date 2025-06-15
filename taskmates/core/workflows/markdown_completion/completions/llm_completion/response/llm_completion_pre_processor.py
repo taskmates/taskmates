@@ -1,12 +1,8 @@
-import json
 import re
-from typing import AsyncIterable, List
+from typing import AsyncIterable
 
 import pytest
-from icecream import ic
 from langchain_core.messages import AIMessageChunk
-
-from taskmates import root_path
 
 
 class LlmCompletionPreProcessor:
@@ -53,7 +49,8 @@ class LlmCompletionPreProcessor:
                 continue
 
             # For empty content, only skip if there's nothing important in the chunk
-            if current_token == "" and not tool_call_chunks and not chunk.response_metadata.get("stop_reason") and not chunk.response_metadata.get("finish_reason"):
+            if current_token == "" and not tool_call_chunks and not chunk.response_metadata.get(
+                    "stop_reason") and not chunk.response_metadata.get("finish_reason"):
                 continue
 
             if not self.buffering:
@@ -138,6 +135,7 @@ async def test_preserves_tool_calls():
 @pytest.mark.asyncio
 async def test_handles_empty_content():
     """Allows the user to process chunks with empty content - empty chunks without tool_calls are not yielded."""
+
     async def chunks_with_empty():
         # Create a chunk with empty content (since None is not valid)
         yield AIMessageChunk(content='')
@@ -162,6 +160,7 @@ async def test_stops_buffering_on_first_content():
 
     # First chunk triggers unbuffering, subsequent chunks pass through unchanged
     assert [chunk.content for chunk in result] == ['First', '# Second', '* Third']
+
 
 @pytest.mark.asyncio
 async def test_anthropic_tool_call_streaming_response():

@@ -2,7 +2,6 @@ import re
 from typing import Dict
 
 import pytest
-from icecream import ic
 from langchain_core.messages import AIMessageChunk
 from typeguard import typechecked
 
