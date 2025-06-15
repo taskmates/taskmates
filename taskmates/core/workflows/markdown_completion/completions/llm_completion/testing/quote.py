@@ -1,22 +1,21 @@
 from typing import List, Optional, Any
 
-import pytest
 import tiktoken
-
 from langchain_core.language_models.fake_chat_models import GenericFakeChatModel
 from langchain_core.messages import AIMessage, AIMessageChunk, BaseMessage
 from langchain_core.outputs import ChatGeneration, ChatGenerationChunk, ChatResult
+
 
 class Quote(GenericFakeChatModel):
     def __init__(self, **kwargs):
         super().__init__(messages=iter([]))
 
     def _generate(
-        self,
-        messages: List[BaseMessage],
-        stop: Optional[List[str]] = None,
-        run_manager: Optional[Any] = None,
-        **kwargs,
+            self,
+            messages: List[BaseMessage],
+            stop: Optional[List[str]] = None,
+            run_manager: Optional[Any] = None,
+            **kwargs,
     ) -> ChatResult:
         last_message = messages[-1]
         content = getattr(last_message, "content", "")
@@ -27,11 +26,11 @@ class Quote(GenericFakeChatModel):
         return ChatResult(generations=[generation])
 
     def _stream(
-        self,
-        messages: List[BaseMessage],
-        stop: Optional[List[str]] = None,
-        run_manager: Optional[Any] = None,
-        **kwargs,
+            self,
+            messages: List[BaseMessage],
+            stop: Optional[List[str]] = None,
+            run_manager: Optional[Any] = None,
+            **kwargs,
     ):
         last_message = messages[-1]
         content = getattr(last_message, "content", "")
@@ -48,11 +47,11 @@ class Quote(GenericFakeChatModel):
         )
 
     async def _astream(
-        self,
-        messages: List[BaseMessage],
-        stop: Optional[List[str]] = None,
-        run_manager: Optional[Any] = None,
-        **kwargs,
+            self,
+            messages: List[BaseMessage],
+            stop: Optional[List[str]] = None,
+            run_manager: Optional[Any] = None,
+            **kwargs,
     ):
         last_message = messages[-1]
         content = getattr(last_message, "content", "")
@@ -75,6 +74,10 @@ class Quote(GenericFakeChatModel):
     @property
     def _identifying_params(self) -> dict:
         return {}
+
+    def bind_tools(self, tools, **kwargs):
+        """Return self as bind_tools is a no-op for fixtures."""
+        return self
 
 # TODO: fix it
 # @pytest.mark.asyncio

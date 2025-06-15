@@ -100,8 +100,8 @@ async def api_request(
             messages, tools = convert_openai_payload(request_payload)
 
             llm = client
-            # Bind tools if supported and present
-            if tools and hasattr(llm, "bind_tools"):
+
+            if tools:
                 llm = llm.bind_tools(tools)
 
             if request_payload.get("stream", False):
