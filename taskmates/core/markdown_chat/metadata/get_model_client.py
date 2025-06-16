@@ -44,7 +44,8 @@ def get_model_client(model_spec: dict) -> BaseChatModel:
     # Pass endpoint/api_key if accepted
     if "endpoint" in model_spec and "endpoint" in allowed_keys:
         kwargs["endpoint"] = model_spec["endpoint"]
-    if "api_key" in model_spec and "api_key" in allowed_keys:
+
+    if "api_key" in model_spec:
         api_key = model_spec["api_key"]
         if isinstance(api_key, str) and api_key.startswith('env:'):
             import os
