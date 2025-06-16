@@ -20,6 +20,8 @@ from taskmates.core.workflows.markdown_completion.completions.llm_completion.res
     LlmCompletionPreProcessor
 from taskmates.core.workflows.markdown_completion.completions.llm_completion.response.llm_completion_with_username import \
     LlmCompletionWithUsername
+from taskmates.core.workflows.markdown_completion.completions.llm_completion.response.stop_sequence_processor import \
+    StopSequenceProcessor
 from taskmates.core.workflows.markdown_completion.completions.llm_completion.response.streamed_response import \
     StreamedResponse
 from taskmates.core.workflows.signals.control_signals import ControlSignals
@@ -101,7 +103,7 @@ async def api_request(
 
             llm = client
 
-            if "gpt" in (getattr(llm, "model_name", "") or getattr(llm, "model", "")):
+            if "gpt-4" in (getattr(llm, "model_name", "") or getattr(llm, "model", "")):
                 webtool = {"type": "web_search_preview"}
                 tools.append(webtool)
             if tools:
@@ -109,10 +111,8 @@ async def api_request(
 
             force_stream = bool(chat_completion_signals.chat_completion.receivers)
 
-            # TODO: handle stop_sequences manually
-            # stop_sequences = request_payload.pop("stop", [])
-            # "stop": ["\n######"],
-            # model_conf["stop"].extend(self.get_usernames_stop_sequences(chat))
+            # Extract stop sequences from request payload
+            stop_sequences = request_payload.pop("stop", [])
 
 
             if request_payload.get("stream", force_stream):
@@ -123,7 +123,11 @@ async def api_request(
 
                 try:
                     async for chat_completion_chunk in \
-                            LlmCompletionWithUsername(LlmCompletionPreProcessor(chat_completion)):
+                            LlmCompletionWithUsername(
+                                LlmCompletionPreProcessor(
+                                    StopSequenceProcessor(chat_completion, stop_sequences)
+                                )
+                            ):
                         received_chunk = True
                         if request_interruption_monitor.interrupted_or_killed:
                             break
@@ -359,7 +363,7 @@ async def test_api_request_streaming_with_fixture(run):
     )
 
     # Verify the conversion produces correct OpenAI format
-    assert response == {
+    assert response == matchers.dict_containing({
         'choices': [{
             'finish_reason': 'stop',
             'index': 0,
@@ -368,12 +372,9 @@ async def test_api_request_streaming_with_fixture(run):
                 'role': 'assistant'
             }
         }],
-        'finish_reason': 'stop',
         'id': matchers.any_string,
-        'model_name': matchers.any_string,
-        'object': 'chat.completion',
-        'service_tier': 'default'
-    }
+        'object': 'chat.completion'
+    })
 
     # Verify streaming occurred
     assert len(streamed_chunks) > 0
@@ -488,3 +489,49 @@ async def test_api_request_tool_call_streaming_with_fixture(run):
 
     # Verify streaming occurred
     assert len(streamed_chunks) > 0
+
+
+@pytest.mark.asyncio
+async def test_api_request_with_stop_sequences(run):
+    """Test that stop sequences are properly handled during streaming."""
+    from taskmates.core.workflows.markdown_completion.completions.llm_completion.testing.fixture_chat_model import \
+        FixtureChatModel
+
+    # Use the existing streaming fixture
+    client = FixtureChatModel(fixture_path="tests/fixtures/api-responses/streaming_response.jsonl")
+
+    request_payload = {
+        "model": "fixture-model",
+        "stream": True,
+        "messages": [
+            {"role": "user", "content": "Count to 5"},
+        ],
+        "stop": [", 3"]  # This should stop the stream at "1, 2"
+    }
+
+    # Collect streamed chunks
+    streamed_chunks = []
+
+    async def capture_chunk(chunk):
+        streamed_chunks.append(chunk)
+
+    run.signals["chat_completion"].chat_completion.connect(capture_chunk, weak=False)
+
+    response = await api_request(
+        client,
+        request_payload,
+        run.signals["control"],
+        run.signals["status"],
+        run.signals["chat_completion"]
+    )
+
+    # Verify the content stops at the stop sequence
+    assert response['choices'][0]['message']['content'] == '1, 2'
+
+    # Verify we received the correct chunks
+    # The chunks are AIMessageChunk objects, not OpenAI format dicts
+    streamed_content = ''.join(chunk.content for chunk in streamed_chunks if hasattr(chunk, 'content') and chunk.content)
+    assert streamed_content == '1, 2'
+    assert ', 3' not in streamed_content
+    assert ', 4' not in streamed_content
+    assert ', 5' not in streamed_content

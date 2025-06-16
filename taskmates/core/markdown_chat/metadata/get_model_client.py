@@ -24,7 +24,8 @@ def get_model_client(model_spec: dict) -> BaseChatModel:
     allowed_keys = set(llm_init_params.keys()) - {"self", "args", "kwargs"}
 
     # Remove non-LLM keys
-    if "gpt" in model_spec.get("model", model_spec.get("model_name")):
+    model_name = model_spec.get("model", model_spec.get("model_name"))
+    if "gpt" in model_name or "gemini" in model_name:
         exclude_keys = {"client_type", "max_context_window", "stop"}
     else:
         exclude_keys = {"client_type", "max_context_window"}
