@@ -101,10 +101,21 @@ async def api_request(
 
             llm = client
 
+            if "gpt" in (getattr(llm, "model_name", "") or getattr(llm, "model", "")):
+                webtool = {"type": "web_search_preview"}
+                tools.append(webtool)
             if tools:
                 llm = llm.bind_tools(tools)
 
-            if request_payload.get("stream", False):
+            force_stream = bool(chat_completion_signals.chat_completion.receivers)
+
+            # TODO: handle stop_sequences manually
+            # stop_sequences = request_payload.pop("stop", [])
+            # "stop": ["\n######"],
+            # model_conf["stop"].extend(self.get_usernames_stop_sequences(chat))
+
+
+            if request_payload.get("stream", force_stream):
                 chat_completion = llm.astream(messages)
                 chat_completion_signals.chat_completion.connect(streamed_response.accept, weak=False)
 

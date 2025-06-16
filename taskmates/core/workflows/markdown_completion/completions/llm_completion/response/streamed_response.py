@@ -41,7 +41,14 @@ class StreamedResponse:
                 self.tool_calls_by_id[self.current_tool_call_id]['function']['arguments'] += arguments
 
         if content is not None:
-            self.content_delta += content
+            # Handle both string and list content
+            if isinstance(content, str):
+                self.content_delta += content
+            elif isinstance(content, list):
+                # Extract text from list content
+                for part in content:
+                    if isinstance(part, dict) and part.get("type") == "text":
+                        self.content_delta += part.get("text", "")
 
         # Compose a dict for this chunk (for final_json aggregation), ignore 'choices'
         chunk_json = {}
@@ -249,3 +256,47 @@ async def test_streamed_response_tool_call_id_switch():
     tc = sorted(payload["choices"][0]["message"]["tool_calls"], key=lambda x: x["id"])
     assert tc[0]["id"] == "toolA" and tc[0]["function"]["arguments"] == "argsA1argsA2"
     assert tc[1]["id"] == "toolB" and tc[1]["function"]["arguments"] == "argsB1"
+
+
+@pytest.mark.asyncio
+async def test_handles_list_content():
+    """Ensures StreamedResponse can handle both string and list content without errors."""
+    response = StreamedResponse()
+
+    # Test string content
+    chunk1 = AIMessageChunk(content="Hello")
+    await response.accept(chunk1)
+    assert response.content_delta == "Hello"
+
+    # Test list content with text
+    chunk2 = AIMessageChunk(content=[{"type": "text", "text": " world"}])
+    await response.accept(chunk2)
+    assert response.content_delta == "Hello world"
+
+    # Test list content with annotations (no text)
+    chunk3 = AIMessageChunk(content=[{"annotations": [{"type": "url_citation"}], "index": 0}])
+    await response.accept(chunk3)
+    assert response.content_delta == "Hello world"  # Should not change
+
+    # Verify payload
+    payload = response.payload
+    assert payload['choices'][0]['message']['content'] == "Hello world"
+
+
+@pytest.mark.asyncio
+async def test_mixed_content_types_in_stream():
+    """Verifies that StreamedResponse handles a stream with mixed content types."""
+    response = StreamedResponse()
+
+    # Simulate a real stream with mixed types
+    chunks = [
+        AIMessageChunk(content="Start"),
+        AIMessageChunk(content=[{"type": "text", "text": " middle"}]),
+        AIMessageChunk(content=""),  # Empty string
+        AIMessageChunk(content=[{"type": "text", "text": " end"}]),
+    ]
+
+    for chunk in chunks:
+        await response.accept(chunk)
+
+    assert response.content_delta == "Start middle end"

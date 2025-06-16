@@ -26,16 +26,28 @@ class LlmCompletionMarkdownAppender:
         self.name = None
         self.is_resume_request = is_resume_request
         self._tool_call_accumulator = {}
+        self._content_buffer = ""
+        self._annotations = []
+        self._citation_counter = 0
 
     async def process_chat_completion_chunk(self, chunk: AIMessageChunk):
         # role
         await self.on_received_role(chunk)
+
+        # annotations
+        await self.on_received_annotations(chunk)
 
         # text
         await self.on_received_content(chunk)
 
         # tool calls
         await self.on_received_tool_calls(chunk)
+        
+        # Check if this is the final chunk
+        finish_reason = chunk.response_metadata.get("finish_reason")
+        status = chunk.response_metadata.get("status")
+        if finish_reason == "stop" or status == "completed":
+            await self.on_completion()
 
     async def on_received_tool_calls(self, chunk: AIMessageChunk):
         # Use tool_call_chunks for streaming responses
@@ -91,7 +103,17 @@ class LlmCompletionMarkdownAppender:
     async def on_received_content(self, chunk: AIMessageChunk):
         content = chunk.content
         if content:
-            await self.append(content)
+            # Handle both string and list content
+            if isinstance(content, str):
+                self._content_buffer += content
+                await self.append(content)
+            elif isinstance(content, list):
+                # Extract text from list content
+                for part in content:
+                    if isinstance(part, dict) and part.get("type") == "text":
+                        text = part.get("text", "")
+                        self._content_buffer += text
+                        await self.append(text)
 
     async def on_received_role(self, chunk: AIMessageChunk):
         if not self.role:
@@ -102,6 +124,46 @@ class LlmCompletionMarkdownAppender:
 
     async def append(self, text: str):
         await self.markdown_completion_signals.response.send_async(text)
+
+    async def on_received_annotations(self, chunk: AIMessageChunk):
+        # Check for annotations in the custom attribute
+        if hasattr(chunk, 'annotations') and chunk.annotations:
+            self._annotations.extend(chunk.annotations)
+
+    async def on_completion(self):
+        # If we have annotations, format them as markdown citations
+        if self._annotations:
+            await self.append_citations()
+
+    async def append_citations(self):
+        # Sort annotations by start_index to process them in order
+        sorted_annotations = sorted(self._annotations, key=lambda a: a.get('start_index', 0))
+        
+        # Group annotations by URL to avoid duplicates
+        unique_citations = {}
+        citation_map = {}  # Maps (start, end) to citation number
+        
+        for ann in sorted_annotations:
+            url = ann.get('url', '')
+            title = ann.get('title', '')
+            start = ann.get('start_index', 0)
+            end = ann.get('end_index', 0)
+            
+            if url not in unique_citations:
+                self._citation_counter += 1
+                unique_citations[url] = {
+                    'number': self._citation_counter,
+                    'title': title,
+                    'url': url
+                }
+            
+            citation_map[(start, end)] = unique_citations[url]['number']
+        
+        # Append citations section
+        if unique_citations:
+            await self.append("\n\n---\n\n### References\n\n")
+            for citation in sorted(unique_citations.values(), key=lambda c: c['number']):
+                await self.append(f"[{citation['number']}] {citation['title']}: {citation['url']}\n\n")
 
 
 @pytest.mark.asyncio
@@ -175,3 +237,80 @@ async def test_anthropic_tool_call_completion():
     assert "###### Steps" in appended_text
     assert "- Get Weather [2] `" in appended_text
     assert '{"location": "San Francisco"}' in appended_text
+
+
+@pytest.mark.asyncio
+async def test_openai_web_search_tool_call_completion():
+    """Reproduces the error when processing OpenAI web search tool call streaming responses with annotations."""
+    import os
+    import json
+    from langchain_core.messages import AIMessageChunk
+    from taskmates.core.workflows.markdown_completion.completions.llm_completion.response.llm_completion_pre_processor import \
+        LlmCompletionPreProcessor
+
+    # Create a test signals class to capture outputs
+    class TestMarkdownCompletionSignals(MarkdownCompletionSignals):
+        def __init__(self):
+            super().__init__()
+            self.responder_outputs = []
+            self.response_outputs = []
+
+            async def capture_responder(sender, **kwargs):
+                self.responder_outputs.append(sender)
+
+            async def capture_response(sender, **kwargs):
+                self.response_outputs.append(sender)
+
+            self.responder.connect(capture_responder, weak=False)
+            self.response.connect(capture_response, weak=False)
+
+    # Load OpenAI web search fixture
+    fixture_path = os.path.join(
+        os.path.dirname(__file__),
+        "../../../../../../../tests/fixtures/api-responses/openai_web_search_tool_call_streaming_response.jsonl"
+    )
+    fixture_path = os.path.normpath(fixture_path)
+
+    with open(fixture_path, "r") as f:
+        lines = f.readlines()
+
+    chunks = [AIMessageChunk(**json.loads(line)) for line in lines]
+
+    # Create test signals
+    markdown_completion_signals = TestMarkdownCompletionSignals()
+
+    appender = LlmCompletionMarkdownAppender(
+        recipient="assistant",
+        last_tool_call_id=0,
+        is_resume_request=False,
+        markdown_completion_signals=markdown_completion_signals
+    )
+
+    # Process chunks through pre-processor first
+    async def chunk_stream():
+        for chunk in chunks:
+            yield chunk
+
+    pre_processor = LlmCompletionPreProcessor(chunk_stream())
+
+    # Process all chunks - this should now work without errors
+    async for processed_chunk in pre_processor:
+        await appender.process_chat_completion_chunk(processed_chunk)
+    
+    # Verify the responder was called with the assistant prompt
+    assert "**assistant>** " in markdown_completion_signals.responder_outputs
+
+    # Collect all the appended text
+    appended_text = "".join(markdown_completion_signals.response_outputs)
+
+    # Should contain the text response about AI news
+    assert "Here are some of the latest developments in artificial intelligence" in appended_text
+    
+    # Should contain some of the AI news content
+    assert "Meta" in appended_text
+    assert "AI" in appended_text
+    
+    # Should contain the references section with citations
+    assert "### References" in appended_text
+    assert "Axios AM: What if they're right?" in appended_text
+    assert "https://www.axios.com/" in appended_text

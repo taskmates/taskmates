@@ -74,7 +74,6 @@ class LlmCompletionProvider(CompletionProvider):
         with chat_completion_signals.chat_completion.connected_to(restream_completion_chunk):
 
             taskmates_dirs = contexts["runner_config"]["taskmates_dirs"]
-            force_stream = bool(chat_completion_signals.chat_completion.receivers)
 
             model_alias = contexts["run_opts"]["model"]
             model_conf = get_model_conf(model_alias=model_alias,
@@ -85,9 +84,6 @@ class LlmCompletionProvider(CompletionProvider):
                 "temperature": 0.2,
                 "stop": ["\n######"],
             })
-
-            if force_stream:
-                model_conf.update({"stream": True})
 
             model_conf["stop"].extend(self.get_usernames_stop_sequences(chat))
 
