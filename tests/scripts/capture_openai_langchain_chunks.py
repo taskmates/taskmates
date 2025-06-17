@@ -35,7 +35,7 @@ async def capture_streaming_chunks():
         print(f"Captured chunk: {chunk_dict}")
 
     # Save to fixture file
-    fixture_path = fixtures_dir / "streaming_response.jsonl"
+    fixture_path = fixtures_dir / "openai_streaming_response.jsonl"
     with open(fixture_path, "w") as f:
         for chunk in chunks:
             f.write(json.dumps(chunk) + "\n")
@@ -54,7 +54,7 @@ async def capture_streaming_chunks():
     response_dict = response.dict()
 
     # Save non-streaming response
-    non_streaming_path = fixtures_dir / "non_streaming_response.json"
+    non_streaming_path = fixtures_dir / "openai_non_streaming_response.json"
     with open(non_streaming_path, "w") as f:
         json.dump(response_dict, f, indent=2)
 

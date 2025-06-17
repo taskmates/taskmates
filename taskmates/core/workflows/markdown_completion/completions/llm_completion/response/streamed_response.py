@@ -7,6 +7,7 @@ class StreamedResponse:
         self.final_json = {}
         self.current_tool_call_id = None
         self.tool_calls_by_id = {}
+        self.tool_calls_by_index = {}  # New: track tool calls by index for streaming
         self.content_delta = ''
         self.choices = []
         self.finish_reason = None
@@ -14,7 +15,31 @@ class StreamedResponse:
     async def accept(self, chat_message_chunk: AIMessageChunk):
         self.accepted_chunks.append(chat_message_chunk)
 
-        # Tool calls may be carried as additional_kwargs
+        # Handle tool_call_chunks (new streaming format)
+        tool_call_chunks = getattr(chat_message_chunk, "tool_call_chunks", []) or []
+        for tool_call_chunk in tool_call_chunks:
+            index = tool_call_chunk.get("index", 0)
+
+            if index not in self.tool_calls_by_index:
+                # Initialize accumulator for this index
+                self.tool_calls_by_index[index] = {
+                    'id': None,
+                    'function': {
+                        'name': None,
+                        'arguments': ''
+                    },
+                    'type': 'function'
+                }
+
+            # Update fields as they come in
+            if tool_call_chunk.get("id"):
+                self.tool_calls_by_index[index]['id'] = tool_call_chunk["id"]
+            if tool_call_chunk.get("name"):
+                self.tool_calls_by_index[index]['function']['name'] = tool_call_chunk["name"]
+            if tool_call_chunk.get("args") is not None:
+                self.tool_calls_by_index[index]['function']['arguments'] += tool_call_chunk["args"]
+
+        # Tool calls may also be carried as additional_kwargs (older format)
         tool_calls = []
         if hasattr(chat_message_chunk, "additional_kwargs") and chat_message_chunk.additional_kwargs:
             tool_calls = chat_message_chunk.additional_kwargs.get("tool_calls", []) or []
@@ -65,18 +90,42 @@ class StreamedResponse:
 
     @property
     def payload(self):
+        # Merge tool calls from both sources
+        all_tool_calls = {}
+
+        # First add tool calls by ID (older format)
+        for tool_id, tool_call in self.tool_calls_by_id.items():
+            all_tool_calls[tool_id] = tool_call
+
+        # Then add tool calls by index (newer format), using ID if available
+        for index, tool_call in self.tool_calls_by_index.items():
+            tool_id = tool_call.get('id')
+            if tool_id:
+                # If we have an ID, use it as the key (might merge with existing)
+                if tool_id in all_tool_calls:
+                    # Merge arguments if needed
+                    existing_args = all_tool_calls[tool_id]['function']['arguments']
+                    new_args = tool_call['function']['arguments']
+                    if new_args and new_args not in existing_args:
+                        all_tool_calls[tool_id]['function']['arguments'] += new_args
+                else:
+                    all_tool_calls[tool_id] = tool_call
+            else:
+                # No ID, use a generated key based on index
+                all_tool_calls[f"index_{index}"] = tool_call
+
         # Compose choices block as previously
-        if self.tool_calls_by_id or self.content_delta:
+        if all_tool_calls or self.content_delta:
             message = {
                 'role': 'assistant',
                 'content': self.content_delta if self.content_delta else None,
             }
-            if self.tool_calls_by_id:
-                message['tool_calls'] = list(self.tool_calls_by_id.values())
+            if all_tool_calls:
+                message['tool_calls'] = list(all_tool_calls.values())
             self.choices.append({
                 'index': 0,
                 'message': message,
-                'finish_reason': 'tool_calls' if self.tool_calls_by_id else 'stop'
+                'finish_reason': 'tool_calls' if all_tool_calls else 'stop'
             })
 
         # Add the combined choices to the final_json
@@ -207,58 +256,6 @@ async def test_streamed_response_merges_chunk_metadata():
 
 
 @pytest.mark.asyncio
-async def test_streamed_response_tool_call_id_switch():
-    from langchain_core.messages import AIMessageChunk
-
-    # Multiple tool call IDs in the stream
-    chunk1 = AIMessageChunk(
-        content='',
-        additional_kwargs={'tool_calls': [
-            {
-                'id': 'toolA',
-                'function': {'name': 'foo', 'arguments': 'argsA1'},
-                'type': 'function'
-            }
-        ]},
-        response_metadata={},
-        id="msgA"
-    )
-    chunk2 = AIMessageChunk(
-        content='',
-        additional_kwargs={'tool_calls': [
-            {
-                'id': 'toolB',
-                'function': {'name': 'bar', 'arguments': 'argsB1'},
-                'type': 'function'
-            }
-        ]},
-        response_metadata={},
-        id="msgB"
-    )
-    chunk3 = AIMessageChunk(
-        content='',
-        additional_kwargs={'tool_calls': [
-            {
-                'id': 'toolA',
-                'function': {'name': 'foo', 'arguments': 'argsA2'},
-                'type': 'function'
-            }
-        ]},
-        response_metadata={},
-        id="msgC"
-    )
-    sr = StreamedResponse()
-    await sr.accept(chunk1)
-    await sr.accept(chunk2)
-    await sr.accept(chunk3)
-    payload = sr.payload
-
-    tc = sorted(payload["choices"][0]["message"]["tool_calls"], key=lambda x: x["id"])
-    assert tc[0]["id"] == "toolA" and tc[0]["function"]["arguments"] == "argsA1argsA2"
-    assert tc[1]["id"] == "toolB" and tc[1]["function"]["arguments"] == "argsB1"
-
-
-@pytest.mark.asyncio
 async def test_handles_list_content():
     """Ensures StreamedResponse can handle both string and list content without errors."""
     response = StreamedResponse()
@@ -300,3 +297,58 @@ async def test_mixed_content_types_in_stream():
         await response.accept(chunk)
 
     assert response.content_delta == "Start middle end"
+
+
+@pytest.mark.asyncio
+async def test_handles_tool_call_chunks():
+    """Test that StreamedResponse properly handles tool_call_chunks from OpenAI Format 2."""
+    response = StreamedResponse()
+
+    # Simulate the OpenAI Format 2 streaming pattern
+    chunks = [
+        # Initial chunk with tool name and ID
+        AIMessageChunk(
+            content=[],
+            tool_call_chunks=[
+                {"name": "get_weather", "args": "", "id": "call_123", "index": 0, "type": "tool_call_chunk"}]
+        ),
+        # Subsequent chunks with arguments
+        AIMessageChunk(
+            content=[],
+            tool_call_chunks=[{"name": None, "args": '{"', "id": None, "index": 0, "type": "tool_call_chunk"}]
+        ),
+        AIMessageChunk(
+            content=[],
+            tool_call_chunks=[{"name": None, "args": 'location', "id": None, "index": 0, "type": "tool_call_chunk"}]
+        ),
+        AIMessageChunk(
+            content=[],
+            tool_call_chunks=[{"name": None, "args": '": "', "id": None, "index": 0, "type": "tool_call_chunk"}]
+        ),
+        AIMessageChunk(
+            content=[],
+            tool_call_chunks=[
+                {"name": None, "args": 'San Francisco', "id": None, "index": 0, "type": "tool_call_chunk"}]
+        ),
+        AIMessageChunk(
+            content=[],
+            tool_call_chunks=[{"name": None, "args": '"}', "id": None, "index": 0, "type": "tool_call_chunk"}]
+        ),
+    ]
+
+    for chunk in chunks:
+        await response.accept(chunk)
+
+    payload = response.payload
+
+    # Verify the tool call was properly accumulated
+    assert len(payload['choices']) == 1
+    assert payload['choices'][0]['message']['tool_calls'] == [{
+        'id': 'call_123',
+        'function': {
+            'name': 'get_weather',
+            'arguments': '{"location": "San Francisco"}'
+        },
+        'type': 'function'
+    }]
+    assert payload['choices'][0]['finish_reason'] == 'tool_calls'

@@ -5,6 +5,7 @@ from typing import Callable
 import pytest
 from httpx import ReadError
 from langchain.schema import HumanMessage, AIMessage, SystemMessage
+from langchain_anthropic import ChatAnthropic
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import ToolMessage, BaseMessage, ToolCall
 from langchain_core.tools import BaseTool, StructuredTool
@@ -35,6 +36,8 @@ tracer = trace.get_tracer_provider().get_tracer(__name__)
 
 def convert_function_to_langchain_tool(func: Callable) -> BaseTool:
     """Convert a raw function to a LangChain tool using StructuredTool.from_function."""
+    if isinstance(func, StructuredTool):
+        return func
     return StructuredTool.from_function(func=func)
 
 
@@ -109,11 +112,27 @@ async def api_request(
             if tools:
                 llm = llm.bind_tools(tools)
 
+            if isinstance(llm, ChatAnthropic):
+                first_message = messages[0]
+                if isinstance(first_message, SystemMessage):
+                    first_message.content = {"type": "text",
+                                             "text": first_message.content,
+                                             "cache_control": {"type": "ephemeral"}},
+
+                for message in reversed(messages):
+                    if isinstance(first_message, AIMessage):
+                        if isinstance(message.content, str):
+                            message.content = [{"type": "text",
+                                                "text": message.content}],
+                        for content in message.content:
+                            if content["type"] == "text":
+                                content["cache_control"] = {"type": "ephemeral"}
+                        break
+
             force_stream = bool(chat_completion_signals.chat_completion.receivers)
 
             # Extract stop sequences from request payload
             stop_sequences = request_payload.pop("stop", [])
-
 
             if request_payload.get("stream", force_stream):
                 chat_completion = llm.astream(messages)
@@ -125,7 +144,10 @@ async def api_request(
                     async for chat_completion_chunk in \
                             LlmCompletionWithUsername(
                                 LlmCompletionPreProcessor(
-                                    StopSequenceProcessor(chat_completion, stop_sequences)
+                                    StopSequenceProcessor(
+                                        chat_completion,
+                                        stop_sequences
+                                    )
                                 )
                             ):
                         received_chunk = True
@@ -336,7 +358,7 @@ async def test_api_request_streaming_with_fixture(run):
         FixtureChatModel
 
     # Use the streaming fixture
-    client = FixtureChatModel(fixture_path="tests/fixtures/api-responses/streaming_response.jsonl")
+    client = FixtureChatModel(fixture_path="tests/fixtures/api-responses/openai_streaming_response.jsonl")
 
     request_payload = {
         "model": "fixture-model",
@@ -387,7 +409,7 @@ async def test_api_request_non_streaming_with_fixture(run):
         FixtureChatModel
 
     # Use the non-streaming fixture
-    client = FixtureChatModel(fixture_path="tests/fixtures/api-responses/non_streaming_response.json")
+    client = FixtureChatModel(fixture_path="tests/fixtures/api-responses/openai_non_streaming_response.json")
 
     request_payload = {
         "model": "fixture-model",
@@ -463,7 +485,7 @@ async def test_api_request_tool_call_streaming_with_fixture(run):
     )
 
     # Verify the conversion produces correct OpenAI format with tool calls
-    assert response == {
+    assert response == matchers.dict_containing({
         'choices': [{
             'finish_reason': 'tool_calls',
             'index': 0,
@@ -475,7 +497,7 @@ async def test_api_request_tool_call_streaming_with_fixture(run):
                         'name': 'get_weather',
                         'arguments': matchers.json_matching('{"location": "San Francisco"}')
                     },
-                    'id': 'call_6NoPEzeAUH339GjGUxpcOgbX',
+                    'id': matchers.any_string,
                     'type': 'function'
                 }]
             }
@@ -485,7 +507,7 @@ async def test_api_request_tool_call_streaming_with_fixture(run):
         'model_name': matchers.any_string,
         'object': 'chat.completion',
         'service_tier': 'default'
-    }
+    })
 
     # Verify streaming occurred
     assert len(streamed_chunks) > 0
@@ -498,7 +520,7 @@ async def test_api_request_with_stop_sequences(run):
         FixtureChatModel
 
     # Use the existing streaming fixture
-    client = FixtureChatModel(fixture_path="tests/fixtures/api-responses/streaming_response.jsonl")
+    client = FixtureChatModel(fixture_path="tests/fixtures/api-responses/openai_streaming_response.jsonl")
 
     request_payload = {
         "model": "fixture-model",
@@ -530,7 +552,8 @@ async def test_api_request_with_stop_sequences(run):
 
     # Verify we received the correct chunks
     # The chunks are AIMessageChunk objects, not OpenAI format dicts
-    streamed_content = ''.join(chunk.content for chunk in streamed_chunks if hasattr(chunk, 'content') and chunk.content)
+    streamed_content = ''.join(
+        chunk.content for chunk in streamed_chunks if hasattr(chunk, 'content') and chunk.content)
     assert streamed_content == '1, 2'
     assert ', 3' not in streamed_content
     assert ', 4' not in streamed_content

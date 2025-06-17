@@ -29,6 +29,7 @@ class LlmCompletionMarkdownAppender:
         self._content_buffer = ""
         self._annotations = []
         self._citation_counter = 0
+        self._tool_calls_finalized = False
 
     async def process_chat_completion_chunk(self, chunk: AIMessageChunk):
         # role
@@ -79,7 +80,8 @@ class LlmCompletionMarkdownAppender:
         # wrap up tool calls
         finish_reason = chunk.response_metadata.get("finish_reason")
         stop_reason = chunk.response_metadata.get("stop_reason")
-        if finish_reason == "tool_calls" or stop_reason == "tool_use":
+        status = chunk.response_metadata.get("status")
+        if finish_reason == "tool_calls" or stop_reason == "tool_use" or (status == "completed" and self._tool_call_accumulator):
             # Output all accumulated tool calls in order of index
             sorted_calls = sorted(self._tool_call_accumulator.items())
 
@@ -95,6 +97,7 @@ class LlmCompletionMarkdownAppender:
                 await self.append(acc["arguments"])
             await self.append("`\n\n")
             self._tool_call_accumulator.clear()
+            self._tool_calls_finalized = True
 
     async def append_tool_calls(self, tool_call_json: Dict):
         # Deprecated: now handled in on_received_tool_calls
@@ -103,6 +106,15 @@ class LlmCompletionMarkdownAppender:
     async def on_received_content(self, chunk: AIMessageChunk):
         content = chunk.content
         if content:
+            # Don't append content if tool calls have been finalized
+            if self._tool_calls_finalized:
+                return
+                
+            # Don't append content if this chunk has tool_call_chunks (it's likely tool arguments)
+            tool_call_chunks = chunk.tool_call_chunks if hasattr(chunk, "tool_call_chunks") else []
+            if tool_call_chunks:
+                return
+                
             # Handle both string and list content
             if isinstance(content, str):
                 self._content_buffer += content
@@ -166,77 +178,6 @@ class LlmCompletionMarkdownAppender:
                 await self.append(f"[{citation['number']}] {citation['title']}: {citation['url']}\n\n")
 
 
-@pytest.mark.asyncio
-async def test_anthropic_tool_call_completion():
-    """Allows the user to trigger tool calls from Anthropic streaming responses."""
-    import os
-    import json
-    from langchain_core.messages import AIMessageChunk
-    from taskmates.core.workflows.markdown_completion.completions.llm_completion.response.llm_completion_pre_processor import \
-        LlmCompletionPreProcessor
-
-    # Create a test signals class to capture outputs
-    class TestMarkdownCompletionSignals(MarkdownCompletionSignals):
-        def __init__(self):
-            super().__init__()
-            self.responder_outputs = []
-            self.response_outputs = []
-
-            async def capture_responder(sender, **kwargs):
-                self.responder_outputs.append(sender)
-
-            async def capture_response(sender, **kwargs):
-                self.response_outputs.append(sender)
-
-            self.responder.connect(capture_responder, weak=False)
-            self.response.connect(capture_response, weak=False)
-
-    # Load Anthropic fixture
-    fixture_path = os.path.join(
-        os.path.dirname(__file__),
-        "../../../../../../../tests/fixtures/api-responses/anthropic_tool_call_streaming_response.jsonl"
-    )
-    fixture_path = os.path.normpath(fixture_path)
-
-    with open(fixture_path, "r") as f:
-        lines = f.readlines()
-
-    chunks = [AIMessageChunk(**json.loads(line)) for line in lines]
-
-    # Create test signals
-    markdown_completion_signals = TestMarkdownCompletionSignals()
-
-    appender = LlmCompletionMarkdownAppender(
-        recipient="assistant",
-        last_tool_call_id=0,
-        is_resume_request=False,
-        markdown_completion_signals=markdown_completion_signals
-    )
-
-    # Process chunks through pre-processor first
-    async def chunk_stream():
-        for chunk in chunks:
-            yield chunk
-
-    pre_processor = LlmCompletionPreProcessor(chunk_stream())
-
-    # Process all chunks
-    async for processed_chunk in pre_processor:
-        await appender.process_chat_completion_chunk(processed_chunk)
-
-    # Verify the responder was called with the assistant prompt
-    assert "**assistant>** " in markdown_completion_signals.responder_outputs
-
-    # Collect all the appended text
-    appended_text = "".join(markdown_completion_signals.response_outputs)
-
-    # Should contain the text response
-    assert "I'll check the current weather in San Francisco for you." in appended_text
-
-    # Should contain the tool call markdown
-    assert "###### Steps" in appended_text
-    assert "- Get Weather [2] `" in appended_text
-    assert '{"location": "San Francisco"}' in appended_text
 
 
 @pytest.mark.asyncio

@@ -8,12 +8,11 @@ from langchain_core.messages import AIMessageChunk
 class LlmCompletionPreProcessor:
     def __init__(self, chat_completion: AsyncIterable[AIMessageChunk]):
         self.chat_completion = chat_completion
-        self.name = None
-        self.buffering = True
+        self.first_chunk = True
 
     async def __aiter__(self):
         async for chunk in self.chat_completion:
-            # Extract annotations before processing content
+            # Extract annotations if present
             annotations = []
             if isinstance(chunk.content, list):
                 for part in chunk.content:
@@ -24,312 +23,213 @@ class LlmCompletionPreProcessor:
             if annotations:
                 chunk.annotations = annotations
 
-            # Handle both OpenAI (string) and Anthropic (list) content formats
-            current_token = chunk.content
-            tool_calls = chunk.tool_calls if hasattr(chunk, "tool_calls") else []
-            tool_call_chunks = chunk.tool_call_chunks if hasattr(chunk, "tool_call_chunks") else []
-
-            # Flatten content if it's a list, handling both Anthropic format and OpenAI annotations
-            def flatten_content(token):
-                if isinstance(token, list):
-                    texts = []
-                    for part in token:
-                        if isinstance(part, dict):
-                            if part.get("type") == "text":
-                                texts.append(part.get("text", ""))
-                            elif part.get("type") == "input_json_delta":
-                                texts.append(part.get("partial_json", ""))
-                            # Skip annotation-only entries (they don't contain text)
-                            elif "annotations" in part and "text" not in part and "type" not in part:
-                                continue
-                    return "".join(texts)
-                return token
-
-            current_token = flatten_content(chunk.content)
-
-            # If this chunk has tool_calls or invalid_tool_calls, don't include input_json_delta content as text
-            invalid_tool_calls = chunk.invalid_tool_calls if hasattr(chunk, "invalid_tool_calls") else []
-            if (tool_calls or invalid_tool_calls) and isinstance(chunk.content, list):
-                # Only include text content, not tool arguments
-                texts = []
-                for part in chunk.content:
-                    if isinstance(part, dict) and part.get("type") == "text":
-                        texts.append(part.get("text", ""))
-                current_token = "".join(texts)
-
-            # Special handling for chunks with empty content but important metadata
-            if current_token is None:
-                yield chunk
-                continue
-
-            # For empty content, only skip if there's nothing important in the chunk
-            if current_token == "" and not tool_call_chunks and not chunk.response_metadata.get(
-                    "stop_reason") and not chunk.response_metadata.get(
-                "finish_reason") and not chunk.response_metadata.get("status") and not annotations:
-                continue
-
-            if not self.buffering:
-                # Process all chunks, not just the first one
-                if current_token:
-                    # Remove carriage returns
-                    current_token = current_token.replace("\r", "")
-                # Always set string content to avoid merge issues
-                chunk.content = current_token  # Always set, even if falsy
-                yield chunk
-                continue
-
-            if current_token:
+            # Only modify string content
+            if isinstance(chunk.content, str) and chunk.content:
                 # Remove carriage returns
-                current_token = current_token.replace("\r", "")
+                chunk.content = chunk.content.replace("\r", "")
+                
+                # Add newline for markdown elements on first chunk with content
+                if self.first_chunk and re.match(r'^[#*\->`\[\]{}]', chunk.content):
+                    chunk.content = "\n" + chunk.content
+                    self.first_chunk = False
+                elif chunk.content:  # Has content but not markdown
+                    self.first_chunk = False
 
-                # Add newline for markdown elements
-                if re.match(r'^[#*\->`\[\]{}]', current_token):
-                    current_token = "\n" + current_token
-
-            if current_token or tool_calls or tool_call_chunks or annotations:
-                self.buffering = False
-                # Always set string content to avoid merge issues
-                chunk.content = current_token
-                yield chunk
-
-
-async def create_chunks(content_list, tool_calls=None):
-    """Helper to create AIMessageChunk stream from content list."""
-    for i, content in enumerate(content_list):
-        kwargs = {}
-        if i == 0 and tool_calls:
-            kwargs['additional_kwargs'] = {'tool_calls': tool_calls}
-        yield AIMessageChunk(content=content, **kwargs)
-
-
-@pytest.mark.asyncio
-async def test_removes_carriage_returns():
-    """Allows the user to process LLM responses without carriage return characters."""
-    chunks = create_chunks(['Hello\r', 'World\r\n'])
-    processor = LlmCompletionPreProcessor(chunks)
-
-    result = [chunk async for chunk in processor]
-
-    assert [chunk.content for chunk in result if chunk.content] == ['Hello', 'World\n']
-
-
-@pytest.mark.asyncio
-async def test_adds_newline_before_markdown_elements():
-    """Allows the user to format markdown elements properly in streamed responses."""
-    test_cases = [
-        (['# Title', ' content'], ['\n# Title', ' content']),
-        (['* Item'], ['\n* Item']),
-        (['- Item'], ['\n- Item']),
-        (['```python', '\nprint("hello")'], ['\n```python', '\nprint("hello")']),
-        (['> Quote', ' text'], ['\n> Quote', ' text']),
-    ]
-
-    for content_list, expected in test_cases:
-        chunks = create_chunks(content_list)
-        processor = LlmCompletionPreProcessor(chunks)
-        result = [chunk async for chunk in processor]
-        assert [chunk.content for chunk in result if chunk.content] == expected
-
-
-@pytest.mark.asyncio
-async def test_preserves_tool_calls():
-    """Allows the user to receive tool calls from preprocessed streams."""
-    from taskmates.lib.matchers_ import matchers
-
-    tool_calls = [{'id': 'call_123', 'type': 'function', 'function': {'name': 'test'}}]
-    chunks = create_chunks(['# Header'], tool_calls=tool_calls)
-    processor = LlmCompletionPreProcessor(chunks)
-
-    result = [chunk async for chunk in processor]
-
-    assert result[0] == matchers.object_with_attrs(
-        content='\n# Header',
-        additional_kwargs=matchers.dict_containing({'tool_calls': tool_calls})
-    )
-
-
-@pytest.mark.asyncio
-async def test_handles_empty_content():
-    """Allows the user to process chunks with empty content - empty chunks without tool_calls are not yielded."""
-
-    async def chunks_with_empty():
-        # Create a chunk with empty content (since None is not valid)
-        yield AIMessageChunk(content='')
-        yield AIMessageChunk(content='Hello')
-
-    processor = LlmCompletionPreProcessor(chunks_with_empty())
-
-    result = [chunk async for chunk in processor]
-
-    # Empty content chunks without tool_calls are not yielded
-    assert len(result) == 1
-    assert result[0].content == 'Hello'
-
-
-@pytest.mark.asyncio
-async def test_stops_buffering_on_first_content():
-    """Allows the user to receive subsequent chunks without markdown processing after first content."""
-    chunks = create_chunks(['First', '# Second', '* Third'])
-    processor = LlmCompletionPreProcessor(chunks)
-
-    result = [chunk async for chunk in processor]
-
-    # First chunk triggers unbuffering, subsequent chunks pass through unchanged
-    assert [chunk.content for chunk in result] == ['First', '# Second', '* Third']
-
-
-@pytest.mark.asyncio
-async def test_anthropic_tool_call_streaming_response():
-    """Allows the user to process Anthropic tool call streaming responses with content as list of dicts."""
-    import os
-    import json
-    from langchain_core.messages import AIMessageChunk
-
-    fixture_path = os.path.join(
-        os.path.dirname(__file__),
-        "../../../../../../../tests/fixtures/api-responses/anthropic_tool_call_streaming_response.jsonl"
-    )
-    fixture_path = os.path.normpath(fixture_path)
-
-    with open(fixture_path, "r") as f:
-        lines = f.readlines()
-
-    # Parse each line as a dict and create AIMessageChunk
-    chunks = [
-        AIMessageChunk(**json.loads(line))
-        for line in lines
-    ]
-
-    async def chunk_stream():
-        for chunk in chunks:
             yield chunk
 
-    processor = LlmCompletionPreProcessor(chunk_stream())
-    result = [chunk async for chunk in processor]
 
-    # The processor should only include text content, not tool arguments
-    actual_content = "".join(chunk.content for chunk in result if chunk.content)
-
-    # Should only contain the text before the tool call, not the JSON arguments
-    assert actual_content == "I'll check the current weather in San Francisco for you."
-
-    # Verify that chunks with tool_calls still have them
-    chunks_with_tool_calls = [chunk for chunk in result if hasattr(chunk, "tool_calls") and chunk.tool_calls]
-    assert len(chunks_with_tool_calls) > 0
+# Test helpers
+import json
+import os
+from taskmates.lib.matchers_ import matchers
 
 
-@pytest.mark.asyncio
-async def test_openai_web_search_tool_call_streaming_response():
-    """Allows the user to process OpenAI web search tool call streaming responses without errors."""
-    import os
-    import json
-    from langchain_core.messages import AIMessageChunk
-
+async def load_fixture_chunks(fixture_name):
+    """Load chunks from a fixture file."""
     fixture_path = os.path.join(
         os.path.dirname(__file__),
-        "../../../../../../../tests/fixtures/api-responses/openai_web_search_tool_call_streaming_response.jsonl"
+        "../../../../../../../tests/fixtures/api-responses",
+        fixture_name
     )
     fixture_path = os.path.normpath(fixture_path)
-
+    
     with open(fixture_path, "r") as f:
-        lines = f.readlines()
-
-    # Parse each line as a dict and create AIMessageChunk
-    chunks = [
-        AIMessageChunk(**json.loads(line))
-        for line in lines
-    ]
-
-    async def chunk_stream():
-        for chunk in chunks:
-            yield chunk
-
-    processor = LlmCompletionPreProcessor(chunk_stream())
-
-    # This should not raise an error
-    result = []
-    try:
-        async for chunk in processor:
-            result.append(chunk)
-    except TypeError as e:
-        if "string indices must be integers" in str(e):
-            pytest.fail(f"Got the string indices error: {e}")
+        if fixture_name.endswith('.jsonl'):
+            for line in f:
+                yield AIMessageChunk(**json.loads(line))
         else:
-            raise
+            data = json.load(f)
+            yield AIMessageChunk(**data)
 
-    # Verify we got some content
-    assert len(result) > 0
 
-    # Verify content was processed correctly
-    content_chunks = [chunk for chunk in result if chunk.content]
-    assert len(content_chunks) > 0
+async def collect_chunks(async_iter):
+    """Collect all chunks from an async iterator."""
+    chunks = []
+    async for chunk in async_iter:
+        chunks.append(chunk)
+    return chunks
 
-    # Verify all content is now strings (not lists) to avoid merge errors
-    for chunk in result:
-        if chunk.content is not None:
-            assert isinstance(chunk.content, str), f"Content should be string, got {type(chunk.content)}"
 
-    # Verify annotations are preserved
-    annotation_count = sum(1 for chunk in result if hasattr(chunk, 'annotations') and chunk.annotations)
-    assert annotation_count > 0, "Annotations should be preserved"
+# Invariant tests for LlmCompletionPreProcessor
+
+@pytest.mark.asyncio
+async def test_preprocessor_preserves_tool_calls_openai():
+    """LlmCompletionPreProcessor must preserve tool_calls from OpenAI fixture."""
+    processor = LlmCompletionPreProcessor(load_fixture_chunks("openai_tool_call_streaming_response.jsonl"))
+    
+    chunks = await collect_chunks(processor)
+    original_chunks = await collect_chunks(load_fixture_chunks("openai_tool_call_streaming_response.jsonl"))
+    
+    # Find chunks with tool_calls
+    chunks_with_tool_calls = [c for c in chunks if c.tool_calls]
+    original_with_tool_calls = [c for c in original_chunks if c.tool_calls]
+    
+    assert chunks_with_tool_calls == original_with_tool_calls
 
 
 @pytest.mark.asyncio
-async def test_mixed_content_types_can_be_merged():
-    """Ensures that chunks with mixed content types can be merged by LangChain without errors."""
-    from langchain_core.outputs.chat_generation import ChatGenerationChunk, merge_chat_generation_chunks
+async def test_preprocessor_preserves_tool_calls_anthropic():
+    """LlmCompletionPreProcessor must preserve tool_calls from Anthropic fixture."""
+    processor = LlmCompletionPreProcessor(load_fixture_chunks("anthropic_tool_call_streaming_response.jsonl"))
+    
+    chunks = await collect_chunks(processor)
+    original_chunks = await collect_chunks(load_fixture_chunks("anthropic_tool_call_streaming_response.jsonl"))
+    
+    # Find chunks with tool_calls
+    chunks_with_tool_calls = [c for c in chunks if c.tool_calls]
+    original_with_tool_calls = [c for c in original_chunks if c.tool_calls]
+    
+    assert chunks_with_tool_calls == original_with_tool_calls
 
-    # Create chunks that would cause the merge error if not handled properly
-    chunk1 = AIMessageChunk(content="Hello")
-    chunk2 = AIMessageChunk(content=[{"type": "text", "text": " world", "index": 0}])
-    chunk3 = AIMessageChunk(content=[{"annotations": [{"type": "url_citation", "title": "Test"}], "index": 0}])
 
-    async def chunk_stream():
-        yield chunk1
-        yield chunk2
-        yield chunk3
+@pytest.mark.asyncio
+async def test_preprocessor_preserves_tool_call_chunks_openai():
+    """LlmCompletionPreProcessor must preserve tool_call_chunks from OpenAI fixture."""
+    processor = LlmCompletionPreProcessor(load_fixture_chunks("openai_tool_call_streaming_response.jsonl"))
+    
+    chunks = await collect_chunks(processor)
+    original_chunks = await collect_chunks(load_fixture_chunks("openai_tool_call_streaming_response.jsonl"))
+    
+    # Find chunks with tool_call_chunks
+    chunks_with_tool_call_chunks = [c for c in chunks if c.tool_call_chunks]
+    original_with_tool_call_chunks = [c for c in original_chunks if c.tool_call_chunks]
+    
+    assert chunks_with_tool_call_chunks == original_with_tool_call_chunks
 
-    processor = LlmCompletionPreProcessor(chunk_stream())
 
-    # Process chunks
-    processed = []
-    async for chunk in processor:
-        processed.append(chunk)
+@pytest.mark.asyncio
+async def test_preprocessor_preserves_content_structure_anthropic():
+    """LlmCompletionPreProcessor must preserve Anthropic's list content structure."""
+    processor = LlmCompletionPreProcessor(load_fixture_chunks("anthropic_streaming_response.jsonl"))
+    
+    chunks = await collect_chunks(processor)
+    original_chunks = await collect_chunks(load_fixture_chunks("anthropic_streaming_response.jsonl"))
+    
+    # Check that list content remains as list
+    for chunk, original in zip(chunks, original_chunks):
+        if isinstance(original.content, list):
+            assert isinstance(chunk.content, list)
+            assert chunk.content == original.content
 
-    # All content should be strings after processing
-    for chunk in processed:
-        if chunk.content is not None:
+
+@pytest.mark.asyncio
+async def test_preprocessor_preserves_content_structure_openai():
+    """LlmCompletionPreProcessor must preserve OpenAI's string content structure."""
+    processor = LlmCompletionPreProcessor(load_fixture_chunks("openai_streaming_response.jsonl"))
+    
+    chunks = await collect_chunks(processor)
+    original_chunks = await collect_chunks(load_fixture_chunks("openai_streaming_response.jsonl"))
+    
+    # Check that string content remains as string
+    for chunk, original in zip(chunks, original_chunks):
+        if isinstance(original.content, str):
             assert isinstance(chunk.content, str)
 
-    # Verify LangChain can merge them without errors
-    generation_chunks = [ChatGenerationChunk(message=chunk) for chunk in processed]
-    merged = merge_chat_generation_chunks(generation_chunks)
-    assert merged is not None
+
+@pytest.mark.asyncio
+async def test_preprocessor_extracts_annotations_openai_web_search():
+    """LlmCompletionPreProcessor must extract annotations from OpenAI web search fixture."""
+    processor = LlmCompletionPreProcessor(load_fixture_chunks("openai_web_search_tool_call_streaming_response.jsonl"))
+    
+    chunks = await collect_chunks(processor)
+    
+    # Check that annotations were extracted
+    chunks_with_annotations = [c for c in chunks if hasattr(c, 'annotations') and c.annotations]
+    
+    assert len(chunks_with_annotations) > 0
 
 
 @pytest.mark.asyncio
-async def test_annotations_extracted_from_content():
-    """Verifies that annotations are extracted from content and stored separately."""
-    # Create a chunk with annotations in content
-    chunk = AIMessageChunk(content=[{
-        "annotations": [{
-            "type": "url_citation",
-            "title": "Test Citation",
-            "url": "https://example.com"
-        }],
-        "index": 0
-    }])
+async def test_preprocessor_removes_carriage_returns():
+    """LlmCompletionPreProcessor must remove carriage returns from string content."""
+    # Create a custom chunk with carriage returns
+    async def chunks_with_cr():
+        yield AIMessageChunk(content="Hello\rWorld\r\n")
+    
+    processor = LlmCompletionPreProcessor(chunks_with_cr())
+    chunks = await collect_chunks(processor)
+    
+    assert chunks[0].content == "HelloWorld\n"
 
-    async def chunk_stream():
-        yield chunk
 
-    processor = LlmCompletionPreProcessor(chunk_stream())
+@pytest.mark.asyncio
+async def test_preprocessor_adds_newline_before_markdown():
+    """LlmCompletionPreProcessor must add newline before markdown elements in string content."""
+    # Create chunks with markdown elements
+    async def markdown_chunks():
+        yield AIMessageChunk(content="# Title")
+        yield AIMessageChunk(content="* Item")
+        yield AIMessageChunk(content="Regular text")
+    
+    processor = LlmCompletionPreProcessor(markdown_chunks())
+    chunks = await collect_chunks(processor)
+    
+    assert chunks[0].content == "\n# Title"
+    assert chunks[1].content == "* Item"  # Not first chunk, no newline added
+    assert chunks[2].content == "Regular text"  # No markdown element
 
-    result = []
-    async for processed_chunk in processor:
-        result.append(processed_chunk)
 
-    assert len(result) == 1
-    assert hasattr(result[0], 'annotations')
-    assert len(result[0].annotations) == 1
-    assert result[0].annotations[0]['title'] == "Test Citation"
+@pytest.mark.asyncio
+async def test_preprocessor_preserves_metadata_openai():
+    """LlmCompletionPreProcessor must preserve response_metadata from OpenAI fixture."""
+    processor = LlmCompletionPreProcessor(load_fixture_chunks("openai_streaming_response.jsonl"))
+    
+    chunks = await collect_chunks(processor)
+    original_chunks = await collect_chunks(load_fixture_chunks("openai_streaming_response.jsonl"))
+    
+    # All metadata should be preserved
+    assert [c.response_metadata for c in chunks] == [c.response_metadata for c in original_chunks]
+
+
+@pytest.mark.asyncio
+async def test_preprocessor_preserves_metadata_anthropic():
+    """LlmCompletionPreProcessor must preserve response_metadata from Anthropic fixture."""
+    processor = LlmCompletionPreProcessor(load_fixture_chunks("anthropic_streaming_response.jsonl"))
+    
+    chunks = await collect_chunks(processor)
+    original_chunks = await collect_chunks(load_fixture_chunks("anthropic_streaming_response.jsonl"))
+    
+    # All metadata should be preserved
+    assert [c.response_metadata for c in chunks] == [c.response_metadata for c in original_chunks]
+
+
+@pytest.mark.asyncio
+async def test_preprocessor_no_token_loss_openai():
+    """LlmCompletionPreProcessor must not lose any tokens from OpenAI fixture."""
+    processor = LlmCompletionPreProcessor(load_fixture_chunks("openai_streaming_response.jsonl"))
+    
+    chunks = await collect_chunks(processor)
+    original_chunks = await collect_chunks(load_fixture_chunks("openai_streaming_response.jsonl"))
+    
+    assert len(chunks) == len(original_chunks)
+
+
+@pytest.mark.asyncio
+async def test_preprocessor_no_token_loss_anthropic():
+    """LlmCompletionPreProcessor must not lose any tokens from Anthropic fixture."""
+    processor = LlmCompletionPreProcessor(load_fixture_chunks("anthropic_streaming_response.jsonl"))
+    
+    chunks = await collect_chunks(processor)
+    original_chunks = await collect_chunks(load_fixture_chunks("anthropic_streaming_response.jsonl"))
+    
+    assert len(chunks) == len(original_chunks)

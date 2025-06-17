@@ -1,4 +1,3 @@
-from taskmates.defaults.tools.shell_.run_shell_command import run_shell_command
 from taskmates.defaults.tools.chroma_.chromadb_search import chromadb_search
 from taskmates.defaults.tools.dalle_.convert_to_svg import convert_to_svg
 from taskmates.defaults.tools.dalle_.generate_images import generate_images
@@ -9,7 +8,9 @@ from taskmates.defaults.tools.google_ import google_search
 from taskmates.defaults.tools.jira_.jira_ import create_issue, add_comment, update_status, search_issues, delete_issues, \
     dump_context, \
     read_issue
+from taskmates.defaults.tools.shell_.run_shell_command import run_shell_command
 from taskmates.defaults.tools.test_.echo import echo
+from taskmates.defaults.tools.test_.get_weather import get_weather
 
 tools_registry = {}
 
@@ -17,6 +18,7 @@ tools_registry = {}
 def initialize_function_registry(function_registry):
     # debugging
     function_registry["echo"] = echo
+    function_registry["get_weather"] = get_weather
 
     # return status
     function_registry["report_evaluation"] = report_evaluation

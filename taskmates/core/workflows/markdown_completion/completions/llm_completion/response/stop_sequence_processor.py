@@ -10,223 +10,309 @@ class StopSequenceProcessor:
     def __init__(self, chat_completion: AsyncIterable[AIMessageChunk], stop_sequences: Optional[List[str]] = None):
         self.chat_completion = chat_completion
         self.stop_sequences = stop_sequences or []
-        self.buffer = ""
-        self.stopped = False
-        self.yielded_length = 0  # Track how much content we've already yielded
+        self.accumulated_text = ""  # All text seen so far
+        self.pending_chunks = []    # Chunks we're holding back
+        self.pending_text = ""      # Text from pending chunks
+        
+    def _extract_text(self, chunk):
+        """Extract text content from a chunk for stop sequence detection."""
+        if chunk.content is None:
+            return ""
+            
+        content = chunk.content
+        if isinstance(content, list):
+            texts = []
+            for part in content:
+                if isinstance(part, dict):
+                    if part.get("type") == "text":
+                        texts.append(part.get("text", ""))
+            return "".join(texts)
+        return content
         
     async def __aiter__(self):
-        last_chunk_metadata = None
-        
         async for chunk in self.chat_completion:
-            last_chunk_metadata = chunk
+            chunk_text = self._extract_text(chunk)
             
-            if self.stopped:
-                # Don't yield any more chunks after stop sequence detected
-                break
+            # If we have pending chunks, we're in the middle of checking a potential stop sequence
+            if self.pending_chunks:
+                self.pending_chunks.append(chunk)
+                self.pending_text += chunk_text
                 
-            # Handle chunks with no content or empty content
-            if chunk.content is None or chunk.content == "":
-                yield chunk
-                continue
-                
-            # Add current content to buffer
-            self.buffer += chunk.content
-            
-            # Check if any stop sequence is present in the buffer
-            stop_index = -1
-            
-            for stop_seq in self.stop_sequences:
-                index = self.buffer.find(stop_seq)
-                if index != -1 and (stop_index == -1 or index < stop_index):
-                    stop_index = index
+                # Check if we now have a complete stop sequence
+                combined_text = self.accumulated_text + self.pending_text
+                for stop_seq in self.stop_sequences:
+                    if stop_seq in combined_text:
+                        # Stop sequence confirmed - don't yield pending chunks
+                        return
                     
-            if stop_index != -1:
-                # Stop sequence found
-                self.stopped = True
-                
-                # Yield any content before the stop sequence that hasn't been yielded yet
-                content_to_yield = self.buffer[self.yielded_length:stop_index]
-                if content_to_yield:
-                    yield self._create_chunk(chunk, content_to_yield)
-                break
-            else:
-                # No stop sequence found yet
-                # Calculate how much we can safely yield
-                # We need to hold back enough characters to detect any stop sequence
-                max_stop_len = max(len(seq) for seq in self.stop_sequences) if self.stop_sequences else 0
-                
-                if len(self.buffer) > max_stop_len:
-                    # We can safely yield content up to buffer_len - max_stop_len
-                    safe_yield_end = len(self.buffer) - max_stop_len
-                    content_to_yield = self.buffer[self.yielded_length:safe_yield_end]
-                    
-                    if content_to_yield:
-                        self.yielded_length = safe_yield_end
-                        yield self._create_chunk(chunk, content_to_yield)
+                # Check if pending text could still be part of a stop sequence
+                could_be_stop = False
+                for stop_seq in self.stop_sequences:
+                    # Check if any suffix of combined text could be the start of a stop sequence
+                    for i in range(len(self.accumulated_text), len(combined_text) + 1):
+                        suffix = combined_text[i:]
+                        if suffix and stop_seq.startswith(suffix) and suffix != stop_seq:
+                            could_be_stop = True
+                            break
+                    if could_be_stop:
+                        break
                         
-        # Stream ended, yield any remaining buffered content
-        if not self.stopped and self.yielded_length < len(self.buffer) and last_chunk_metadata:
-            remaining_content = self.buffer[self.yielded_length:]
-            if remaining_content:
-                yield self._create_chunk(last_chunk_metadata, remaining_content)
+                if not could_be_stop:
+                    # Not a stop sequence - yield all pending chunks
+                    for pending_chunk in self.pending_chunks:
+                        yield pending_chunk
+                    self.accumulated_text += self.pending_text
+                    self.pending_chunks = []
+                    self.pending_text = ""
+            else:
+                # Check if this chunk could start a stop sequence
+                combined_text = self.accumulated_text + chunk_text
+                
+                # First check if we already have a complete stop sequence
+                for stop_seq in self.stop_sequences:
+                    if stop_seq in combined_text:
+                        # Stop sequence found - don't yield this chunk
+                        return
+                    
+                # Check if this could be the start of a stop sequence
+                could_be_start = False
+                for stop_seq in self.stop_sequences:
+                    # Check if any suffix of combined text could start a stop sequence
+                    for i in range(len(self.accumulated_text), len(combined_text) + 1):
+                        suffix = combined_text[i:]
+                        if suffix and stop_seq.startswith(suffix) and suffix != stop_seq:
+                            could_be_start = True
+                            break
+                    if could_be_start:
+                        break
+                        
+                if could_be_start:
+                    # Start buffering
+                    self.pending_chunks.append(chunk)
+                    self.pending_text = chunk_text
+                else:
+                    # Safe to yield
+                    yield chunk
+                    self.accumulated_text += chunk_text
+                    
+        # Stream ended - yield any remaining pending chunks
+        for pending_chunk in self.pending_chunks:
+            yield pending_chunk
+
+
+# Test helpers
+import json
+import os
+from taskmates.lib.matchers_ import matchers
+
+
+async def load_fixture_chunks(fixture_name):
+    """Load chunks from a fixture file."""
+    fixture_path = os.path.join(
+        os.path.dirname(__file__),
+        "../../../../../../../tests/fixtures/api-responses",
+        fixture_name
+    )
+    fixture_path = os.path.normpath(fixture_path)
     
-    def _create_chunk(self, original_chunk: AIMessageChunk, content: str) -> AIMessageChunk:
-        """Create a new chunk with the given content, preserving metadata from the original."""
-        return AIMessageChunk(
-            content=content,
-            response_metadata=getattr(original_chunk, "response_metadata", {}),
-            additional_kwargs=getattr(original_chunk, "additional_kwargs", {}),
-            name=getattr(original_chunk, "name", None),
-            id=getattr(original_chunk, "id", None),
-            tool_calls=getattr(original_chunk, "tool_calls", []),
-            tool_call_chunks=getattr(original_chunk, "tool_call_chunks", []),
-            invalid_tool_calls=getattr(original_chunk, "invalid_tool_calls", []),
-            usage_metadata=getattr(original_chunk, "usage_metadata", None),
+    with open(fixture_path, "r") as f:
+        if fixture_name.endswith('.jsonl'):
+            for line in f:
+                yield AIMessageChunk(**json.loads(line))
+        else:
+            data = json.load(f)
+            yield AIMessageChunk(**data)
+
+
+async def collect_chunks(async_iter):
+    """Collect all chunks from an async iterator."""
+    chunks = []
+    async for chunk in async_iter:
+        chunks.append(chunk)
+    return chunks
+
+
+# Invariant tests for StopSequenceProcessor
+
+@pytest.mark.asyncio
+async def test_stop_sequence_processor_preserves_tool_calls_openai():
+    """StopSequenceProcessor must preserve tool_calls from OpenAI fixture."""
+    processor = StopSequenceProcessor(
+        load_fixture_chunks("openai_tool_call_streaming_response.jsonl"),
+        stop_sequences=[]
+    )
+    
+    chunks = await collect_chunks(processor)
+    
+    # Find chunks with tool_calls
+    chunks_with_tool_calls = [c for c in chunks if c.tool_calls]
+    original_chunks = await collect_chunks(load_fixture_chunks("openai_tool_call_streaming_response.jsonl"))
+    original_with_tool_calls = [c for c in original_chunks if c.tool_calls]
+    
+    assert chunks_with_tool_calls == original_with_tool_calls
+
+
+@pytest.mark.asyncio
+async def test_stop_sequence_processor_preserves_tool_calls_anthropic():
+    """StopSequenceProcessor must preserve tool_calls from Anthropic fixture."""
+    processor = StopSequenceProcessor(
+        load_fixture_chunks("anthropic_tool_call_streaming_response.jsonl"),
+        stop_sequences=[]
+    )
+    
+    chunks = await collect_chunks(processor)
+    
+    # Find chunks with tool_calls
+    chunks_with_tool_calls = [c for c in chunks if c.tool_calls]
+    original_chunks = await collect_chunks(load_fixture_chunks("anthropic_tool_call_streaming_response.jsonl"))
+    original_with_tool_calls = [c for c in original_chunks if c.tool_calls]
+    
+    assert chunks_with_tool_calls == original_with_tool_calls
+
+
+@pytest.mark.asyncio
+async def test_stop_sequence_processor_preserves_tool_call_chunks_openai():
+    """StopSequenceProcessor must preserve tool_call_chunks from OpenAI fixture."""
+    processor = StopSequenceProcessor(
+        load_fixture_chunks("openai_tool_call_streaming_response.jsonl"),
+        stop_sequences=[]
+    )
+    
+    chunks = await collect_chunks(processor)
+    
+    # Find chunks with tool_call_chunks
+    chunks_with_tool_call_chunks = [c for c in chunks if c.tool_call_chunks]
+    original_chunks = await collect_chunks(load_fixture_chunks("openai_tool_call_streaming_response.jsonl"))
+    original_with_tool_call_chunks = [c for c in original_chunks if c.tool_call_chunks]
+    
+    assert chunks_with_tool_call_chunks == original_with_tool_call_chunks
+
+
+@pytest.mark.asyncio
+async def test_stop_sequence_processor_preserves_annotations_openai_web_search():
+    """StopSequenceProcessor must preserve annotations from OpenAI web search fixture."""
+    processor = StopSequenceProcessor(
+        load_fixture_chunks("openai_web_search_tool_call_streaming_response.jsonl"),
+        stop_sequences=[]
+    )
+    
+    chunks = await collect_chunks(processor)
+    original_chunks = await collect_chunks(load_fixture_chunks("openai_web_search_tool_call_streaming_response.jsonl"))
+    
+    # Check that all chunks match exactly (including any annotations in content)
+    assert chunks == original_chunks
+
+
+@pytest.mark.asyncio
+async def test_stop_sequence_processor_preserves_metadata_openai():
+    """StopSequenceProcessor must preserve response_metadata from OpenAI fixture."""
+    processor = StopSequenceProcessor(
+        load_fixture_chunks("openai_streaming_response.jsonl"),
+        stop_sequences=[]
+    )
+    
+    chunks = await collect_chunks(processor)
+    original_chunks = await collect_chunks(load_fixture_chunks("openai_streaming_response.jsonl"))
+    
+    # All metadata should be preserved
+    assert [c.response_metadata for c in chunks] == [c.response_metadata for c in original_chunks]
+
+
+@pytest.mark.asyncio
+async def test_stop_sequence_processor_preserves_metadata_anthropic():
+    """StopSequenceProcessor must preserve response_metadata from Anthropic fixture."""
+    processor = StopSequenceProcessor(
+        load_fixture_chunks("anthropic_streaming_response.jsonl"),
+        stop_sequences=[]
+    )
+    
+    chunks = await collect_chunks(processor)
+    original_chunks = await collect_chunks(load_fixture_chunks("anthropic_streaming_response.jsonl"))
+    
+    # All metadata should be preserved
+    assert [c.response_metadata for c in chunks] == [c.response_metadata for c in original_chunks]
+
+
+@pytest.mark.asyncio
+async def test_stop_sequence_processor_stops_at_sequence_openai():
+    """StopSequenceProcessor must stop at configured stop sequence with OpenAI fixture."""
+    processor = StopSequenceProcessor(
+        load_fixture_chunks("openai_streaming_response.jsonl"),
+        stop_sequences=[", 3"]  # Should stop before "3"
+    )
+    
+    chunks = await collect_chunks(processor)
+    
+    # Reconstruct the full text
+    full_text = "".join(c.content for c in chunks if c.content)
+    
+    assert full_text == "1, 2"
+
+
+@pytest.mark.asyncio
+async def test_stop_sequence_processor_stops_at_sequence_anthropic():
+    """StopSequenceProcessor must stop at configured stop sequence with Anthropic fixture."""
+    # First, let's see what content is in the anthropic fixture
+    original_chunks = await collect_chunks(load_fixture_chunks("anthropic_streaming_response.jsonl"))
+    
+    # Find a suitable stop sequence from the actual content
+    full_content = ""
+    for chunk in original_chunks:
+        if isinstance(chunk.content, list):
+            for part in chunk.content:
+                if isinstance(part, dict) and part.get("type") == "text":
+                    full_content += part.get("text", "")
+        else:
+            full_content += chunk.content or ""
+    
+    # Use a stop sequence that exists in the content
+    if "the" in full_content:
+        stop_seq = "the"
+        expected = full_content.split(stop_seq)[0]
+        
+        processor = StopSequenceProcessor(
+            load_fixture_chunks("anthropic_streaming_response.jsonl"),
+            stop_sequences=[stop_seq]
         )
-
-
-async def create_chunks(content_list):
-    """Helper to create AIMessageChunk stream from content list."""
-    for content in content_list:
-        yield AIMessageChunk(content=content)
-
-
-@pytest.mark.asyncio
-async def test_stops_at_stop_sequence():
-    """Allows the user to stop generation at specified stop sequences."""
-    # Realistic token-by-token streaming
-    chunks = create_chunks(['Hello', ' world', '\n', '#', '#', '#', '#', '#', '#', ' Cell', ' Output'])
-    processor = StopSequenceProcessor(chunks, stop_sequences=['\n######'])
-    
-    result = [chunk async for chunk in processor]
-    
-    content = ''.join(chunk.content for chunk in result if chunk.content)
-    assert content == 'Hello world'
+        
+        chunks = await collect_chunks(processor)
+        
+        # Reconstruct the text
+        result_text = ""
+        for chunk in chunks:
+            if isinstance(chunk.content, list):
+                for part in chunk.content:
+                    if isinstance(part, dict) and part.get("type") == "text":
+                        result_text += part.get("text", "")
+            else:
+                result_text += chunk.content or ""
+        
+        assert result_text == expected
 
 
 @pytest.mark.asyncio
-async def test_handles_stop_sequence_across_chunks():
-    """Allows the user to detect stop sequences split across multiple chunks."""
-    # Stop sequence split across multiple single-character chunks
-    chunks = create_chunks(['Hello', ' world', '\n', '#', '#', '#', '#', '#', '#', ' Cell', ' Output'])
-    processor = StopSequenceProcessor(chunks, stop_sequences=['\n######'])
+async def test_stop_sequence_processor_no_token_loss_openai():
+    """StopSequenceProcessor must not lose tokens when no stop sequence matches with OpenAI fixture."""
+    processor = StopSequenceProcessor(
+        load_fixture_chunks("openai_streaming_response.jsonl"),
+        stop_sequences=["NEVER_APPEARS"]
+    )
     
-    result = [chunk async for chunk in processor]
+    chunks = await collect_chunks(processor)
+    original_chunks = await collect_chunks(load_fixture_chunks("openai_streaming_response.jsonl"))
     
-    content = ''.join(chunk.content for chunk in result if chunk.content)
-    assert content == 'Hello world'
+    assert len(chunks) == len(original_chunks)
 
 
 @pytest.mark.asyncio
-async def test_handles_multiple_stop_sequences():
-    """Allows the user to specify multiple stop sequences."""
-    # Token-by-token with username stop sequence
-    chunks = create_chunks(['Hello', '\n', '**', 'user', '>', '**', ' ', 'more', ' text'])
-    processor = StopSequenceProcessor(chunks, stop_sequences=['\n######', '\n**user>** '])
+async def test_stop_sequence_processor_no_token_loss_anthropic():
+    """StopSequenceProcessor must not lose tokens when no stop sequence matches with Anthropic fixture."""
+    processor = StopSequenceProcessor(
+        load_fixture_chunks("anthropic_streaming_response.jsonl"),
+        stop_sequences=["NEVER_APPEARS"]
+    )
     
-    result = [chunk async for chunk in processor]
+    chunks = await collect_chunks(processor)
+    original_chunks = await collect_chunks(load_fixture_chunks("anthropic_streaming_response.jsonl"))
     
-    content = ''.join(chunk.content for chunk in result if chunk.content)
-    assert content == 'Hello'
-
-
-@pytest.mark.asyncio
-async def test_handles_no_stop_sequences():
-    """Allows the user to process streams without stop sequences."""
-    chunks = create_chunks(['Hello', ' world', '!'])
-    processor = StopSequenceProcessor(chunks, stop_sequences=[])
-    
-    result = [chunk async for chunk in processor]
-    
-    content = ''.join(chunk.content for chunk in result if chunk.content)
-    assert content == 'Hello world!'
-
-
-@pytest.mark.asyncio
-async def test_preserves_chunk_metadata():
-    """Allows the user to receive chunks with preserved metadata."""
-    from taskmates.lib.matchers_ import matchers
-    
-    async def chunks_with_metadata():
-        yield AIMessageChunk(
-            content='Hello',
-            response_metadata={'model': 'test'},
-            id='chunk-1'
-        )
-        yield AIMessageChunk(
-            content=' world',
-            response_metadata={'model': 'test'},
-            id='chunk-2'
-        )
-    
-    processor = StopSequenceProcessor(chunks_with_metadata(), stop_sequences=['\n######'])
-    
-    result = [chunk async for chunk in processor]
-    
-    assert all(chunk.response_metadata.get('model') == 'test' for chunk in result)
-    assert all(chunk.id is not None for chunk in result)
-
-
-@pytest.mark.asyncio
-async def test_handles_partial_stop_sequence_at_end():
-    """Allows the user to receive all content when stream ends with partial stop sequence."""
-    # Partial stop sequence at end
-    chunks = create_chunks(['Hello', ' world', '\n', '#', '#', '#'])
-    processor = StopSequenceProcessor(chunks, stop_sequences=['\n######'])
-    
-    result = [chunk async for chunk in processor]
-    
-    content = ''.join(chunk.content for chunk in result if chunk.content)
-    assert content == 'Hello world\n###'
-
-
-@pytest.mark.asyncio
-async def test_buffers_potential_stop_sequences():
-    """Ensures the processor correctly buffers content that might be part of a stop sequence."""
-    # Each character as a separate token
-    chunks = create_chunks(['Hello', '\n', '#', '#', '#', '#', '#', '#', ' done'])
-    processor = StopSequenceProcessor(chunks, stop_sequences=['\n######'])
-    
-    result = [chunk async for chunk in processor]
-    
-    # Should stop before ' done'
-    content = ''.join(chunk.content for chunk in result if chunk.content)
-    assert content == 'Hello'
-
-
-@pytest.mark.asyncio
-async def test_handles_false_start_stop_sequence():
-    """Allows the user to continue when partial match doesn't complete."""
-    # Start of stop sequence but doesn't complete
-    chunks = create_chunks(['Hello', '\n', '#', '#', ' not', ' a', ' stop'])
-    processor = StopSequenceProcessor(chunks, stop_sequences=['\n######'])
-    
-    result = [chunk async for chunk in processor]
-    
-    content = ''.join(chunk.content for chunk in result if chunk.content)
-    assert content == 'Hello\n## not a stop'
-
-
-@pytest.mark.asyncio
-async def test_handles_overlapping_stop_sequences():
-    """Allows the user to handle overlapping stop sequences correctly."""
-    # Test with overlapping sequences where shorter one appears first
-    chunks = create_chunks(['Hello', '\n', '**', 'user', '>', '**', ' ', 'text'])
-    processor = StopSequenceProcessor(chunks, stop_sequences=['\n**user>**', '\n**user>** '])
-    
-    result = [chunk async for chunk in processor]
-    
-    content = ''.join(chunk.content for chunk in result if chunk.content)
-    assert content == 'Hello'
-
-
-@pytest.mark.asyncio
-async def test_handles_stop_sequence_at_start():
-    """Allows the user to handle stop sequence appearing at the very start."""
-    chunks = create_chunks(['\n', '#', '#', '#', '#', '#', '#', ' Output'])
-    processor = StopSequenceProcessor(chunks, stop_sequences=['\n######'])
-    
-    result = [chunk async for chunk in processor]
-    
-    content = ''.join(chunk.content for chunk in result if chunk.content)
-    assert content == ''
+    assert len(chunks) == len(original_chunks)

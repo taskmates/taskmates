@@ -1,3 +1,111 @@
+"""
+Matchers Library
+================
+
+This module provides flexible matchers for use in tests and assertions. Matchers allow you to 
+express complex conditions in a readable way, particularly useful when you want to check that 
+a value meets certain criteria without requiring exact equality.
+
+Usage Examples
+--------------
+
+Basic Matchers:
+    >>> from taskmates.lib.matchers_ import *
+    
+    >>> # Check if a value satisfies a condition
+    >>> assert "hello" == satisfies(lambda x: len(x) > 3)
+    >>> assert 42 == satisfies(lambda x: x > 0 and x < 100)
+    
+    >>> # Use convenience matchers for common types
+    >>> assert "world" == any_string
+    >>> assert 123 == any_int
+    >>> assert {"key": "value"} == any_dict
+    >>> assert [1, 2, 3] == any_list
+    
+    >>> # Match anything
+    >>> assert "literally anything" == anything()
+    >>> assert None == anything()
+
+Dict Matching:
+    >>> # Check if a dict contains expected key-value pairs (ignores extra keys)
+    >>> actual = {"name": "John", "age": 30, "city": "NYC"}
+    >>> assert actual == dict_containing({"name": "John", "age": 30})
+    
+    >>> # Nested dict matching
+    >>> actual = {"user": {"id": 123, "name": "Jane", "active": True}}
+    >>> assert actual == dict_containing({
+    ...     "user": dict_containing({"id": 123, "active": True})
+    ... })
+    
+    >>> # Combine with other matchers
+    >>> assert {"count": 5, "message": "Hello"} == dict_containing({
+    ...     "count": satisfies(lambda x: x > 0),
+    ...     "message": any_string
+    ... })
+
+Object Attribute Matching:
+    >>> # Check if an object has specific attributes
+    >>> class User:
+    ...     def __init__(self, name, age):
+    ...         self.name = name
+    ...         self.age = age
+    ...         self.id = 12345
+    
+    >>> user = User("Alice", 25)
+    >>> assert user == object_with_attrs(name="Alice", age=25)
+    >>> assert user == object_with_attrs(age=satisfies(lambda x: x >= 18))
+
+JSON Matching:
+    >>> # Compare JSON strings by their parsed content (ignores formatting)
+    >>> json1 = '{"name": "Bob", "age": 30}'
+    >>> json2 = '{"age":30,"name":"Bob"}'  # Different formatting, same content
+    >>> assert json2 == json_matching(json1)
+
+Advanced Combinations:
+    >>> # Complex nested matching
+    >>> response = {
+    ...     "status": "success",
+    ...     "data": {
+    ...         "users": [
+    ...             {"id": 1, "name": "User1", "email": "user1@example.com"},
+    ...             {"id": 2, "name": "User2", "email": "user2@example.com"}
+    ...         ],
+    ...         "total": 2
+    ...     },
+    ...     "timestamp": "2024-01-01T00:00:00Z"
+    ... }
+    >>> 
+    >>> assert response == dict_containing({
+    ...     "status": "success",
+    ...     "data": dict_containing({
+    ...         "users": satisfies(lambda x: len(x) == 2),
+    ...         "total": any_int
+    ...     })
+    ... })
+
+Use in Pytest:
+    >>> # Matchers work great with pytest assertions
+    >>> def test_api_response():
+    ...     response = make_api_call()
+    ...     assert response == dict_containing({
+    ...         "success": True,
+    ...         "data": any_dict,
+    ...         "timestamp": any_string
+    ...     })
+
+Available Matchers
+------------------
+- satisfies(condition): Match values that satisfy a custom condition function
+- dict_containing(expected): Match dicts containing at least the expected key-value pairs
+- anything(): Match any value
+- json_matching(expected_json_str): Match JSON strings by their parsed content
+- object_with_attrs(**attrs): Match objects with specific attribute values
+- any_string: Match any string value
+- any_int: Match any integer value
+- any_dict: Match any dictionary
+- any_list: Match any list
+"""
+
 def satisfies(condition):
     class Matcher:
         def __eq__(self, other):

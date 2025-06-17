@@ -1,7 +1,0 @@
-{"content": "", "additional_kwargs": {}, "response_metadata": {"model_name": "test-model"}, "type": "AIMessageChunk", "name": null, "id": "test-1"}
-{"content": "**", "additional_kwargs": {}, "response_metadata": {"model_name": "test-model"}, "type": "AIMessageChunk", "name": null, "id": "test-1"}
-{"content": "assistant", "additional_kwargs": {}, "response_metadata": {"model_name": "test-model"}, "type": "AIMessageChunk", "name": null, "id": "test-1"}
-{"content": ">**", "additional_kwargs": {}, "response_metadata": {"model_name": "test-model"}, "type": "AIMessageChunk", "name": null, "id": "test-1"}
-{"content": " ", "additional_kwargs": {}, "response_metadata": {"model_name": "test-model"}, "type": "AIMessageChunk", "name": null, "id": "test-1"}
-{"content": "I'll help", "additional_kwargs": {}, "response_metadata": {"model_name": "test-model"}, "type": "AIMessageChunk", "name": null, "id": "test-1"}
-{"content": "", "additional_kwargs": {"tool_calls": [{"id": "call_123", "type": "function", "function": {"name": "get_weather", "arguments": "{\"location\": \"NYC\"}"}}]}, "response_metadata": {"model_name": "test-model", "finish_reason": "tool_calls"}, "type": "AIMessageChunk", "name": null, "id": "test-1"}

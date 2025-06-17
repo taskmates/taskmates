@@ -112,7 +112,11 @@ class FixtureChatModel(BaseChatModel):
                             additional_kwargs=data.get("additional_kwargs", {}),
                             response_metadata=data.get("response_metadata", {}),
                             name=data.get("name"),
-                            id=data.get("id")
+                            id=data.get("id"),
+                            tool_calls=data.get("tool_calls", []),
+                            tool_call_chunks=data.get("tool_call_chunks", []),
+                            invalid_tool_calls=data.get("invalid_tool_calls", []),
+                            usage_metadata=data.get("usage_metadata")
                         )
                         yield ChatGenerationChunk(message=chunk)
         else:
@@ -152,7 +156,9 @@ class FixtureChatModel(BaseChatModel):
                             name=data.get("name"),
                             id=data.get("id"),
                             tool_calls=data.get("tool_calls", []),
-                            tool_call_chunks=data.get("tool_call_chunks", [])
+                            tool_call_chunks=data.get("tool_call_chunks", []),
+                            invalid_tool_calls=data.get("invalid_tool_calls", []),
+                            usage_metadata=data.get("usage_metadata")
                         )
                         yield ChatGenerationChunk(message=chunk)
         else:
@@ -173,7 +179,7 @@ class FixtureChatModel(BaseChatModel):
 @pytest.mark.asyncio
 async def test_fixture_chat_model_streaming():
     """Test that FixtureChatModel properly streams chunks."""
-    model = FixtureChatModel(fixture_path="tests/fixtures/api-responses/streaming_response.jsonl")
+    model = FixtureChatModel(fixture_path="tests/fixtures/api-responses/openai_streaming_response.jsonl")
 
     chunks = []
     async for chunk in model._astream([]):
@@ -189,7 +195,7 @@ async def test_fixture_chat_model_streaming():
 @pytest.mark.asyncio
 async def test_fixture_chat_model_non_streaming():
     """Test that FixtureChatModel handles non-streaming responses."""
-    model = FixtureChatModel(fixture_path="tests/fixtures/api-responses/non_streaming_response.json")
+    model = FixtureChatModel(fixture_path="tests/fixtures/api-responses/openai_non_streaming_response.json")
 
     result = await model._agenerate([])
 
