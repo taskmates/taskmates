@@ -317,3 +317,114 @@ async def test_openai_get_weather_tool_call_streaming_response_format_2(run):
     )
 
     assert full_output == expected_output, f"Expected:\n{repr(expected_output)}\n\nGot:\n{repr(full_output)}"
+
+
+@pytest.mark.asyncio
+async def test_gemini_streaming_response(run):
+    """Tests the full LLM completion pipeline with Gemini streaming fixture."""
+
+    contexts = RUN.get().context
+    contexts["run_opts"]["model"] = {
+        "name": "fixture",
+        "kwargs": {
+            "fixture_path": "tests/fixtures/api-responses/gemini_streaming_response.jsonl"
+        }
+    }
+
+    # Create a chat that will trigger a completion
+    chat = {
+        "messages": [
+            {"role": "user", "content": "Count from 1 to 5", "recipient": "assistant",
+             "recipient_role": "assistant"}
+        ],
+        "participants": {"assistant": {"role": "assistant"}},
+        "available_tools": [],
+        "markdown_chat": "Count from 1 to 5",
+        "run_opts": {}
+    }
+
+    # Create the provider
+    provider = LlmCompletionProvider()
+
+    # Capture markdown output
+    markdown_outputs = []
+
+    async def capture_markdown(text, **kwargs):
+        markdown_outputs.append(text)
+
+    run.signals["markdown_completion"].response.connect(capture_markdown, weak=False)
+
+    # Perform the completion
+    result = await provider.perform_completion(
+        chat=chat,
+        control_signals=run.signals["control"],
+        markdown_completion_signals=run.signals["markdown_completion"],
+        chat_completion_signals=run.signals["chat_completion"],
+        code_cell_output_signals=run.signals["code_cell_output"],
+        status_signals=run.signals["status"]
+    )
+
+    # Verify the COMPLETE output
+    full_output = "".join(markdown_outputs)
+
+    # The EXACT expected output based on the fixture
+    expected_output = "1\n2\n3\n4\n5"
+
+    assert full_output == expected_output, f"Expected:\n{repr(expected_output)}\n\nGot:\n{repr(full_output)}"
+
+
+@pytest.mark.asyncio
+async def test_gemini_tool_call_streaming_response(run):
+    """Tests the full LLM completion pipeline with Gemini tool call streaming fixture."""
+
+    contexts = RUN.get().context
+    contexts["run_opts"]["model"] = {
+        "name": "fixture",
+        "kwargs": {
+            "fixture_path": "tests/fixtures/api-responses/gemini_tool_call_streaming_response.jsonl"
+        }
+    }
+
+    # Create a chat that will trigger a completion
+    chat = {
+        "messages": [
+            {"role": "user", "content": "What's the weather in San Francisco?", "recipient": "assistant",
+             "recipient_role": "assistant"}
+        ],
+        "participants": {"assistant": {"role": "assistant"}},
+        "available_tools": [],
+        "markdown_chat": "What's the weather in San Francisco?",
+        "run_opts": {}
+    }
+
+    # Create the provider
+    provider = LlmCompletionProvider()
+
+    # Capture markdown output
+    markdown_outputs = []
+
+    async def capture_markdown(text, **kwargs):
+        markdown_outputs.append(text)
+
+    run.signals["markdown_completion"].response.connect(capture_markdown, weak=False)
+
+    # Perform the completion
+    result = await provider.perform_completion(
+        chat=chat,
+        control_signals=run.signals["control"],
+        markdown_completion_signals=run.signals["markdown_completion"],
+        chat_completion_signals=run.signals["chat_completion"],
+        code_cell_output_signals=run.signals["code_cell_output"],
+        status_signals=run.signals["status"]
+    )
+
+    # Verify the COMPLETE output
+    full_output = "".join(markdown_outputs)
+
+    # The EXACT expected output based on the fixture
+    expected_output = (
+        "\n\n###### Steps\n\n"
+        "- Get Weather [1] `{\"location\": \"San Francisco\"}`\n\n"
+    )
+
+    assert full_output == expected_output, f"Expected:\n{repr(expected_output)}\n\nGot:\n{repr(full_output)}"

@@ -17,6 +17,10 @@ class StreamedResponse:
 
         # Handle tool_call_chunks (new streaming format)
         tool_call_chunks = getattr(chat_message_chunk, "tool_call_chunks", []) or []
+        
+        # If we have tool_call_chunks, use them exclusively (don't also process additional_kwargs.tool_calls)
+        has_tool_call_chunks = bool(tool_call_chunks)
+        
         for tool_call_chunk in tool_call_chunks:
             index = tool_call_chunk.get("index", 0)
 
@@ -37,18 +41,37 @@ class StreamedResponse:
             if tool_call_chunk.get("name"):
                 self.tool_calls_by_index[index]['function']['name'] = tool_call_chunk["name"]
             if tool_call_chunk.get("args") is not None:
-                self.tool_calls_by_index[index]['function']['arguments'] += tool_call_chunk["args"]
+                # Only append non-empty args to avoid issues with initial empty strings
+                args = tool_call_chunk["args"]
+                if args:  # Only append if not empty string
+                    self.tool_calls_by_index[index]['function']['arguments'] += args
 
         # Tool calls may also be carried as additional_kwargs (older format)
+        # Only process these if we don't have tool_call_chunks
         tool_calls = []
-        if hasattr(chat_message_chunk, "additional_kwargs") and chat_message_chunk.additional_kwargs:
+        if not has_tool_call_chunks and hasattr(chat_message_chunk, "additional_kwargs") and chat_message_chunk.additional_kwargs:
             tool_calls = chat_message_chunk.additional_kwargs.get("tool_calls", []) or []
 
         content = getattr(chat_message_chunk, "content", "")
 
         for tool_call in tool_calls:
             tool_call_id = tool_call.get('id', None)
-            arguments = tool_call['function'].get('arguments', '')
+            
+            # Handle both OpenAI format (with 'function' key) and Gemini format (direct 'name' and 'args')
+            if 'function' in tool_call:
+                # OpenAI format
+                function_name = tool_call['function'].get('name', None)
+                arguments = tool_call['function'].get('arguments', '')
+            else:
+                # Gemini format
+                function_name = tool_call.get('name', None)
+                args = tool_call.get('args', '')
+                # Convert args to string if it's a dict
+                if isinstance(args, dict):
+                    import json
+                    arguments = json.dumps(args)
+                else:
+                    arguments = args
 
             if tool_call_id:
                 self.current_tool_call_id = tool_call_id
@@ -56,13 +79,13 @@ class StreamedResponse:
                     self.tool_calls_by_id[self.current_tool_call_id] = {
                         'id': tool_call_id,
                         'function': {
-                            'name': tool_call['function'].get('name', None),
+                            'name': function_name,
                             'arguments': ''
                         },
                         'type': 'function'
                     }
 
-            if arguments is not None and self.current_tool_call_id:
+            if arguments and self.current_tool_call_id:  # Only append non-empty arguments
                 self.tool_calls_by_id[self.current_tool_call_id]['function']['arguments'] += arguments
 
         if content is not None:

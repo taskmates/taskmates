@@ -2,6 +2,7 @@ import re
 from typing import Dict
 
 import pytest
+from icecream import ic
 from langchain_core.messages import AIMessageChunk
 from typeguard import typechecked
 
@@ -43,7 +44,7 @@ class LlmCompletionMarkdownAppender:
 
         # tool calls
         await self.on_received_tool_calls(chunk)
-        
+
         # Check if this is the final chunk
         finish_reason = chunk.response_metadata.get("finish_reason")
         status = chunk.response_metadata.get("status")
@@ -81,12 +82,14 @@ class LlmCompletionMarkdownAppender:
         finish_reason = chunk.response_metadata.get("finish_reason")
         stop_reason = chunk.response_metadata.get("stop_reason")
         status = chunk.response_metadata.get("status")
-        if finish_reason == "tool_calls" or stop_reason == "tool_use" or (status == "completed" and self._tool_call_accumulator):
+        # Also check for STOP finish_reason with tool_call_accumulator (for Gemini)
+        if finish_reason == "tool_calls" or stop_reason == "tool_use" or (status == "completed" and self._tool_call_accumulator) or (finish_reason == "STOP" and self._tool_call_accumulator):
             # Output all accumulated tool calls in order of index
             sorted_calls = sorted(self._tool_call_accumulator.items())
 
             for idx, (index, acc) in enumerate(sorted_calls):
-                code_cell_id = self.last_tool_call_id + 1 + index
+                # Handle None index (e.g., from Gemini) by using idx
+                code_cell_id = self.last_tool_call_id + 1 + (index if index is not None else idx)
                 if idx == 0:
                     await self.append("\n\n###### Steps\n\n")
                 else:
@@ -109,12 +112,12 @@ class LlmCompletionMarkdownAppender:
             # Don't append content if tool calls have been finalized
             if self._tool_calls_finalized:
                 return
-                
+
             # Don't append content if this chunk has tool_call_chunks (it's likely tool arguments)
             tool_call_chunks = chunk.tool_call_chunks if hasattr(chunk, "tool_call_chunks") else []
             if tool_call_chunks:
                 return
-                
+
             # Handle both string and list content
             if isinstance(content, str):
                 self._content_buffer += content
@@ -150,17 +153,17 @@ class LlmCompletionMarkdownAppender:
     async def append_citations(self):
         # Sort annotations by start_index to process them in order
         sorted_annotations = sorted(self._annotations, key=lambda a: a.get('start_index', 0))
-        
+
         # Group annotations by URL to avoid duplicates
         unique_citations = {}
         citation_map = {}  # Maps (start, end) to citation number
-        
+
         for ann in sorted_annotations:
             url = ann.get('url', '')
             title = ann.get('title', '')
             start = ann.get('start_index', 0)
             end = ann.get('end_index', 0)
-            
+
             if url not in unique_citations:
                 self._citation_counter += 1
                 unique_citations[url] = {
@@ -168,9 +171,9 @@ class LlmCompletionMarkdownAppender:
                     'title': title,
                     'url': url
                 }
-            
+
             citation_map[(start, end)] = unique_citations[url]['number']
-        
+
         # Append citations section
         if unique_citations:
             await self.append("\n\n---\n\n### References\n\n")
@@ -237,7 +240,7 @@ async def test_openai_web_search_tool_call_completion():
     # Process all chunks - this should now work without errors
     async for processed_chunk in pre_processor:
         await appender.process_chat_completion_chunk(processed_chunk)
-    
+
     # Verify the responder was called with the assistant prompt
     assert "**assistant>** " in markdown_completion_signals.responder_outputs
 
@@ -246,11 +249,11 @@ async def test_openai_web_search_tool_call_completion():
 
     # Should contain the text response about AI news
     assert "Here are some of the latest developments in artificial intelligence" in appended_text
-    
+
     # Should contain some of the AI news content
     assert "Meta" in appended_text
     assert "AI" in appended_text
-    
+
     # Should contain the references section with citations
     assert "### References" in appended_text
     assert "Axios AM: What if they're right?" in appended_text
