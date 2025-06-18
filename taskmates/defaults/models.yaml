@@ -80,79 +80,79 @@ fixture:
   model: fixture
 
 codeqwen:
-  client_type: langchain_community.chat_models.ChatOllama
+  client_type: langchain_ollama.ChatOllama
   endpoint: http://localhost:11434/v1
   max_context_window: 64000
   model: qwen2.5-coder:32b
 
 codellama:
-  client_type: langchain_community.chat_models.ChatOllama
+  client_type: langchain_ollama.ChatOllama
   endpoint: http://localhost:11434/v1
   max_context_window: 2048
   model: codellama:70b
 
 deepseek-r1:
-  client_type: langchain_community.chat_models.ChatOllama
+  client_type: langchain_ollama.ChatOllama
   endpoint: http://localhost:11434/v1
   max_context_window: 131072
   model: deepseek-r1:70b
 
 llama4:
-  client_type: langchain_community.chat_models.ChatOllama
+  client_type: langchain_ollama.ChatOllama
   endpoint: http://localhost:11434/v1
   max_context_window: 10485760
   model: llama4:latest
 
 llava:
-  client_type: langchain_community.chat_models.ChatOllama
+  client_type: langchain_ollama.ChatOllama
   endpoint: http://localhost:11434/v1
   max_context_window: 128000
   model: llava:34b
 
 llava-phi3:
-  client_type: langchain_community.chat_models.ChatOllama
+  client_type: langchain_ollama.ChatOllama
   endpoint: http://localhost:11434/v1
   max_context_window: 4096
   model: llava-phi3:latest
 
 minicpm-v:
-  client_type: langchain_community.chat_models.ChatOllama
+  client_type: langchain_ollama.ChatOllama
   endpoint: http://localhost:11434/v1
   max_context_window: 32768
   model: minicpm-v:latest
 
 moondream:
-  client_type: langchain_community.chat_models.ChatOllama
+  client_type: langchain_ollama.ChatOllama
   endpoint: http://localhost:11434/v1
   max_context_window: 2048
   model: moondream:latest
 
 phi4:
-  client_type: langchain_community.chat_models.ChatOllama
+  client_type: langchain_ollama.ChatOllama
   endpoint: http://localhost:11434/v1
   max_context_window: 16384
   model: phi4:latest
 
 qwen2.5:
-  client_type: langchain_community.chat_models.ChatOllama
+  client_type: langchain_ollama.ChatOllama
   endpoint: http://localhost:11434/v1
   max_context_window: 32768
   model: qwen2.5:72b
 
 qwen2.5-coder:
-  client_type: langchain_community.chat_models.ChatOllama
+  client_type: langchain_ollama.ChatOllama
   endpoint: http://localhost:11434/v1
   max_context_window: 32768
   model: qwen2.5-coder:32b
 
 qwen3:
-  client_type: langchain_community.chat_models.ChatOllama
+  client_type: langchain_ollama.ChatOllama
   endpoint: http://localhost:11434/v1
   max_context_window: 40960
   model: qwen3:32b
 
 qwq:
-  client_type: langchain_community.chat_models.ChatOllama
+  client_type: langchain_ollama.ChatOllama
   endpoint: http://localhost:11434/v1
   max_context_window: 131072
   model: qwq:latest

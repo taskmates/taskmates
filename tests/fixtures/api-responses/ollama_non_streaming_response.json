@@ -1,0 +1,28 @@
+{
+  "content": "1, 2, 3, 4, 5",
+  "additional_kwargs": {},
+  "response_metadata": {
+    "model": "llama4:latest",
+    "created_at": "2025-06-18T14:09:54.953339Z",
+    "done": true,
+    "done_reason": "stop",
+    "total_duration": 476363000,
+    "load_duration": 17805167,
+    "prompt_eval_count": 351,
+    "prompt_eval_duration": 34184791,
+    "eval_count": 14,
+    "eval_duration": 422877084,
+    "model_name": "llama4:latest"
+  },
+  "type": "ai",
+  "name": null,
+  "id": "run--38c0fda8-6c39-4b85-9085-a10987e0928a-0",
+  "example": false,
+  "tool_calls": [],
+  "invalid_tool_calls": [],
+  "usage_metadata": {
+    "input_tokens": 351,
+    "output_tokens": 14,
+    "total_tokens": 365
+  }
+}
