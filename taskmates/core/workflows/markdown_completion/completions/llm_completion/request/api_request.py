@@ -119,15 +119,19 @@ async def api_request(
                                              "text": first_message.content,
                                              "cache_control": {"type": "ephemeral"}},
 
+                # Add cache control to the last 3 non-system messages
+                non_system_count = 0
                 for message in reversed(messages):
-                    if isinstance(first_message, AIMessage):
+                    if not isinstance(message, SystemMessage):
                         if isinstance(message.content, str):
                             message.content = [{"type": "text",
-                                                "text": message.content}],
+                                                "text": message.content}]
                         for content in message.content:
                             if content["type"] == "text":
                                 content["cache_control"] = {"type": "ephemeral"}
-                        break
+                        non_system_count += 1
+                        if non_system_count >= 3:
+                            break
 
             force_stream = bool(chat_completion_signals.chat_completion.receivers)
 
