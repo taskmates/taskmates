@@ -1,7 +1,7 @@
 default:
   client_type: langchain_anthropic.ChatAnthropic
   max_context_window: 4096
-  model: claude-opus-4-20250514
+  model: claude-opus-4-latest
 
 gpt-4.1:
   client_type: langchain_openai.ChatOpenAI
@@ -26,20 +26,20 @@ gpt-3.5-turbo:
   max_context_window: 4096
   model: gpt-3.5-turbo
 
-claude-3-haiku-20240307:
+claude-3-5-haiku-latest:
   client_type: langchain_anthropic.ChatAnthropic
   max_context_window: 4096
-  model: claude-3-haiku-20240307
+  model: claude-3-5-haiku-latest
 
-claude-opus-4-20250514:
+claude-opus-4-latest:
   client_type: langchain_anthropic.ChatAnthropic
   max_context_window: 4096
-  model: claude-opus-4-20250514
+  model: claude-opus-4-latest
 
-claude-sonnet-4-20250514:
+claude-sonnet-4-latest:
   client_type: langchain_anthropic.ChatAnthropic
   max_context_window: 4096
-  model: claude-sonnet-4-20250514
+  model: claude-sonnet-4-latest
 
 grok-3:
   client_type: langchain_xai.ChatXAI
