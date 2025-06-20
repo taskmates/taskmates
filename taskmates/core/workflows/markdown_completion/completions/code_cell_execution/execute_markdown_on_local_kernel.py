@@ -6,16 +6,22 @@ import textwrap
 from typing import Mapping
 
 import pytest
+from typeguard import typechecked
 
-from taskmates.core.workflows.markdown_completion.completions.code_cell_execution.jupyter_notebook_logger import jupyter_notebook_logger
-from taskmates.core.workflows.markdown_completion.completions.code_cell_execution.execution.kernel_manager import get_kernel_manager
-from taskmates.core.workflows.markdown_completion.completions.code_cell_execution.execution.markdown_executor import MarkdownExecutor
 from taskmates.core.workflow_engine.run import RUN
+from taskmates.core.workflows.markdown_completion.completions.code_cell_execution.execution.kernel_manager import \
+    get_kernel_manager
+from taskmates.core.workflows.markdown_completion.completions.code_cell_execution.execution.markdown_executor import \
+    MarkdownExecutor
+from taskmates.core.workflows.markdown_completion.completions.code_cell_execution.jupyter_notebook_logger import \
+    jupyter_notebook_logger
 
 pytestmark = pytest.mark.slow
 
 
-async def execute_markdown_on_local_kernel(content, markdown_path: str = None, cwd: str = None, env: Mapping = None):
+@typechecked
+async def execute_markdown_on_local_kernel(content: str, markdown_path: str = None, cwd: str = None,
+                                           env: Mapping = None):
     """Main execution function that coordinates the execution of markdown content as Jupyter notebook cells."""
     run = RUN.get()
     executor = MarkdownExecutor(run.signals["control"], run.signals["status"], run.signals["code_cell_output"])

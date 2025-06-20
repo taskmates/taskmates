@@ -3,6 +3,7 @@ import textwrap
 import pytest
 from typeguard import typechecked
 
+from taskmates.core.chat.openai.get_text_content import get_text_content
 from taskmates.core.workflows.markdown_completion.completions.code_cell_execution.code_cells_editor_completion import CodeCellsEditorCompletion
 from taskmates.core.workflows.markdown_completion.completions.code_cell_execution.execute_markdown_on_local_kernel import \
     execute_markdown_on_local_kernel
@@ -53,8 +54,9 @@ class CodeCellExecutionCompletionProvider(CompletionProvider):
             await editor_completion.process_code_cell_output(code_cell_chunk)
 
         with code_cell_output_signals.code_cell_output.connected_to(on_code_cell_chunk):
+            text_content = get_text_content(messages[-1])
             # TODO pass env here
-            await execute_markdown_on_local_kernel(content=messages[-1]["content"],
+            await execute_markdown_on_local_kernel(content=text_content,
                                                    markdown_path=markdown_path,
                                                    cwd=cwd,
                                                    env=env)
