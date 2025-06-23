@@ -3,7 +3,7 @@ import asyncio
 import os
 import sys
 import textwrap
-from typing import Mapping
+from typing import Mapping, Optional
 
 import pytest
 from typeguard import typechecked
@@ -20,8 +20,8 @@ pytestmark = pytest.mark.slow
 
 
 @typechecked
-async def execute_markdown_on_local_kernel(content: str, markdown_path: str = None, cwd: str = None,
-                                           env: Mapping = None):
+async def execute_markdown_on_local_kernel(content: str, markdown_path: Optional[str] = None, cwd: Optional[str] = None,
+                                           env: Optional[Mapping] = None):
     """Main execution function that coordinates the execution of markdown content as Jupyter notebook cells."""
     run = RUN.get()
     executor = MarkdownExecutor(run.signals["control"], run.signals["status"], run.signals["code_cell_output"])
