@@ -1,7 +1,6 @@
+import pytest
 from typeguard import typechecked
 
-from taskmates.core.workflows.markdown_completion.completions.completion_provider import CompletionProvider
-from taskmates.core.workflows.markdown_completion.compute_next_completion import compute_next_completion
 from taskmates.core.markdown_chat.compute_separator import compute_separator
 from taskmates.core.markdown_chat.parse_markdown_chat import parse_markdown_chat
 from taskmates.core.workflow_engine.base_signals import connected_signals
@@ -16,11 +15,13 @@ from taskmates.core.workflows.daemons.markdown_chat_daemon import MarkdownChatDa
 from taskmates.core.workflows.daemons.markdown_completion_to_execution_environment_stdout_daemon import \
     MarkdownCompletionToExecutionEnvironmentStdoutDaemon
 from taskmates.core.workflows.daemons.return_value_daemon import ReturnValueDaemon
+from taskmates.core.workflows.markdown_completion.completions.completion_provider import CompletionProvider
+from taskmates.core.workflows.markdown_completion.compute_next_completion import compute_next_completion
 from taskmates.core.workflows.markdown_completion.max_steps_check import MaxStepsCheck
-from taskmates.core.workflows.signals.llm_completion_signals import LlmCompletionSignals
 from taskmates.core.workflows.signals.code_cell_output_signals import CodeCellOutputSignals
 from taskmates.core.workflows.signals.control_signals import ControlSignals
 from taskmates.core.workflows.signals.input_streams import InputStreams
+from taskmates.core.workflows.signals.llm_completion_signals import LlmCompletionSignals
 from taskmates.core.workflows.signals.markdown_completion_signals import MarkdownCompletionSignals
 from taskmates.core.workflows.signals.status_signals import StatusSignals
 from taskmates.core.workflows.states.current_step import CurrentStep
@@ -31,7 +32,6 @@ from taskmates.core.workflows.states.return_value import ReturnValue
 from taskmates.lib.not_set.not_set import NOT_SET
 from taskmates.logging import logger, file_logger
 from taskmates.types import Chat
-import pytest
 
 
 # class CompletionRunEnvironment(TypedDict):
@@ -196,12 +196,12 @@ class MarkdownComplete(Workflow):
             markdown_path=(run.context["runner_environment"]["markdown_path"]),
             taskmates_dirs=(run.context["runner_config"]["taskmates_dirs"]),
             inputs=run.objective.key['inputs'])
-        
+
         # Merge the parsed run_opts from markdown front matter into the runtime context
         # This allows model and other configurations from the front matter to take effect
         if chat.get("run_opts"):
             run.context["run_opts"].update(chat["run_opts"])
-        
+
         return chat
 
     async def end_section(self, markdown_chat: str, markdown_completion_signals: MarkdownCompletionSignals):
@@ -234,7 +234,10 @@ class MarkdownComplete(Workflow):
                                      context: RunContext,
                                      markdown_completion: MarkdownCompletionSignals,
                                      interrupted_or_killed: InterruptedOrKilled):
-        if context['runner_config']["interactive"] and not interrupted_or_killed.get():
+        run = RUN.get()
+        max_steps_reached = run.state["max_steps_check"].should_break()
+
+        if context['runner_config']["interactive"] and not interrupted_or_killed.get() and not max_steps_reached:
             recipient = chat["messages"][-1]["recipient"]
             if recipient:
                 await markdown_completion.next_responder.send_async(f"**{recipient}>** ")
@@ -255,7 +258,7 @@ async def test_markdown_front_matter_model_override(tmp_path):
     """Test that model specified in markdown front matter overrides the default model in runtime context"""
     from pathlib import Path
     from taskmates.defaults.context_defaults import ContextDefaults
-    
+
     # Create a markdown with model in front matter
     markdown_with_model = """---
 model: echo
@@ -263,15 +266,15 @@ model: echo
 
 Test message
 """
-    
+
     # Set up the runtime context with default model
     context = ContextDefaults().build()
     initial_model = context["run_opts"]["model"]
-    
+
     # Add required runner_environment and runner_config
     context["runner_environment"]["markdown_path"] = str(tmp_path / "test.md")
     context["runner_config"]["taskmates_dirs"] = [Path(__file__).parent.parent.parent.parent / "defaults"]
-    
+
     # Create a run environment
     objective = Objective(key=ObjectiveKey(outcome="test_front_matter", inputs={}))
     run = Run(
@@ -281,13 +284,109 @@ Test message
         state={},
         daemons={}
     )
+
+    with run:
+        workflow = MarkdownComplete()
+
+        # Get the parsed chat
+        chat = await workflow.get_markdown_chat(markdown_with_model)
+
+        # Verify the runtime context has been updated with the model from front matter
+        assert RUN.get().context["run_opts"]["model"] == "echo"
+        assert RUN.get().context["run_opts"]["model"] != initial_model
+
+
+@pytest.mark.asyncio
+async def test_no_recipient_prompt_when_max_steps_reached(tmp_path):
+    """Test that recipient prompt is not appended when max_steps is reached"""
+    from pathlib import Path
+    from taskmates.defaults.context_defaults import ContextDefaults
+    
+    # Create a markdown chat with a recipient
+    markdown_chat = """\
+        ---
+        participants:
+          assistant:
+            model: echo
+        ---
+        
+        **user>** Hello
+        
+        **assistant>** Hi there!
+        """
+    
+    # Set up the runtime context with max_steps = 1
+    context = ContextDefaults().build()
+    context["run_opts"]["max_steps"] = 1
+    context["runner_config"]["interactive"] = True
+    context["runner_environment"]["markdown_path"] = str(tmp_path / "test.md")
+    context["runner_config"]["taskmates_dirs"] = [Path(__file__).parent.parent.parent.parent / "defaults"]
+    
+    # Create a list to capture signal emissions
+    captured_signals = []
+    
+    # Create markdown completion signals with a custom handler
+    markdown_completion_signals = MarkdownCompletionSignals()
+    
+    async def capture_next_responder(data):
+        captured_signals.append(("next_responder", data))
+    
+    markdown_completion_signals.next_responder.connect(capture_next_responder)
+    
+    # Create a run environment
+    objective = Objective(key=ObjectiveKey(outcome="test_max_steps", inputs={}))
+    run = Run(
+        objective=objective,
+        context=context,
+        signals={
+            "control": ControlSignals(),
+            "status": StatusSignals(),
+            "markdown_completion": markdown_completion_signals,
+            "chat_completion": LlmCompletionSignals(),
+            "code_cell_output": CodeCellOutputSignals(),
+        },
+        state={
+            "interrupted": Interrupted(),
+            "interrupted_or_killed": InterruptedOrKilled(),
+            "return_value": ReturnValue(),
+            "markdown_chat": MarkdownChat(),
+            "current_step": CurrentStep(),
+            "max_steps_check": MaxStepsCheck(),
+        },
+        daemons={}
+    )
     
     with run:
         workflow = MarkdownComplete()
         
-        # Get the parsed chat
-        chat = await workflow.get_markdown_chat(markdown_with_model)
+        # Set current_step to exceed max_steps
+        run.state["current_step"].set(2)  # This is > max_steps (1)
         
-        # Verify the runtime context has been updated with the model from front matter
-        assert RUN.get().context["run_opts"]["model"] == "echo"
-        assert RUN.get().context["run_opts"]["model"] != initial_model
+        # Get the parsed chat
+        chat = await workflow.get_markdown_chat(markdown_chat)
+        
+        # Call _append_next_responder
+        await workflow._append_next_responder(
+            chat=chat,
+            context=run.context,
+            markdown_completion=markdown_completion_signals,
+            interrupted_or_killed=run.state["interrupted_or_killed"]
+        )
+        
+        # Verify that next_responder was NOT called because max_steps was reached
+        assert len(captured_signals) == 0, "Expected no next_responder signal when max_steps is reached"
+        
+        # Now test that it DOES send when max_steps is not reached
+        run.state["current_step"].set(1)  # This is <= max_steps (1)
+        
+        await workflow._append_next_responder(
+            chat=chat,
+            context=run.context,
+            markdown_completion=markdown_completion_signals,
+            interrupted_or_killed=run.state["interrupted_or_killed"]
+        )
+        
+        # Verify that next_responder WAS called
+        assert len(captured_signals) == 1, "Expected next_responder signal when max_steps is not reached"
+        assert captured_signals[0] == ("next_responder", "**assistant>** ")
+
