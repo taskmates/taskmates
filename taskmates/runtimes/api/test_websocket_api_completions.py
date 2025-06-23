@@ -36,8 +36,7 @@ async def test_chat_completion(app, tmp_path):
     > Short answer. 1+1=
     > 
     > 
-    
-    **user>** """)
+    \n""")
 
     test_payload: ApiRequest = {
         "type": "completions_request",
@@ -74,8 +73,7 @@ async def test_chat_completion_with_mention(app, tmp_path):
     > Hey @jeff short answer. 1+1=
     > 
     > 
-    
-    **user>** """)
+    \n""")
 
     test_payload: ApiRequest = {
         "type": "completions_request",
@@ -120,7 +118,7 @@ async def test_tool_execution(app, tmp_path):
                          '</pre>\n'
                          '-[x] Done\n'
                          '\n'
-                         "**assistant>** ")
+                         "")
 
     test_payload: ApiRequest = {
         "type": "completions_request",
@@ -163,8 +161,8 @@ async def test_code_cell_completion(app, tmp_path):
     2
     
     </pre>
+    \n''')
 
-    **assistant>** ''')
 
     test_payload: ApiRequest = {
         "type": "completions_request",
@@ -313,8 +311,7 @@ async def test_code_cell_no_output(app, tmp_path):
     expected_completion = ('###### Cell Output: stdout [cell_0]\n'
                            '\n'
                            'Done\n'
-                           '\n'
-                           '**assistant>** ')
+                           '\n')
     test_payload: ApiRequest = {
         "type": "completions_request",
         "version": taskmates.__version__,
@@ -573,7 +570,7 @@ async def test_tool_call(app, tmp_path):
 
     # The fixture contains a sequence of tool call chunks; check the full markdown response
     expected_response = (
-        "\n\n**assistant>** \n\n###### Steps\n\n- Get Weather [1] `{\"location\":\"San Francisco\"}`\n\n**user>** "
+        "\n\n**assistant>** \n\n###### Steps\n\n- Get Weather [1] `{\"location\":\"San Francisco\"}`\n\n"
     )
     assert markdown_response == expected_response
 
