@@ -11,7 +11,7 @@ from taskmates.core.workflow_engine.run import Objective, ObjectiveKey
 
 class ParseCommand(Command):
     def add_arguments(self, parser: argparse.ArgumentParser):
-        pass  # No additional arguments needed for parse command
+        parser.add_argument('file', nargs='?', help='Markdown file to parse (reads from stdin if not provided)')
 
     async def execute(self, args: argparse.Namespace):
         builder = CliContextBuilder(args)
@@ -21,7 +21,11 @@ class ParseCommand(Command):
             with Objective(key=ObjectiveKey(outcome="cli_parse_markdown_runner")).environment(context=contexts):
                 taskmates_dirs = contexts["runner_config"]["taskmates_dirs"]
 
-                markdown_chat = "".join(sys.stdin.readlines())
+                if hasattr(args, 'file') and args.file:
+                    with open(args.file, 'r') as f:
+                        markdown_chat = f.read()
+                else:
+                    markdown_chat = "".join(sys.stdin.readlines())
                 result = await parse_markdown_chat(markdown_chat, None, taskmates_dirs)
                 print(json.dumps(result, ensure_ascii=False))
 
