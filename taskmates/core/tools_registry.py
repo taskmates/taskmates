@@ -4,6 +4,9 @@ from taskmates.defaults.tools.dalle_.generate_images import generate_images
 from taskmates.defaults.tools.evaluation_.report_evaluation import report_evaluation
 from taskmates.defaults.tools.filesystem_.read_file import read_file
 from taskmates.defaults.tools.filesystem_.write_file import write_file
+from taskmates.defaults.tools.filesystem_.append_to_file import append_to_file
+from taskmates.defaults.tools.filesystem_.delete_file import delete_file
+from taskmates.defaults.tools.filesystem_.move_file import move_file
 from taskmates.defaults.tools.google_ import google_search
 from taskmates.defaults.tools.jira_.jira_ import create_issue, add_comment, update_status, search_issues, delete_issues, \
     dump_context, \
@@ -29,6 +32,9 @@ def initialize_function_registry(function_registry):
     # file system
     function_registry["read_file"] = read_file
     function_registry["write_file"] = write_file
+    function_registry["append_to_file"] = append_to_file
+    function_registry["delete_file"] = delete_file
+    function_registry["move_file"] = move_file
 
     # browser
     function_registry["google_search"] = google_search
