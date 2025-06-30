@@ -20,12 +20,14 @@ def write_file(path, content):
     deny = ((run_opts.get("tools") or {}).get("write_file") or {}).get("deny", None)
 
     path_obj = Path(path)
-    if not path_obj.is_file():
-        print(f"The path '{path}' is not a file or does not exist.", file=sys.stderr)
-        return None
-
+    
+    # Check if the path is allowed before creating anything
     if not is_path_allowed(path_obj, allow, deny):
         print(f"Access to file '{path}' is not allowed.", file=sys.stderr)
         return None
-
-    return Path(path).write_text(content)
+    
+    # Create parent directories if they don't exist
+    path_obj.parent.mkdir(parents=True, exist_ok=True)
+    
+    # Write the content to the file
+    return path_obj.write_text(content)

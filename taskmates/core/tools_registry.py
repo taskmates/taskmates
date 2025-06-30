@@ -7,6 +7,7 @@ from taskmates.defaults.tools.filesystem_.write_file import write_file
 from taskmates.defaults.tools.filesystem_.append_to_file import append_to_file
 from taskmates.defaults.tools.filesystem_.delete_file import delete_file
 from taskmates.defaults.tools.filesystem_.move_file import move_file
+from taskmates.defaults.tools.filesystem_.create_directory import create_directory
 from taskmates.defaults.tools.google_ import google_search
 from taskmates.defaults.tools.jira_.jira_ import create_issue, add_comment, update_status, search_issues, delete_issues, \
     dump_context, \
@@ -35,6 +36,7 @@ def initialize_function_registry(function_registry):
     function_registry["append_to_file"] = append_to_file
     function_registry["delete_file"] = delete_file
     function_registry["move_file"] = move_file
+    function_registry["create_directory"] = create_directory
 
     # browser
     function_registry["google_search"] = google_search
