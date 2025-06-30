@@ -47,12 +47,13 @@ def render_transclusions(text: str,
                                                    source_file=source_file,
                                                    is_embedding=embedding)
 
-        is_content = i < len(lines) - 1 and lines[i + 1].strip()
-        if is_content:
-            transclusion_output[-1] = transclusion_output[-1].rstrip('\n') + '\n'
-        else:
-            transclusion_output[-1] = transclusion_output[-1].rstrip('\n')
-        output.extend(transclusion_output)
+        if transclusion_output:
+            is_content = i < len(lines) - 1 and lines[i + 1].strip()
+            if is_content:
+                transclusion_output[-1] = transclusion_output[-1].rstrip('\n') + '\n'
+            else:
+                transclusion_output[-1] = transclusion_output[-1].rstrip('\n')
+            output.extend(transclusion_output)
     final_output = '\n'.join(output) if not is_embedding else ''.join(output)
 
     transclusion_links = extract_transclusion_links(final_output)
@@ -96,9 +97,9 @@ def process_transclusion(token: Transclusion,
         filenames = list(sorted(glob.glob(target_glob, root_dir=transclusions_base_dir)))
     else:
         filenames = [target_glob]
+        if len(filenames) == 0:
+            raise ValueError(f"No files found matching glob pattern: {token.target_glob}")
 
-    if len(filenames) == 0:
-        raise ValueError(f"No files found matching glob pattern: {token.target_glob}")
     for filename in filenames:
         resolved_path = (Path(transclusions_base_dir) / filename).resolve()
         try:
