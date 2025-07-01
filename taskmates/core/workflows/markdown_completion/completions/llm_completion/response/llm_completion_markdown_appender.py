@@ -97,7 +97,9 @@ class LlmCompletionMarkdownAppender:
                 function_title = snake_case_to_title_case(acc["function_name"])
                 tool_call_completion = f"- {function_title} [{code_cell_id}] `"
                 await self.append(tool_call_completion)
-                await self.append(acc["arguments"])
+                # Escape backticks in arguments
+                escaped_arguments = acc["arguments"].replace("`", "\\`")
+                await self.append(escaped_arguments)
             await self.append("`\n\n")
             self._tool_call_accumulator.clear()
             self._tool_calls_finalized = True
