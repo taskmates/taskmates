@@ -106,6 +106,8 @@ def process_transclusion(token: Transclusion,
             if filename.lower().endswith('.pdf'):
                 content = read_pdf(resolved_path)
             else:
+                if resolved_path.is_dir():
+                    continue
                 if not resolved_path.exists():
                     raise ValueError(f"Transclusion not found: {resolved_path}. Source file: {source_file}")
                 with open(resolved_path, 'r') as f:
