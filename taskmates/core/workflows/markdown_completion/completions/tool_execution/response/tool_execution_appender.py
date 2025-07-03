@@ -3,7 +3,7 @@ from taskmates.core.workflows.markdown_completion.completions.tool_execution.edi
 from taskmates.core.workflows.signals.markdown_completion_signals import MarkdownCompletionSignals
 
 
-class ToolEditorCompletion:
+class ToolExecutionAppender:
     def __init__(self, project_dir: str, chat_file: str, markdown_completion_signals: MarkdownCompletionSignals):
         self.editor_appender = EditorAppender(project_dir, chat_file, markdown_completion_signals)
 

@@ -4,7 +4,7 @@ import pytest
 from typeguard import typechecked
 
 from taskmates.core.chat.openai.get_text_content import get_text_content
-from taskmates.core.workflows.markdown_completion.completions.code_cell_execution.code_cells_editor_completion import CodeCellsEditorCompletion
+from taskmates.core.workflows.markdown_completion.completions.code_cell_execution.response.code_cell_execution_appender import CodeCellExecutionAppender
 from taskmates.core.workflows.markdown_completion.completions.code_cell_execution.execute_markdown_on_local_kernel import \
     execute_markdown_on_local_kernel
 from taskmates.core.workflows.markdown_completion.completions.completion_provider import CompletionProvider
@@ -46,7 +46,7 @@ class CodeCellExecutionCompletionProvider(CompletionProvider):
 
         messages = chat.get("messages", [])
 
-        editor_completion = CodeCellsEditorCompletion(project_dir=cwd,
+        editor_completion = CodeCellExecutionAppender(project_dir=cwd,
                                                       chat_file=markdown_path,
                                                       markdown_completion_signals=markdown_completion_signals)
 

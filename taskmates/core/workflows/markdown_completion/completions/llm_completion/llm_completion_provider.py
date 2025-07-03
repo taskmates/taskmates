@@ -39,6 +39,22 @@ class LlmCompletionProvider(CompletionProvider):
             status_signals: StatusSignals,
     ):
         contexts = RUN.get().context
+        taskmates_dirs = contexts["runner_config"]["taskmates_dirs"]
+        model_alias = contexts["run_opts"]["model"]
+
+        model_conf = get_model_conf(model_alias=model_alias,
+                                    messages=chat["messages"],
+                                    taskmates_dirs=taskmates_dirs)
+        model_conf.update({
+            "temperature": 0.2,
+            "stop": ["\n######"],
+        })
+
+        model_conf["stop"].extend(self.get_usernames_stop_sequences(chat))
+
+        client = get_model_client(model_spec=model_conf)
+
+        request_payload = prepare_request_payload(chat, model_conf)
 
         last_tool_call_id = 0
         for m in chat['messages']:
@@ -56,26 +72,6 @@ class LlmCompletionProvider(CompletionProvider):
             await chat_completion_markdown_appender.process_chat_completion_chunk(chat_completion_chunk)
 
         with chat_completion_signals.chat_completion.connected_to(restream_completion_chunk):
-
-            taskmates_dirs = contexts["runner_config"]["taskmates_dirs"]
-
-            model_alias = contexts["run_opts"]["model"]
-
-            model_conf = get_model_conf(model_alias=model_alias,
-                                        messages=chat["messages"],
-                                        taskmates_dirs=taskmates_dirs)
-
-            model_conf.update({
-                "temperature": 0.2,
-                "stop": ["\n######"],
-            })
-
-            model_conf["stop"].extend(self.get_usernames_stop_sequences(chat))
-
-            request_payload = prepare_request_payload(chat, model_conf)
-
-            client = get_model_client(model_spec=model_conf)
-
             return await api_request(client,
                                      request_payload,
                                      control_signals,
@@ -170,7 +166,6 @@ async def test_openai_tool_call_streaming_response(run):
             "fixture_path": "tests/fixtures/api-responses/openai_tool_call_streaming_response.jsonl"
         }
     }
-
 
     # Create the provider
     provider = LlmCompletionProvider()

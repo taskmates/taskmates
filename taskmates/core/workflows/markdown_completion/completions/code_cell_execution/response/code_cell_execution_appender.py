@@ -10,7 +10,7 @@ from taskmates.core.workflows.signals.markdown_completion_signals import Markdow
 
 
 @typechecked
-class CodeCellsEditorCompletion:
+class CodeCellExecutionAppender:
     def __init__(self, project_dir, chat_file,
                  markdown_completion_signals: MarkdownCompletionSignals):
         self.state = {}

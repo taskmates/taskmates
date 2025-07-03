@@ -5,7 +5,7 @@ from typeguard import typechecked
 
 from taskmates.core.workflows.markdown_completion.completions.tool_execution.invoke_function import invoke_function
 from taskmates.core.workflows.markdown_completion.completions.code_cell_execution.execution.code_execution import CodeExecution
-from taskmates.core.workflows.markdown_completion.completions.tool_execution.tool_editor_completion import ToolEditorCompletion
+from taskmates.core.workflows.markdown_completion.completions.tool_execution.response.tool_execution_appender import ToolExecutionAppender
 from taskmates.core.workflows.markdown_completion.completions.completion_provider import CompletionProvider
 from taskmates.core.tools_registry import tools_registry
 from taskmates.types import Chat, RunnerEnvironment, ToolCall
@@ -49,8 +49,8 @@ class ToolExecutionCompletionProvider(CompletionProvider):
 
         tool_calls = messages[-1].get("tool_calls", [])
 
-        editor_completion = ToolEditorCompletion(project_dir=cwd, chat_file=markdown_path,
-                                                 markdown_completion_signals=markdown_completion_signals)
+        editor_completion = ToolExecutionAppender(project_dir=cwd, chat_file=markdown_path,
+                                                  markdown_completion_signals=markdown_completion_signals)
 
         for tool_call in tool_calls:
             function_title = tool_call["function"]["name"].replace("_", " ").title()
