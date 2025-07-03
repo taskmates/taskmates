@@ -65,7 +65,7 @@ def test_move_moves_file_to_new_location(tmp_path):
         }
     }
 
-    with patch('taskmates.defaults.tools.filesystem_.move_file.RUN', mock_run):
+    with patch('taskmates.defaults.tools.filesystem_.move.RUN', mock_run):
         move(str(source_file), str(dest_file))
 
     assert not source_file.exists()
@@ -96,7 +96,7 @@ def test_move_renames_file_in_same_directory(tmp_path):
         }
     }
 
-    with patch('taskmates.defaults.tools.filesystem_.move_file.RUN', mock_run):
+    with patch('taskmates.defaults.tools.filesystem_.move.RUN', mock_run):
         move(str(source_file), str(dest_file))
 
     assert not source_file.exists()
@@ -132,7 +132,7 @@ def test_move_moves_directory_to_new_location(tmp_path):
         }
     }
 
-    with patch('taskmates.defaults.tools.filesystem_.move_file.RUN', mock_run):
+    with patch('taskmates.defaults.tools.filesystem_.move.RUN', mock_run):
         move(str(source_dir), str(dest_dir))
 
     assert not source_dir.exists()
@@ -166,7 +166,7 @@ def test_move_renames_directory_in_same_location(tmp_path):
         }
     }
 
-    with patch('taskmates.defaults.tools.filesystem_.move_file.RUN', mock_run):
+    with patch('taskmates.defaults.tools.filesystem_.move.RUN', mock_run):
         move(str(source_dir), str(dest_dir))
 
     assert not source_dir.exists()
@@ -192,7 +192,7 @@ def test_move_returns_none_for_non_existent_source(tmp_path, capsys):
         }
     }
 
-    with patch('taskmates.defaults.tools.filesystem_.move_file.RUN', mock_run):
+    with patch('taskmates.defaults.tools.filesystem_.move.RUN', mock_run):
         result = move(str(non_existent), str(dest_path))
 
     assert result is None
@@ -219,8 +219,8 @@ def test_move_respects_source_deny_rules(tmp_path, capsys):
         }
     }
 
-    with patch('taskmates.defaults.tools.filesystem_.move_file.RUN', mock_run):
-        with patch('taskmates.defaults.tools.filesystem_.move_file.is_path_allowed', return_value=False):
+    with patch('taskmates.defaults.tools.filesystem_.move.RUN', mock_run):
+        with patch('taskmates.defaults.tools.filesystem_.move.is_path_allowed', return_value=False):
             result = move(str(source_file), str(dest_file))
 
     assert result is None
@@ -253,8 +253,8 @@ def test_move_respects_destination_deny_rules(tmp_path, capsys):
         # Allow source, deny destination
         return str(path) == str(source_file)
 
-    with patch('taskmates.defaults.tools.filesystem_.move_file.RUN', mock_run):
-        with patch('taskmates.defaults.tools.filesystem_.move_file.is_path_allowed', side_effect=mock_is_path_allowed):
+    with patch('taskmates.defaults.tools.filesystem_.move.RUN', mock_run):
+        with patch('taskmates.defaults.tools.filesystem_.move.is_path_allowed', side_effect=mock_is_path_allowed):
             result = move(str(source_file), str(dest_file))
 
     assert result is None

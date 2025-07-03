@@ -461,3 +461,18 @@ async def test_stop_sequence_spanning_chunks():
     chunks = await collect_chunks(processor)
     full_text = "".join(c.content for c in chunks if c.content)
     assert full_text == "Hello, this is chunk 1, "
+
+@pytest.mark.asyncio
+async def test_stop_sequence_cell_output_spanning_chunks():
+    """StopSequenceProcessor must handle '###### Cell Output' stop sequence split across two chunks."""
+    async def mock_stream():
+        yield AIMessageChunk(content="This is output before the cell marker\n#####")
+        yield AIMessageChunk(content="# Cell Output\nAnd this should not appear.")
+
+    processor = StopSequenceProcessor(
+        mock_stream(),
+        stop_sequences=["###### Cell Output"]
+    )
+    chunks = await collect_chunks(processor)
+    full_text = "".join(c.content for c in chunks if c.content)
+    assert full_text == "This is output before the cell marker\n"
