@@ -4,7 +4,7 @@ import pytest
 from loguru import logger
 
 from taskmates.core.markdown_chat.parse_markdown_chat import parse_markdown_chat
-from taskmates.core.workflows.markdown_completion.completions.llm_completion.llm_completion_provider import LlmCompletionProvider
+from taskmates.core.workflows.markdown_completion.completions.llm_completion.llm_chat_completion_provider import LlmChatCompletionProvider
 from taskmates.core.workflows.markdown_completion.completions.code_cell_execution.code_cell_execution_completion_provider import \
     CodeCellExecutionCompletionProvider
 from taskmates.core.workflows.markdown_completion.completions.tool_execution.tool_execution_completion_provider import \
@@ -17,7 +17,7 @@ def compute_next_completion(chat):
     assistances = [
         CodeCellExecutionCompletionProvider(),
         ToolExecutionCompletionProvider(),
-        LlmCompletionProvider()
+        LlmChatCompletionProvider()
     ]
 
     for assistance in assistances:
@@ -94,7 +94,7 @@ async def test_compute_next_completion_chat(taskmates_dir, tmp_path):
 
     chat = await parse_markdown_chat(markdown_chat, tmp_path / "chat.md", [taskmates_dir])
     result = compute_next_completion(chat)
-    assert isinstance(result, LlmCompletionProvider)
+    assert isinstance(result, LlmChatCompletionProvider)
 
 
 @pytest.mark.asyncio
@@ -115,7 +115,7 @@ async def test_compute_next_completion_incomplete_code_cell(taskmates_dir, tmp_p
 
     chat = await parse_markdown_chat(markdown_chat, tmp_path / "chat.md", [taskmates_dir])
     result = compute_next_completion(chat)
-    assert isinstance(result, LlmCompletionProvider)
+    assert isinstance(result, LlmChatCompletionProvider)
 
 
 # TODO: not supported yet
@@ -195,7 +195,7 @@ async def test_compute_next_completion_code_cell_with_error(taskmates_dir, tmp_p
 
     chat = await parse_markdown_chat(markdown_chat, tmp_path / "chat.md", [taskmates_dir])
     result = compute_next_completion(chat)
-    assert isinstance(result, LlmCompletionProvider)
+    assert isinstance(result, LlmChatCompletionProvider)
 
 
 @pytest.mark.asyncio
@@ -249,4 +249,4 @@ async def test_compute_next_completion_malformed_chat(taskmates_dir, tmp_path):
 
     chat = await parse_markdown_chat(markdown_chat, tmp_path / "chat.md", [taskmates_dir])
     result = compute_next_completion(chat)
-    assert isinstance(result, LlmCompletionProvider)
+    assert isinstance(result, LlmChatCompletionProvider)

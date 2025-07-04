@@ -18,7 +18,7 @@ from taskmates.types import Chat
 
 
 @typechecked
-class LlmCompletionProvider(CompletionProvider):
+class LlmChatCompletionProvider(CompletionProvider):
     def can_complete(self, chat):
         if self.has_truncated_code_cell(chat):
             return True
@@ -115,7 +115,7 @@ async def test_anthropic_tool_call_streaming_response(run):
     }
 
     # Create the provider
-    provider = LlmCompletionProvider()
+    provider = LlmChatCompletionProvider()
 
     # Capture markdown output
     markdown_outputs = []
@@ -170,7 +170,7 @@ async def test_openai_tool_call_streaming_response(run):
     }
 
     # Create the provider
-    provider = LlmCompletionProvider()
+    provider = LlmChatCompletionProvider()
 
     # Capture markdown output
     markdown_outputs = []
@@ -226,7 +226,7 @@ async def test_openai_get_weather_tool_call_streaming_response(run):
     }
 
     # Create the provider
-    provider = LlmCompletionProvider()
+    provider = LlmChatCompletionProvider()
 
     # Capture markdown output
     markdown_outputs = []
@@ -282,7 +282,7 @@ async def test_openai_get_weather_tool_call_streaming_response_format_2(run):
     }
 
     # Create the provider
-    provider = LlmCompletionProvider()
+    provider = LlmChatCompletionProvider()
 
     # Capture markdown output
     markdown_outputs = []
@@ -338,7 +338,7 @@ async def test_gemini_streaming_response(run):
     }
 
     # Create the provider
-    provider = LlmCompletionProvider()
+    provider = LlmChatCompletionProvider()
 
     # Capture markdown output
     markdown_outputs = []
@@ -391,7 +391,7 @@ async def test_gemini_tool_call_streaming_response(run):
     }
 
     # Create the provider
-    provider = LlmCompletionProvider()
+    provider = LlmChatCompletionProvider()
 
     # Capture markdown output
     markdown_outputs = []
