@@ -228,10 +228,11 @@ async def test_api_request_happy_path(run):
 
     # Call the api_request function with the defined parameters
     client = ChatOpenAI(model="gpt-3.5-turbo")
+
     response = await api_request(client, request_payload,
                                  run.signals["control"],
                                  run.signals["status"],
-                                 run.signals["llm_chat_completion"]
+                                 LlmChatCompletionSignals()
                                  )
 
     # Assert that the response matches the new AIMessageChunk protocol
@@ -254,7 +255,7 @@ async def test_api_request_who_are_you(run):
     response = await api_request(client, request_payload,
                                  run.signals["control"],
                                  run.signals["status"],
-                                 run.signals["llm_chat_completion"]
+                                 LlmChatCompletionSignals()
                                  )
 
     # Assert the response has correct OpenAI format with expected fields
@@ -336,7 +337,7 @@ async def test_api_request_with_tool_calls(run):
                                  request_payload,
                                  run.signals["control"],
                                  run.signals["status"],
-                                 run.signals["llm_chat_completion"]
+                                 LlmChatCompletionSignals()
                                  )
 
     # Assert the response conforms to OpenAI format
