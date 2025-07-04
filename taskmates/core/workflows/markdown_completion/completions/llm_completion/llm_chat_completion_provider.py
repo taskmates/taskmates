@@ -55,7 +55,7 @@ class LlmChatCompletionProvider(CompletionProvider):
 
         request_payload = prepare_request_payload(chat, model_conf)
 
-        chat_completion_markdown_appender = LlmCompletionMarkdownAppender(
+        markdown_appender = LlmCompletionMarkdownAppender(
             recipient=chat["messages"][-1]["recipient"],
             last_tool_call_id=self.get_last_tool_call_index(chat),
             is_resume_request=self.has_truncated_code_cell(chat),
@@ -63,10 +63,12 @@ class LlmChatCompletionProvider(CompletionProvider):
         )
 
         async def restream_completion_chunk(chat_completion_chunk):
-            await chat_completion_markdown_appender.process_chat_completion_chunk(chat_completion_chunk)
+            await markdown_appender.process_chat_completion_chunk(chat_completion_chunk)
 
-
+        # 1. we create the llm signals here
         llm_chat_completion_signals = LlmChatCompletionSignals()
+
+        # 2. we connect llm signals -> markdown response
         with llm_chat_completion_signals.llm_chat_completion.connected_to(restream_completion_chunk):
             return await api_request(client,
                                      request_payload,

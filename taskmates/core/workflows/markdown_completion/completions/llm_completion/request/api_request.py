@@ -9,7 +9,6 @@ from langchain_anthropic import ChatAnthropic
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import ToolMessage, BaseMessage, ToolCall
 from langchain_core.tools import BaseTool, StructuredTool
-from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_openai import ChatOpenAI
 from loguru import logger
 from opentelemetry import trace
@@ -158,6 +157,8 @@ async def api_request(
                         received_chunk = True
                         if request_interruption_monitor.interrupted_or_killed:
                             break
+
+                        # 3. we feed chunks -> llm signals
                         await llm_chat_completion_signals.llm_chat_completion.send_async(chat_completion_chunk)
 
                 except asyncio.CancelledError:
