@@ -1,4 +1,4 @@
-from taskmates.core.workflows.signals.llm_completion_signals import LlmCompletionSignals
+from taskmates.core.workflows.signals.llm_chat_completion_signals import LlmChatCompletionSignals
 from taskmates.core.workflows.signals.control_signals import ControlSignals
 from taskmates.core.workflows.signals.input_streams import InputStreams
 from taskmates.core.workflows.signals.markdown_completion_signals import MarkdownCompletionSignals

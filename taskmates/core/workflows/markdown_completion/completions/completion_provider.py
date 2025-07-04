@@ -3,7 +3,7 @@ from abc import ABC, abstractmethod
 from typeguard import typechecked
 
 from taskmates.types import Chat
-from taskmates.core.workflows.signals.llm_completion_signals import LlmCompletionSignals
+from taskmates.core.workflows.signals.llm_chat_completion_signals import LlmChatCompletionSignals
 from taskmates.core.workflows.signals.code_cell_output_signals import CodeCellOutputSignals
 from taskmates.core.workflows.signals.control_signals import ControlSignals
 from taskmates.core.workflows.signals.markdown_completion_signals import MarkdownCompletionSignals

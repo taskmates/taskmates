@@ -27,7 +27,7 @@ from taskmates.core.workflows.markdown_completion.completions.llm_completion.res
 from taskmates.core.workflows.markdown_completion.completions.llm_completion.response.streamed_response import \
     StreamedResponse
 from taskmates.core.workflows.signals.control_signals import ControlSignals
-from taskmates.core.workflows.signals.llm_completion_signals import LlmCompletionSignals
+from taskmates.core.workflows.signals.llm_chat_completion_signals import LlmChatCompletionSignals
 from taskmates.core.workflows.signals.status_signals import StatusSignals
 from taskmates.lib.matchers_ import matchers
 from taskmates.logging import file_logger
@@ -94,7 +94,7 @@ async def api_request(
         request_payload: dict,
         control_signals: ControlSignals,
         status_signals: StatusSignals,
-        chat_completion_signals: LlmCompletionSignals
+        llm_chat_completion_signals: LlmChatCompletionSignals
 ) -> dict:
     streamed_response = StreamedResponse()
 
@@ -134,14 +134,14 @@ async def api_request(
                         if non_system_count >= 3:
                             break
 
-            force_stream = bool(chat_completion_signals.chat_completion.receivers)
+            force_stream = bool(llm_chat_completion_signals.llm_chat_completion.receivers)
 
             # Extract stop sequences from request payload
             stop_sequences = request_payload.pop("stop", [])
 
             if request_payload.get("stream", force_stream):
                 chat_completion = llm.astream(messages)
-                chat_completion_signals.chat_completion.connect(streamed_response.accept, weak=False)
+                llm_chat_completion_signals.llm_chat_completion.connect(streamed_response.accept, weak=False)
 
                 received_chunk = False
 
@@ -158,7 +158,7 @@ async def api_request(
                         received_chunk = True
                         if request_interruption_monitor.interrupted_or_killed:
                             break
-                        await chat_completion_signals.chat_completion.send_async(chat_completion_chunk)
+                        await llm_chat_completion_signals.llm_chat_completion.send_async(chat_completion_chunk)
 
                 except asyncio.CancelledError:
                     file_logger.debug("response_cancelled.json", content=str(True))
@@ -230,7 +230,7 @@ async def test_api_request_happy_path(run):
     response = await api_request(client, request_payload,
                                  run.signals["control"],
                                  run.signals["status"],
-                                 run.signals["chat_completion"]
+                                 run.signals["llm_chat_completion"]
                                  )
 
     # Assert that the response matches the new AIMessageChunk protocol
@@ -253,7 +253,7 @@ async def test_api_request_who_are_you(run):
     response = await api_request(client, request_payload,
                                  run.signals["control"],
                                  run.signals["status"],
-                                 run.signals["chat_completion"]
+                                 run.signals["llm_chat_completion"]
                                  )
 
     # Assert the response has correct OpenAI format with expected fields
@@ -335,7 +335,7 @@ async def test_api_request_with_tool_calls(run):
                                  request_payload,
                                  run.signals["control"],
                                  run.signals["status"],
-                                 run.signals["chat_completion"]
+                                 run.signals["llm_chat_completion"]
                                  )
 
     # Assert the response conforms to OpenAI format
@@ -379,15 +379,15 @@ async def test_api_request_streaming_with_fixture(run):
     async def capture_chunk(chunk):
         streamed_chunks.append(chunk)
 
-    run.signals["chat_completion"] = LlmCompletionSignals()
-    run.signals["chat_completion"].chat_completion.connect(capture_chunk, weak=False)
+    run.signals["llm_chat_completion"] = LlmChatCompletionSignals()
+    run.signals["llm_chat_completion"].llm_chat_completion.connect(capture_chunk, weak=False)
 
     response = await api_request(
         client,
         request_payload,
         run.signals["control"],
         run.signals["status"],
-        run.signals["chat_completion"]
+        run.signals["llm_chat_completion"]
     )
 
     # Verify the conversion produces correct OpenAI format
@@ -425,13 +425,13 @@ async def test_api_request_non_streaming_with_fixture(run):
         ]
     }
 
-    run.signals["chat_completion"] = LlmCompletionSignals()
+    run.signals["llm_chat_completion"] = LlmChatCompletionSignals()
     response = await api_request(
         client,
         request_payload,
         run.signals["control"],
         run.signals["status"],
-        run.signals["chat_completion"]
+        run.signals["llm_chat_completion"]
     )
 
     # Verify the conversion produces correct OpenAI format
@@ -481,15 +481,15 @@ async def test_api_request_tool_call_streaming_with_fixture(run):
     async def capture_chunk(chunk):
         streamed_chunks.append(chunk)
 
-    run.signals["chat_completion"] = LlmCompletionSignals()
-    run.signals["chat_completion"].chat_completion.connect(capture_chunk, weak=False)
+    run.signals["llm_chat_completion"] = LlmChatCompletionSignals()
+    run.signals["llm_chat_completion"].llm_chat_completion.connect(capture_chunk, weak=False)
 
     response = await api_request(
         client,
         request_payload,
         run.signals["control"],
         run.signals["status"],
-        run.signals["chat_completion"]
+        run.signals["llm_chat_completion"]
     )
 
     # Verify the conversion produces correct OpenAI format with tool calls
@@ -545,15 +545,15 @@ async def test_api_request_with_stop_sequences(run):
     async def capture_chunk(chunk):
         streamed_chunks.append(chunk)
 
-    run.signals["chat_completion"] = LlmCompletionSignals()
-    run.signals["chat_completion"].chat_completion.connect(capture_chunk, weak=False)
+    run.signals["llm_chat_completion"] = LlmChatCompletionSignals()
+    run.signals["llm_chat_completion"].llm_chat_completion.connect(capture_chunk, weak=False)
 
     response = await api_request(
         client,
         request_payload,
         run.signals["control"],
         run.signals["status"],
-        run.signals["chat_completion"]
+        run.signals["llm_chat_completion"]
     )
 
     # Verify the content stops at the stop sequence

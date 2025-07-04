@@ -11,7 +11,7 @@ from taskmates.core.workflows.markdown_completion.completions.llm_completion.req
 from taskmates.core.workflows.markdown_completion.completions.llm_completion.response.llm_completion_markdown_appender import \
     LlmCompletionMarkdownAppender
 from taskmates.core.workflows.signals.control_signals import ControlSignals
-from taskmates.core.workflows.signals.llm_completion_signals import LlmCompletionSignals
+from taskmates.core.workflows.signals.llm_chat_completion_signals import LlmChatCompletionSignals
 from taskmates.core.workflows.signals.markdown_completion_signals import MarkdownCompletionSignals
 from taskmates.core.workflows.signals.status_signals import StatusSignals
 from taskmates.types import Chat
@@ -19,9 +19,6 @@ from taskmates.types import Chat
 
 @typechecked
 class LlmCompletionProvider(CompletionProvider):
-    def __init__(self):
-        self.chat_completion_signals = LlmCompletionSignals()
-
     def can_complete(self, chat):
         if self.has_truncated_code_cell(chat):
             return True
@@ -58,11 +55,9 @@ class LlmCompletionProvider(CompletionProvider):
 
         request_payload = prepare_request_payload(chat, model_conf)
 
-        last_tool_call_id = self.get_last_tool_call_index(chat)
-
         chat_completion_markdown_appender = LlmCompletionMarkdownAppender(
             recipient=chat["messages"][-1]["recipient"],
-            last_tool_call_id=last_tool_call_id,
+            last_tool_call_id=self.get_last_tool_call_index(chat),
             is_resume_request=self.has_truncated_code_cell(chat),
             markdown_completion_signals=markdown_completion_signals
         )
@@ -70,12 +65,14 @@ class LlmCompletionProvider(CompletionProvider):
         async def restream_completion_chunk(chat_completion_chunk):
             await chat_completion_markdown_appender.process_chat_completion_chunk(chat_completion_chunk)
 
-        with self.chat_completion_signals.chat_completion.connected_to(restream_completion_chunk):
+
+        llm_chat_completion_signals = LlmChatCompletionSignals()
+        with llm_chat_completion_signals.llm_chat_completion.connected_to(restream_completion_chunk):
             return await api_request(client,
                                      request_payload,
                                      control_signals,
                                      status_signals,
-                                     self.chat_completion_signals)
+                                     llm_chat_completion_signals)
 
     def get_last_tool_call_index(self, chat):
         last_tool_call_id = 0

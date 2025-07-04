@@ -1,6 +1,6 @@
 from typing import TypedDict
 
-from taskmates.core.workflows.signals.llm_completion_signals import LlmCompletionSignals
+from taskmates.core.workflows.signals.llm_chat_completion_signals import LlmChatCompletionSignals
 from taskmates.core.workflows.signals.control_signals import ControlSignals
 from taskmates.core.workflows.signals.execution_environment_signals import ExecutionEnvironmentSignals
 from taskmates.core.workflows.signals.code_cell_output_signals import CodeCellOutputSignals
