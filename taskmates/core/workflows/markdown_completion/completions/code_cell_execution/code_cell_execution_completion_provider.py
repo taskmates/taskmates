@@ -4,21 +4,24 @@ import pytest
 from typeguard import typechecked
 
 from taskmates.core.chat.openai.get_text_content import get_text_content
-from taskmates.core.workflows.markdown_completion.completions.code_cell_execution.response.code_cell_execution_appender import CodeCellExecutionAppender
+from taskmates.core.workflow_engine.run import RUN
 from taskmates.core.workflows.markdown_completion.completions.code_cell_execution.execute_markdown_on_local_kernel import \
     execute_markdown_on_local_kernel
+from taskmates.core.workflows.markdown_completion.completions.code_cell_execution.response.code_cell_execution_appender import \
+    CodeCellExecutionAppender
 from taskmates.core.workflows.markdown_completion.completions.completion_provider import CompletionProvider
-from taskmates.types import Chat, RunnerEnvironment
-from taskmates.core.workflow_engine.run import RUN
-from taskmates.core.workflows.signals.llm_completion_signals import LlmCompletionSignals
 from taskmates.core.workflows.signals.code_cell_output_signals import CodeCellOutputSignals
 from taskmates.core.workflows.signals.control_signals import ControlSignals
 from taskmates.core.workflows.signals.markdown_completion_signals import MarkdownCompletionSignals
 from taskmates.core.workflows.signals.status_signals import StatusSignals
+from taskmates.types import Chat, RunnerEnvironment
 
 
 @typechecked
 class CodeCellExecutionCompletionProvider(CompletionProvider):
+    def __init__(self):
+        self.code_cell_output_signals = CodeCellOutputSignals()
+
     def can_complete(self, chat):
         if self.has_truncated_code_cell(chat):
             return False
@@ -33,8 +36,6 @@ class CodeCellExecutionCompletionProvider(CompletionProvider):
             chat: Chat,
             control_signals: ControlSignals,
             markdown_completion_signals: MarkdownCompletionSignals,
-            chat_completion_signals: LlmCompletionSignals,
-            code_cell_output_signals: CodeCellOutputSignals,
             status_signals: StatusSignals
     ):
         contexts = RUN.get().context
@@ -53,13 +54,17 @@ class CodeCellExecutionCompletionProvider(CompletionProvider):
         async def on_code_cell_chunk(code_cell_chunk):
             await editor_completion.process_code_cell_output(code_cell_chunk)
 
-        with code_cell_output_signals.code_cell_output.connected_to(on_code_cell_chunk):
+        with self.code_cell_output_signals.code_cell_output.connected_to(on_code_cell_chunk):
             text_content = get_text_content(messages[-1])
             # TODO pass env here
-            await execute_markdown_on_local_kernel(content=text_content,
-                                                   markdown_path=markdown_path,
-                                                   cwd=cwd,
-                                                   env=env)
+            await execute_markdown_on_local_kernel(
+                control=control_signals,
+                status=status_signals,
+                code_cell_output=self.code_cell_output_signals,
+                content=text_content,
+                markdown_path=markdown_path,
+                cwd=cwd,
+                env=env)
 
         await editor_completion.process_code_cells_completed()
 
@@ -103,9 +108,7 @@ async def test_markdown_code_cells_assistance_streaming(tmp_path):
 
     signals = RUN.get().signals
     execution_environment_signals = signals["execution_environment"]
-    code_cell_output_signals = signals["code_cell_output"]
     markdown_completion_signals = signals["markdown_completion"]
-    code_cell_output_signals.code_cell_output.connect(capture_code_cell_chunk)
     markdown_completion_signals.response.connect(capture_completion_chunk)
     execution_environment_signals.error.connect(capture_error)
     assistance = CodeCellExecutionCompletionProvider()
@@ -113,8 +116,6 @@ async def test_markdown_code_cells_assistance_streaming(tmp_path):
         chat,
         signals["control"],
         markdown_completion_signals,
-        signals["chat_completion"],
-        code_cell_output_signals,
         signals["status"],
     )
 

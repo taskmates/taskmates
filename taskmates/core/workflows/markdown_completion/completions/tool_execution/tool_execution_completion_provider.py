@@ -3,19 +3,19 @@ from typing import Dict
 
 from typeguard import typechecked
 
-from taskmates.core.workflows.markdown_completion.completions.tool_execution.invoke_function import invoke_function
-from taskmates.core.workflows.markdown_completion.completions.code_cell_execution.execution.code_execution import CodeExecution
-from taskmates.core.workflows.markdown_completion.completions.tool_execution.response.tool_execution_appender import ToolExecutionAppender
-from taskmates.core.workflows.markdown_completion.completions.completion_provider import CompletionProvider
 from taskmates.core.tools_registry import tools_registry
-from taskmates.types import Chat, RunnerEnvironment, ToolCall
 from taskmates.core.workflow_engine.run import RUN
 from taskmates.core.workflow_engine.run import Run
-from taskmates.core.workflows.signals.llm_completion_signals import LlmCompletionSignals
-from taskmates.core.workflows.signals.code_cell_output_signals import CodeCellOutputSignals
+from taskmates.core.workflows.markdown_completion.completions.code_cell_execution.execution.code_execution import \
+    CodeExecution
+from taskmates.core.workflows.markdown_completion.completions.completion_provider import CompletionProvider
+from taskmates.core.workflows.markdown_completion.completions.tool_execution.invoke_function import invoke_function
+from taskmates.core.workflows.markdown_completion.completions.tool_execution.response.tool_execution_appender import \
+    ToolExecutionAppender
 from taskmates.core.workflows.signals.control_signals import ControlSignals
 from taskmates.core.workflows.signals.markdown_completion_signals import MarkdownCompletionSignals
 from taskmates.core.workflows.signals.status_signals import StatusSignals
+from taskmates.types import Chat, RunnerEnvironment, ToolCall
 
 
 @typechecked
@@ -34,8 +34,6 @@ class ToolExecutionCompletionProvider(CompletionProvider):
             chat: Chat,
             control_signals: ControlSignals,
             markdown_completion_signals: MarkdownCompletionSignals,
-            chat_completion_signals: LlmCompletionSignals,
-            code_cell_output_signals: CodeCellOutputSignals,
             status_signals: StatusSignals
     ):
         contexts = RUN.get().context

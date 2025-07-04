@@ -15,6 +15,4 @@ def default_environment_signals() -> EnvironmentSignals:
         'input_streams': InputStreams(),
         'execution_environment': ExecutionEnvironmentSignals(),
         'markdown_completion': MarkdownCompletionSignals(),
-        'chat_completion': LlmCompletionSignals(),
-        'code_cell_output': CodeCellOutputSignals(),
     }

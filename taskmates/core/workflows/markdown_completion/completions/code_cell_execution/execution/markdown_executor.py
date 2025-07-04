@@ -106,6 +106,7 @@ async def test_markdown_executor_simple_execution(tmp_path: Path):
     async def capture_chunk(chunk):
         chunks.append(chunk)
 
+    run.signals["code_cell_output"] = CodeCellOutputSignals()
     run.signals["code_cell_output"].code_cell_output.connect(capture_chunk)
 
     executor = MarkdownExecutor(run.signals["control"], run.signals["status"], run.signals["code_cell_output"])
@@ -132,6 +133,7 @@ async def test_markdown_executor_error_handling(tmp_path: Path):
     async def capture_chunk(chunk):
         chunks.append(chunk)
 
+    run.signals["code_cell_output"] = CodeCellOutputSignals()
     run.signals["code_cell_output"].code_cell_output.connect(capture_chunk)
 
     executor = MarkdownExecutor(run.signals["control"], run.signals["status"], run.signals["code_cell_output"])
@@ -163,6 +165,7 @@ async def test_markdown_executor_interrupt(tmp_path: Path):
     async def capture_status(signal):
         status_signals.append(signal)
 
+    run.signals["code_cell_output"] = CodeCellOutputSignals()
     run.signals["code_cell_output"].code_cell_output.connect(capture_chunk)
     run.signals["status"].interrupted.connect(capture_status)
 

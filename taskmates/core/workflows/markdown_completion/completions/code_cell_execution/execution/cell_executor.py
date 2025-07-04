@@ -1,9 +1,13 @@
 from nbformat import NotebookNode
 
-from taskmates.core.workflows.markdown_completion.completions.code_cell_execution.execution.bash_script_handler import BashScriptHandler
-from taskmates.core.workflows.markdown_completion.completions.code_cell_execution.execution.cell_status import KernelCellTracker, CellExecutionStatus
-from taskmates.core.workflows.markdown_completion.completions.code_cell_execution.jupyter_notebook_logger import jupyter_notebook_logger
-from taskmates.core.workflows.markdown_completion.completions.code_cell_execution.execution.message_handler import MessageHandler
+from taskmates.core.workflows.markdown_completion.completions.code_cell_execution.execution.bash_script_handler import \
+    BashScriptHandler
+from taskmates.core.workflows.markdown_completion.completions.code_cell_execution.execution.cell_status import \
+    KernelCellTracker, CellExecutionStatus
+from taskmates.core.workflows.markdown_completion.completions.code_cell_execution.execution.message_handler import \
+    MessageHandler
+from taskmates.core.workflows.markdown_completion.completions.code_cell_execution.jupyter_notebook_logger import \
+    jupyter_notebook_logger
 from taskmates.core.workflows.signals.code_cell_output_signals import CodeCellOutputSignals
 
 
@@ -117,6 +121,7 @@ async def test_cell_executor(tmp_path):
     async def capture_chunk(chunk):
         chunks.append(chunk)
 
+    run.signals["code_cell_output"] = CodeCellOutputSignals()
     run.signals["code_cell_output"].code_cell_output.connect(capture_chunk)
 
     # Create a simple cell
@@ -176,6 +181,7 @@ async def test_cell_executor_error(tmp_path):
     async def capture_chunk(chunk):
         chunks.append(chunk)
 
+    run.signals["code_cell_output"] = CodeCellOutputSignals()
     run.signals["code_cell_output"].code_cell_output.connect(capture_chunk)
 
     # Create a cell with an error
@@ -235,6 +241,7 @@ async def test_cell_executor_bash(tmp_path):
     async def capture_chunk(chunk):
         chunks.append(chunk)
 
+    run.signals["code_cell_output"] = CodeCellOutputSignals()
     run.signals["code_cell_output"].code_cell_output.connect(capture_chunk)
 
     # Create a bash cell

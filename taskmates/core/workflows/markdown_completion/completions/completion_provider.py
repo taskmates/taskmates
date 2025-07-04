@@ -22,8 +22,6 @@ class CompletionProvider(ABC):
             chat: Chat,
             control_signals: ControlSignals,
             markdown_completion_signals: MarkdownCompletionSignals,
-            chat_completion_signals: LlmCompletionSignals,
-            code_cell_output_signals: CodeCellOutputSignals,
             status_signals: StatusSignals
     ):
         pass

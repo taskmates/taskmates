@@ -379,6 +379,7 @@ async def test_api_request_streaming_with_fixture(run):
     async def capture_chunk(chunk):
         streamed_chunks.append(chunk)
 
+    run.signals["chat_completion"] = LlmCompletionSignals()
     run.signals["chat_completion"].chat_completion.connect(capture_chunk, weak=False)
 
     response = await api_request(
@@ -424,6 +425,7 @@ async def test_api_request_non_streaming_with_fixture(run):
         ]
     }
 
+    run.signals["chat_completion"] = LlmCompletionSignals()
     response = await api_request(
         client,
         request_payload,
@@ -479,6 +481,7 @@ async def test_api_request_tool_call_streaming_with_fixture(run):
     async def capture_chunk(chunk):
         streamed_chunks.append(chunk)
 
+    run.signals["chat_completion"] = LlmCompletionSignals()
     run.signals["chat_completion"].chat_completion.connect(capture_chunk, weak=False)
 
     response = await api_request(
@@ -542,6 +545,7 @@ async def test_api_request_with_stop_sequences(run):
     async def capture_chunk(chunk):
         streamed_chunks.append(chunk)
 
+    run.signals["chat_completion"] = LlmCompletionSignals()
     run.signals["chat_completion"].chat_completion.connect(capture_chunk, weak=False)
 
     response = await api_request(

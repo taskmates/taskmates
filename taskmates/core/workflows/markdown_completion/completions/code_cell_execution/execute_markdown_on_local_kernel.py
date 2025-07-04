@@ -15,16 +15,24 @@ from taskmates.core.workflows.markdown_completion.completions.code_cell_executio
     MarkdownExecutor
 from taskmates.core.workflows.markdown_completion.completions.code_cell_execution.jupyter_notebook_logger import \
     jupyter_notebook_logger
+from taskmates.core.workflows.signals.code_cell_output_signals import CodeCellOutputSignals
+from taskmates.core.workflows.signals.control_signals import ControlSignals
+from taskmates.core.workflows.signals.status_signals import StatusSignals
 
 pytestmark = pytest.mark.slow
 
 
 @typechecked
-async def execute_markdown_on_local_kernel(content: str, markdown_path: Optional[str] = None, cwd: Optional[str] = None,
-                                           env: Optional[Mapping] = None):
+async def execute_markdown_on_local_kernel(
+        control: ControlSignals,
+        status: StatusSignals,
+        code_cell_output: CodeCellOutputSignals,
+        content: str,
+        markdown_path: Optional[str] = None,
+        cwd: Optional[str] = None,
+        env: Optional[Mapping] = None):
     """Main execution function that coordinates the execution of markdown content as Jupyter notebook cells."""
-    run = RUN.get()
-    executor = MarkdownExecutor(run.signals["control"], run.signals["status"], run.signals["code_cell_output"])
+    executor = MarkdownExecutor(control, status, code_cell_output)
     await executor.execute(content, cwd=cwd, markdown_path=markdown_path, env=env)
 
 
@@ -41,7 +49,12 @@ async def main(argv=None):
     args = parser.parse_args(argv)
 
     # Execute markdown
-    await execute_markdown_on_local_kernel(content=args.content, markdown_path=args.path,
+    control = RUN.get().signals["control"]
+    status = RUN.get().signals["status"]
+    code_cell_output = RUN.get().signals["code_cell_output"]
+
+    await execute_markdown_on_local_kernel(control=control, status=status, code_cell_output=code_cell_output,
+                                           content=args.content, markdown_path=args.path,
                                            cwd=args.cwd)
 
 
@@ -52,6 +65,7 @@ async def test_code_cells_no_code():
     async def capture_chunk(chunk):
         chunks.append(chunk)
 
+    run.signals["code_cell_output"] = CodeCellOutputSignals()
     run.signals["code_cell_output"].code_cell_output.connect(capture_chunk)
 
     input_md = textwrap.dedent("""\
@@ -59,7 +73,12 @@ async def test_code_cells_no_code():
 
         This is a paragraph.
     """)
-    await execute_markdown_on_local_kernel(input_md, markdown_path="test_no_code")
+    control = RUN.get().signals["control"]
+    status = RUN.get().signals["status"]
+    code_cell_output = RUN.get().signals["code_cell_output"]
+    await execute_markdown_on_local_kernel(control=control, status=status, code_cell_output=code_cell_output,
+                                           content=input_md,
+                                           markdown_path="test_no_code")
     assert chunks == []
 
 
@@ -70,6 +89,7 @@ async def test_single_cell():
     async def capture_chunk(chunk):
         chunks.append(chunk)
 
+    run.signals["code_cell_output"] = CodeCellOutputSignals()
     run.signals["code_cell_output"].code_cell_output.connect(capture_chunk)
 
     input_md = textwrap.dedent("""\
@@ -78,7 +98,11 @@ async def test_single_cell():
         x
         ```
     """)
-    await execute_markdown_on_local_kernel(input_md, markdown_path="test_simple_code")
+    control = RUN.get().signals["control"]
+    status = RUN.get().signals["status"]
+    code_cell_output = RUN.get().signals["code_cell_output"]
+    await execute_markdown_on_local_kernel(control=control, status=status, code_cell_output=code_cell_output,
+                                           content=input_md, markdown_path="test_simple_code")
 
     assert len(chunks) > 0
 
@@ -92,6 +116,7 @@ async def test_multiple_cells(tmp_path):
     async def capture_chunk(chunk):
         chunks.append(chunk)
 
+    run.signals["code_cell_output"] = CodeCellOutputSignals()
     run.signals["code_cell_output"].code_cell_output.connect(capture_chunk)
 
     content = textwrap.dedent("""\
@@ -108,7 +133,11 @@ async def test_multiple_cells(tmp_path):
     ```
     """)
 
-    await execute_markdown_on_local_kernel(content, markdown_path=str(tmp_path))
+    control = RUN.get().signals["control"]
+    status = RUN.get().signals["status"]
+    code_cell_output = RUN.get().signals["code_cell_output"]
+    await execute_markdown_on_local_kernel(control=control, status=status, code_cell_output=code_cell_output,
+                                           content=content, markdown_path=str(tmp_path))
 
     assert len({chunk["msg_id"] for chunk in chunks}) == 2
 
@@ -120,6 +149,7 @@ async def test_cell_error():
     async def capture_chunk(chunk):
         chunks.append(chunk)
 
+    run.signals["code_cell_output"] = CodeCellOutputSignals()
     run.signals["code_cell_output"].code_cell_output.connect(capture_chunk)
 
     input_md = textwrap.dedent("""\
@@ -132,7 +162,11 @@ async def test_cell_error():
         ```
 
     """)
-    await execute_markdown_on_local_kernel(input_md, markdown_path="test_error_code")
+    control = RUN.get().signals["control"]
+    status = RUN.get().signals["status"]
+    code_cell_output = RUN.get().signals["code_cell_output"]
+    await execute_markdown_on_local_kernel(control=control, status=status, code_cell_output=code_cell_output,
+                                           content=input_md, markdown_path="test_error_code")
 
     assert 'error' in [chunk['msg']['msg_type'] for chunk in chunks]
 
@@ -145,6 +179,7 @@ async def test_cwd(tmp_path):
         jupyter_notebook_logger.debug(f"Captured chunk: {chunk}")
         chunks.append(chunk)
 
+    run.signals["code_cell_output"] = CodeCellOutputSignals()
     run.signals["code_cell_output"].code_cell_output.connect(capture_chunk)
 
     # Markdown content that gets the current working directory
@@ -159,7 +194,11 @@ async def test_cwd(tmp_path):
     jupyter_notebook_logger.debug(f"Expected cwd: {tmp_path}")
 
     # Execute the markdown with cwd set to the temporary directory
-    await execute_markdown_on_local_kernel(input_md, markdown_path="test_with_cwd", cwd=str(tmp_path))
+    control = RUN.get().signals["control"]
+    status = RUN.get().signals["status"]
+    code_cell_output = RUN.get().signals["code_cell_output"]
+    await execute_markdown_on_local_kernel(control=control, status=status, code_cell_output=code_cell_output,
+                                           content=input_md, markdown_path="test_with_cwd", cwd=str(tmp_path))
 
     jupyter_notebook_logger.debug(f"Captured chunks: {chunks}")
 
@@ -181,6 +220,7 @@ async def test_interrupt(capsys):
     async def capture_chunk(chunk):
         chunks.append(chunk)
 
+    run.signals["code_cell_output"] = CodeCellOutputSignals()
     run.signals["code_cell_output"].code_cell_output.connect(capture_chunk)
 
     input_md = textwrap.dedent("""\
@@ -206,7 +246,11 @@ async def test_interrupt(capsys):
 
     interrupt_task = asyncio.create_task(send_interrupt())
 
-    await execute_markdown_on_local_kernel(input_md, markdown_path="test_interrupt")
+    control = RUN.get().signals["control"]
+    status = RUN.get().signals["status"]
+    code_cell_output = RUN.get().signals["code_cell_output"]
+    await execute_markdown_on_local_kernel(control=control, status=status, code_cell_output=code_cell_output,
+                                           content=input_md, markdown_path="test_interrupt")
 
     await interrupt_task
 
@@ -224,6 +268,7 @@ async def test_kill(capsys):
     async def capture_chunk(chunk):
         chunks.append(chunk)
 
+    run.signals["code_cell_output"] = CodeCellOutputSignals()
     run.signals["code_cell_output"].code_cell_output.connect(capture_chunk)
 
     input_md = textwrap.dedent("""\
@@ -249,7 +294,11 @@ async def test_kill(capsys):
 
     kill_task = asyncio.create_task(send_kill())
 
-    await execute_markdown_on_local_kernel(input_md, markdown_path="test_kill")
+    control = RUN.get().signals["control"]
+    status = RUN.get().signals["status"]
+    code_cell_output = RUN.get().signals["code_cell_output"]
+    await execute_markdown_on_local_kernel(control=control, status=status, code_cell_output=code_cell_output,
+                                           content=input_md, markdown_path="test_kill")
 
     await kill_task
 
@@ -271,6 +320,7 @@ async def test_custom_env():
     async def capture_chunk(chunk):
         chunks.append(chunk)
 
+    run.signals["code_cell_output"] = CodeCellOutputSignals()
     run.signals["code_cell_output"].code_cell_output.connect(capture_chunk)
 
     custom_env = os.environ.copy()
@@ -283,7 +333,11 @@ async def test_custom_env():
         ```
     """)
 
-    await execute_markdown_on_local_kernel(input_md, markdown_path="test_custom_env", env=custom_env)
+    control = RUN.get().signals["control"]
+    status = RUN.get().signals["status"]
+    code_cell_output = RUN.get().signals["code_cell_output"]
+    await execute_markdown_on_local_kernel(control=control, status=status, code_cell_output=code_cell_output,
+                                           content=input_md, markdown_path="test_custom_env", env=custom_env)
 
     assert len(chunks) > 0
     assert chunks[-1]['msg']['content']['text'].strip() == 'test_value'
@@ -296,7 +350,11 @@ async def test_custom_env():
         ```
     """)
 
-    await execute_markdown_on_local_kernel(input_md, markdown_path="test_custom_env_2")
+    control = RUN.get().signals["control"]
+    status = RUN.get().signals["status"]
+    code_cell_output = RUN.get().signals["code_cell_output"]
+    await execute_markdown_on_local_kernel(control=control, status=status, code_cell_output=code_cell_output,
+                                           content=input_md, markdown_path="test_custom_env_2")
     assert chunks[-1]['msg']['content']['text'].strip() == 'Not found'
 
 
@@ -307,6 +365,7 @@ async def test_bash_heredoc(capsys):
     async def capture_chunk(chunk):
         chunks.append(chunk)
 
+    run.signals["code_cell_output"] = CodeCellOutputSignals()
     run.signals["code_cell_output"].code_cell_output.connect(capture_chunk)
 
     input_md = textwrap.dedent('''
@@ -318,7 +377,11 @@ async def test_bash_heredoc(capsys):
         ```
     ''')
 
-    await execute_markdown_on_local_kernel(input_md, markdown_path="test_bash_heredoc")
+    control = RUN.get().signals["control"]
+    status = RUN.get().signals["status"]
+    code_cell_output = RUN.get().signals["code_cell_output"]
+    await execute_markdown_on_local_kernel(control=control, status=status, code_cell_output=code_cell_output,
+                                           content=input_md, markdown_path="test_bash_heredoc")
 
     # Get all output messages
     stream_chunks = [chunk['msg']['content'] for chunk in chunks if chunk['msg']['msg_type'] == 'stream']

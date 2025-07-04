@@ -10,7 +10,6 @@ from taskmates.core.workflows.markdown_completion.completions.llm_completion.req
     prepare_request_payload
 from taskmates.core.workflows.markdown_completion.completions.llm_completion.response.llm_completion_markdown_appender import \
     LlmCompletionMarkdownAppender
-from taskmates.core.workflows.signals.code_cell_output_signals import CodeCellOutputSignals
 from taskmates.core.workflows.signals.control_signals import ControlSignals
 from taskmates.core.workflows.signals.llm_completion_signals import LlmCompletionSignals
 from taskmates.core.workflows.signals.markdown_completion_signals import MarkdownCompletionSignals
@@ -20,6 +19,9 @@ from taskmates.types import Chat
 
 @typechecked
 class LlmCompletionProvider(CompletionProvider):
+    def __init__(self):
+        self.chat_completion_signals = LlmCompletionSignals()
+
     def can_complete(self, chat):
         if self.has_truncated_code_cell(chat):
             return True
@@ -34,13 +36,13 @@ class LlmCompletionProvider(CompletionProvider):
             chat: Chat,
             control_signals: ControlSignals,
             markdown_completion_signals: MarkdownCompletionSignals,
-            chat_completion_signals: LlmCompletionSignals,
-            code_cell_output_signals: CodeCellOutputSignals,
             status_signals: StatusSignals,
     ):
         contexts = RUN.get().context
-        taskmates_dirs = contexts["runner_config"]["taskmates_dirs"]
+
         model_alias = contexts["run_opts"]["model"]
+
+        taskmates_dirs = contexts["runner_config"]["taskmates_dirs"]
 
         model_conf = get_model_conf(model_alias=model_alias,
                                     messages=chat["messages"],
@@ -56,27 +58,31 @@ class LlmCompletionProvider(CompletionProvider):
 
         request_payload = prepare_request_payload(chat, model_conf)
 
-        last_tool_call_id = 0
-        for m in chat['messages']:
-            if m.get('tool_calls'):
-                last_tool_call_id = int(m.get('tool_calls')[-1].get('id'))
+        last_tool_call_id = self.get_last_tool_call_index(chat)
 
         chat_completion_markdown_appender = LlmCompletionMarkdownAppender(
-            chat["messages"][-1]["recipient"],
-            last_tool_call_id,
-            self.has_truncated_code_cell(chat),
-            markdown_completion_signals
+            recipient=chat["messages"][-1]["recipient"],
+            last_tool_call_id=last_tool_call_id,
+            is_resume_request=self.has_truncated_code_cell(chat),
+            markdown_completion_signals=markdown_completion_signals
         )
 
         async def restream_completion_chunk(chat_completion_chunk):
             await chat_completion_markdown_appender.process_chat_completion_chunk(chat_completion_chunk)
 
-        with chat_completion_signals.chat_completion.connected_to(restream_completion_chunk):
+        with self.chat_completion_signals.chat_completion.connected_to(restream_completion_chunk):
             return await api_request(client,
                                      request_payload,
                                      control_signals,
                                      status_signals,
-                                     chat_completion_signals)
+                                     self.chat_completion_signals)
+
+    def get_last_tool_call_index(self, chat):
+        last_tool_call_id = 0
+        for m in chat['messages']:
+            if m.get('tool_calls'):
+                last_tool_call_id = int(m.get('tool_calls')[-1].get('id'))
+        return last_tool_call_id
 
     def get_usernames_stop_sequences(self, chat):
         user_participants = ["user"]
@@ -120,6 +126,7 @@ async def test_anthropic_tool_call_streaming_response(run):
     async def capture_markdown(text, **kwargs):
         markdown_outputs.append(text)
 
+    run.signals["markdown_completion"] = MarkdownCompletionSignals()
     run.signals["markdown_completion"].response.connect(capture_markdown, weak=False)
 
     # Perform the completion
@@ -127,8 +134,6 @@ async def test_anthropic_tool_call_streaming_response(run):
         chat=chat,
         control_signals=run.signals["control"],
         markdown_completion_signals=run.signals["markdown_completion"],
-        chat_completion_signals=run.signals["chat_completion"],
-        code_cell_output_signals=run.signals["code_cell_output"],
         status_signals=run.signals["status"]
     )
 
@@ -176,6 +181,7 @@ async def test_openai_tool_call_streaming_response(run):
     async def capture_markdown(text, **kwargs):
         markdown_outputs.append(text)
 
+    run.signals["markdown_completion"] = MarkdownCompletionSignals()
     run.signals["markdown_completion"].response.connect(capture_markdown, weak=False)
 
     # Perform the completion
@@ -183,8 +189,6 @@ async def test_openai_tool_call_streaming_response(run):
         chat=chat,
         control_signals=run.signals["control"],
         markdown_completion_signals=run.signals["markdown_completion"],
-        chat_completion_signals=run.signals["chat_completion"],
-        code_cell_output_signals=run.signals["code_cell_output"],
         status_signals=run.signals["status"]
     )
 
@@ -233,6 +237,7 @@ async def test_openai_get_weather_tool_call_streaming_response(run):
     async def capture_markdown(text, **kwargs):
         markdown_outputs.append(text)
 
+    run.signals["markdown_completion"] = MarkdownCompletionSignals()
     run.signals["markdown_completion"].response.connect(capture_markdown, weak=False)
 
     # Perform the completion
@@ -240,8 +245,6 @@ async def test_openai_get_weather_tool_call_streaming_response(run):
         chat=chat,
         control_signals=run.signals["control"],
         markdown_completion_signals=run.signals["markdown_completion"],
-        chat_completion_signals=run.signals["chat_completion"],
-        code_cell_output_signals=run.signals["code_cell_output"],
         status_signals=run.signals["status"]
     )
 
@@ -290,6 +293,7 @@ async def test_openai_get_weather_tool_call_streaming_response_format_2(run):
     async def capture_markdown(text, **kwargs):
         markdown_outputs.append(text)
 
+    run.signals["markdown_completion"] = MarkdownCompletionSignals()
     run.signals["markdown_completion"].response.connect(capture_markdown, weak=False)
 
     # Perform the completion
@@ -297,8 +301,6 @@ async def test_openai_get_weather_tool_call_streaming_response_format_2(run):
         chat=chat,
         control_signals=run.signals["control"],
         markdown_completion_signals=run.signals["markdown_completion"],
-        chat_completion_signals=run.signals["chat_completion"],
-        code_cell_output_signals=run.signals["code_cell_output"],
         status_signals=run.signals["status"]
     )
 
@@ -347,6 +349,7 @@ async def test_gemini_streaming_response(run):
     async def capture_markdown(text, **kwargs):
         markdown_outputs.append(text)
 
+    run.signals["markdown_completion"] = MarkdownCompletionSignals()
     run.signals["markdown_completion"].response.connect(capture_markdown, weak=False)
 
     # Perform the completion
@@ -354,8 +357,6 @@ async def test_gemini_streaming_response(run):
         chat=chat,
         control_signals=run.signals["control"],
         markdown_completion_signals=run.signals["markdown_completion"],
-        chat_completion_signals=run.signals["chat_completion"],
-        code_cell_output_signals=run.signals["code_cell_output"],
         status_signals=run.signals["status"]
     )
 
@@ -401,6 +402,7 @@ async def test_gemini_tool_call_streaming_response(run):
     async def capture_markdown(text, **kwargs):
         markdown_outputs.append(text)
 
+    run.signals["markdown_completion"] = MarkdownCompletionSignals()
     run.signals["markdown_completion"].response.connect(capture_markdown, weak=False)
 
     # Perform the completion
@@ -408,8 +410,6 @@ async def test_gemini_tool_call_streaming_response(run):
         chat=chat,
         control_signals=run.signals["control"],
         markdown_completion_signals=run.signals["markdown_completion"],
-        chat_completion_signals=run.signals["chat_completion"],
-        code_cell_output_signals=run.signals["code_cell_output"],
         status_signals=run.signals["status"]
     )
 

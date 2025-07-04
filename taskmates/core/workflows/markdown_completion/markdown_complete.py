@@ -16,15 +16,10 @@ from taskmates.core.workflows.daemons.markdown_completion_to_execution_environme
     MarkdownCompletionToExecutionEnvironmentStdoutDaemon
 from taskmates.core.workflows.daemons.return_value_daemon import ReturnValueDaemon
 from taskmates.core.workflows.markdown_completion.completions.completion_provider import CompletionProvider
-from taskmates.core.workflows.markdown_completion.completions.llm_completion.llm_completion_provider import \
-    LlmCompletionProvider
-from taskmates.core.workflows.markdown_completion.completions.llm_completion.request.api_request import api_request
 from taskmates.core.workflows.markdown_completion.compute_next_completion import compute_next_completion
 from taskmates.core.workflows.markdown_completion.max_steps_check import MaxStepsCheck
-from taskmates.core.workflows.signals.code_cell_output_signals import CodeCellOutputSignals
 from taskmates.core.workflows.signals.control_signals import ControlSignals
 from taskmates.core.workflows.signals.input_streams import InputStreams
-from taskmates.core.workflows.signals.llm_completion_signals import LlmCompletionSignals
 from taskmates.core.workflows.signals.markdown_completion_signals import MarkdownCompletionSignals
 from taskmates.core.workflows.signals.status_signals import StatusSignals
 from taskmates.core.workflows.states.current_step import CurrentStep
@@ -106,8 +101,6 @@ class MarkdownComplete(Workflow):
                     "control": ControlSignals(),
                     "status": StatusSignals(),
                     "markdown_completion": MarkdownCompletionSignals(),
-                    "chat_completion": LlmCompletionSignals(),
-                    "code_cell_output": CodeCellOutputSignals(),
                 },
                 state=current_run.state,
                 daemons={}
@@ -119,8 +112,6 @@ class MarkdownComplete(Workflow):
                     (current_run.signals["control"], step_run.signals["control"]),
                     (step_run.signals["status"], current_run.signals["status"]),
                     (step_run.signals["markdown_completion"], current_run.signals["markdown_completion"]),
-                    (step_run.signals["chat_completion"], current_run.signals["chat_completion"]),
-                    (step_run.signals["code_cell_output"], current_run.signals["code_cell_output"])
                 ]),
             ):
                 should_continue = await self.complete_section(markdown_chat,
@@ -163,8 +154,6 @@ class MarkdownComplete(Workflow):
         await next_completion.perform_completion(chat,
                                                  completion_signals["control"],
                                                  completion_signals["markdown_completion"],
-                                                 completion_signals["chat_completion"],
-                                                 completion_signals["code_cell_output"],
                                                  completion_signals["status"])
 
         return True
@@ -224,6 +213,26 @@ class MarkdownComplete(Workflow):
                  ("\n\n"
                   "Classify the conversation above as one of: question|coding_task|feedback")
 
+        # workflow = SdkCompletionRunner(run_opts=dict(model="claude-3-5-haiku-latest"))
+        # result = await workflow.run(markdown_chat=prompt)
+
+        # async def attempt_sdk_completion(context, markdown_chat):
+        #     with Objective(key=ObjectiveKey(outcome="request_classification")).environment(context=context) as run:
+        #         await run.signals["status"].start.send_async({})
+        #         steps = {
+        #             "markdown_complete": MarkdownComplete()
+        #         }
+        #
+        #         return await steps["markdown_complete"].fulfill(**{"markdown_chat": markdown_chat})
+
+        # result = await attempt_sdk_completion(self.context, prompt)
+
+        # TODO
+        # LlmCompletionProvider().perform_completion()
+        # api_request()
+
+        # await markdown_completion.formatting.send_async(f"[//]: # (start workflow: {result})\n\n")
+
     async def end_workflow(self,
                            markdown_chat: str,
                            context: RunContext,
@@ -235,6 +244,8 @@ class MarkdownComplete(Workflow):
         if CompletionProvider.has_truncated_code_cell(chat):
             logger.debug("Truncated completion assistance")
             return
+
+        # await markdown_completion.formatting.send_async("[//]: # (end workflow)\n\n")
 
         await self._append_next_responder(
             chat=chat,
@@ -359,8 +370,6 @@ async def test_no_recipient_prompt_when_max_steps_reached(tmp_path):
             "control": ControlSignals(),
             "status": StatusSignals(),
             "markdown_completion": markdown_completion_signals,
-            "chat_completion": LlmCompletionSignals(),
-            "code_cell_output": CodeCellOutputSignals(),
         },
         state={
             "interrupted": Interrupted(),
