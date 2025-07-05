@@ -5,7 +5,7 @@ import pytest
 from langchain_core.messages import AIMessageChunk
 
 
-class LlmCompletionPreProcessor:
+class LlmCompletionPreProcessor(AsyncIterable[AIMessageChunk]):
     def __init__(self, chat_completion: AsyncIterable[AIMessageChunk]):
         self.chat_completion = chat_completion
         self.first_chunk = True

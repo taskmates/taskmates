@@ -100,6 +100,7 @@ class LlmCompletionRequest:
 
                 if "gpt-4" in (getattr(llm, "model_name", "") or getattr(llm, "model", "")):
                     webtool = {"type": "web_search_preview"}
+                    # noinspection PyTypeChecker
                     tools.append(webtool)
 
                 if tools:

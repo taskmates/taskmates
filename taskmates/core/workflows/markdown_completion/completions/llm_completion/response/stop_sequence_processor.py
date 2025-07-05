@@ -4,7 +4,7 @@ import pytest
 from langchain_core.messages import AIMessageChunk
 
 
-class StopSequenceProcessor:
+class StopSequenceProcessor(AsyncIterable[AIMessageChunk]):
     """
     Processes a stream of AIMessageChunk objects to detect and stop at specified stop sequences.
     This processor correctly handles stop sequences that may span across multiple chunks.
@@ -100,7 +100,7 @@ class StopSequenceProcessor:
                     stop_found = True
                     found_seq = seq
                     break
-            
+
             if stop_found:
                 stop_index = self.buffer.find(found_seq)
                 content_to_yield = self.buffer[:stop_index]
@@ -113,7 +113,7 @@ class StopSequenceProcessor:
                 try:
                     ref_chunk = chunk
                 except NameError:
-                    ref_chunk = AIMessageChunk(content="") # Fallback
+                    ref_chunk = AIMessageChunk(content="")  # Fallback
 
                 final_chunk = AIMessageChunk(
                     content=content_to_yield,
@@ -354,7 +354,7 @@ async def test_stop_sequence_processor_no_token_loss_anthropic():
                     original_text += part.get("text", "")
         elif chunk.content:
             original_text += chunk.content
-    
+
     processed_text = ""
     for chunk in chunks:
         if isinstance(chunk.content, list):
@@ -450,9 +450,11 @@ async def test_stop_sequence_processor_no_token_loss_gemini():
 
     assert processed_text == original_text
 
+
 @pytest.mark.asyncio
 async def test_stop_sequence_spanning_chunks():
     """StopSequenceProcessor must handle stop sequences that span across two chunks."""
+
     async def mock_stream():
         yield AIMessageChunk(content="Hello, this is chunk 1, part ")
         yield AIMessageChunk(content="1. And this is chunk 2, part 2.")
@@ -462,9 +464,11 @@ async def test_stop_sequence_spanning_chunks():
     full_text = "".join(c.content for c in chunks if c.content)
     assert full_text == "Hello, this is chunk 1, "
 
+
 @pytest.mark.asyncio
 async def test_stop_sequence_cell_output_spanning_chunks():
     """StopSequenceProcessor must handle '###### Cell Output' stop sequence split across two chunks."""
+
     async def mock_stream():
         yield AIMessageChunk(content="This is output before the cell marker\n#####")
         yield AIMessageChunk(content="# Cell Output\nAnd this should not appear.")

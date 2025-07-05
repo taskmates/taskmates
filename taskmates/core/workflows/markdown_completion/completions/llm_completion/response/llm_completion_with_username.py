@@ -5,7 +5,7 @@ import pytest
 from langchain_core.messages import AIMessageChunk
 
 
-class LlmCompletionWithUsername:
+class LlmCompletionWithUsername(AsyncIterable[AIMessageChunk]):
     def __init__(self, chat_completion: AsyncIterable[AIMessageChunk]):
         self.chat_completion = chat_completion
         self.buffered_tokens: List[str] = []
@@ -294,6 +294,7 @@ async def test_username_processor_preserves_metadata_anthropic():
 @pytest.mark.asyncio
 async def test_username_processor_extracts_username_pattern():
     """LlmCompletionWithUsername must extract username from markdown pattern."""
+
     # Create a simple test with username pattern
     async def username_chunks():
         yield AIMessageChunk(content="**assistant>** ")
@@ -315,6 +316,7 @@ async def test_username_processor_extracts_username_pattern():
 @pytest.mark.asyncio
 async def test_username_processor_handles_no_username_pattern():
     """LlmCompletionWithUsername must handle content without username pattern."""
+
     # Create a simple test without username pattern
     async def no_username_chunks():
         yield AIMessageChunk(content="Hello ")
@@ -331,6 +333,7 @@ async def test_username_processor_handles_no_username_pattern():
 
     # All content should be preserved
     assert "".join(c.content for c in chunks[1:] if c.content) == "Hello world"
+
 
 @pytest.mark.asyncio
 async def test_username_processor_preserves_tool_calls_gemini():
