@@ -88,13 +88,9 @@ class LlmCompletionRequest:
         return self._result
 
     async def _execute_streaming(self, llm, messages, stop_sequences, request_interruption_monitor):
-        """Execute streaming request."""
         chat_completion = llm.astream(messages)
 
-        # Connect internal response accumulator
-        self.llm_chat_completion_signals.llm_chat_completion.connect(
-            self._streamed_response.accept, weak=False
-        )
+        self.llm_chat_completion_signals.llm_chat_completion.connect(self._streamed_response.accept, weak=False)
 
         received_chunk = False
 
@@ -150,7 +146,6 @@ class LlmCompletionRequest:
             'id': getattr(result, 'id', None),
             **getattr(result, 'response_metadata', {})
         }
-
 
     @property
     def result(self) -> Optional[dict]:
