@@ -61,7 +61,7 @@ class LlmCompletionRequest:
             ) as request_interruption_monitor:
                 llm = self.client
 
-                messages, tools = await self.prepare_payload(llm)
+                messages, tools = _convert_openai_payload_to_langchain(self.request_payload)
 
                 if tools:
                     llm = llm.bind_tools(tools)
@@ -86,10 +86,6 @@ class LlmCompletionRequest:
             raise Exception(f"API response has been truncated: finish_reason={finish_reason}")
 
         return self._result
-
-    async def prepare_payload(self, llm):
-        messages, tools = _convert_openai_payload_to_langchain(self.request_payload)
-        return messages, tools
 
     async def _execute_streaming(self, llm, messages, stop_sequences, request_interruption_monitor):
         """Execute streaming request."""
