@@ -91,14 +91,20 @@ class LlmCompletionRequest:
 
     async def prepare_payload(self, llm):
         messages, tools = _convert_openai_payload_to_langchain(self.request_payload)
+        self.handle_openai_specifics(llm, tools)
+        self.handle_anthropic_specifics(llm, messages)
+        return messages, tools
+
+    def handle_anthropic_specifics(self, llm, messages):
+        # Handle Anthropic-specific caching
+        if isinstance(llm, ChatAnthropic):
+            self._setup_anthropic_caching(messages)
+
+    def handle_openai_specifics(self, llm, tools):
         if "gpt-4" in (getattr(llm, "model_name", "") or getattr(llm, "model", "")):
             webtool = {"type": "web_search_preview"}
             # noinspection PyTypeChecker
             tools.append(webtool)
-        # Handle Anthropic-specific caching
-        if isinstance(llm, ChatAnthropic):
-            self._setup_anthropic_caching(messages)
-        return messages, tools
 
     async def _execute_streaming(self, llm, messages, stop_sequences, request_interruption_monitor):
         """Execute streaming request."""
