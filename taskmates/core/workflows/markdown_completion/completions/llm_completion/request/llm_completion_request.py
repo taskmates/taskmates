@@ -93,29 +93,18 @@ class LlmCompletionRequest:
                     status=self.status_signals,
                     control=self.control_signals
             ) as request_interruption_monitor:
-
-                messages, tools = _convert_openai_payload(self.request_payload)
-
                 llm = self.client
 
-                if "gpt-4" in (getattr(llm, "model_name", "") or getattr(llm, "model", "")):
-                    webtool = {"type": "web_search_preview"}
-                    # noinspection PyTypeChecker
-                    tools.append(webtool)
+                messages, tools = await self.prepare_payload(llm)
 
                 if tools:
                     llm = llm.bind_tools(tools)
 
-                # Handle Anthropic-specific caching
-                if isinstance(llm, ChatAnthropic):
-                    self._setup_anthropic_caching(messages)
-
                 force_stream = bool(self.llm_chat_completion_signals.llm_chat_completion.receivers)
 
-                # Extract stop sequences
-                stop_sequences = self.request_payload.pop("stop", [])
-
                 if self.request_payload.get("stream", force_stream):
+                    # Extract stop sequences
+                    stop_sequences = self.request_payload.pop("stop", [])
                     self._result = await self._execute_streaming(
                         llm, messages, stop_sequences, request_interruption_monitor
                     )
@@ -131,6 +120,17 @@ class LlmCompletionRequest:
             raise Exception(f"API response has been truncated: finish_reason={finish_reason}")
 
         return self._result
+
+    async def prepare_payload(self, llm):
+        messages, tools = _convert_openai_payload(self.request_payload)
+        if "gpt-4" in (getattr(llm, "model_name", "") or getattr(llm, "model", "")):
+            webtool = {"type": "web_search_preview"}
+            # noinspection PyTypeChecker
+            tools.append(webtool)
+        # Handle Anthropic-specific caching
+        if isinstance(llm, ChatAnthropic):
+            self._setup_anthropic_caching(messages)
+        return messages, tools
 
     async def _execute_streaming(self, llm, messages, stop_sequences, request_interruption_monitor):
         """Execute streaming request."""
