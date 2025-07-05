@@ -11,8 +11,8 @@ from loguru import logger
 from opentelemetry import trace
 from typeguard import typechecked
 
-from taskmates.core.workflows.markdown_completion.completions.llm_completion.request._convert_openai_payload import \
-    _convert_openai_payload
+from taskmates.core.workflows.markdown_completion.completions.llm_completion.request._convert_openai_payload_to_langchain import \
+    _convert_openai_payload_to_langchain
 from taskmates.core.workflows.markdown_completion.completions.llm_completion.request.request_interruption_monitor import \
     RequestInterruptionMonitor
 from taskmates.core.workflows.markdown_completion.completions.llm_completion.response.llm_completion_pre_processor import \
@@ -90,7 +90,7 @@ class LlmCompletionRequest:
         return self._result
 
     async def prepare_payload(self, llm):
-        messages, tools = _convert_openai_payload(self.request_payload)
+        messages, tools = _convert_openai_payload_to_langchain(self.request_payload)
         if "gpt-4" in (getattr(llm, "model_name", "") or getattr(llm, "model", "")):
             webtool = {"type": "web_search_preview"}
             # noinspection PyTypeChecker

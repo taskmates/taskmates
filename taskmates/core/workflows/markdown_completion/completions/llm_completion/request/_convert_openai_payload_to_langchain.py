@@ -7,7 +7,7 @@ from taskmates.core.workflows.markdown_completion.completions.llm_completion.req
     _convert_function_to_langchain_tool
 
 
-def _convert_openai_payload(payload: dict) -> tuple[list[BaseMessage], list[BaseTool]]:
+def _convert_openai_payload_to_langchain(payload: dict) -> tuple[list[BaseMessage], list[BaseTool]]:
     # Map OpenAI role strings to LangChain message classes
     role_map = {
         "user": HumanMessage,
