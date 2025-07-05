@@ -3,8 +3,6 @@ from typing import Optional
 
 import pytest
 from httpx import ReadError
-from langchain.schema import SystemMessage
-from langchain_anthropic import ChatAnthropic
 from langchain_core.language_models import BaseChatModel
 from langchain_openai import ChatOpenAI
 from loguru import logger
@@ -91,20 +89,7 @@ class LlmCompletionRequest:
 
     async def prepare_payload(self, llm):
         messages, tools = _convert_openai_payload_to_langchain(self.request_payload)
-        self.handle_openai_specifics(llm, tools)
-        self.handle_anthropic_specifics(llm, messages)
         return messages, tools
-
-    def handle_anthropic_specifics(self, llm, messages):
-        # Handle Anthropic-specific caching
-        if isinstance(llm, ChatAnthropic):
-            self._setup_anthropic_caching(messages)
-
-    def handle_openai_specifics(self, llm, tools):
-        if "gpt-4" in (getattr(llm, "model_name", "") or getattr(llm, "model", "")):
-            webtool = {"type": "web_search_preview"}
-            # noinspection PyTypeChecker
-            tools.append(webtool)
 
     async def _execute_streaming(self, llm, messages, stop_sequences, request_interruption_monitor):
         """Execute streaming request."""
@@ -170,28 +155,6 @@ class LlmCompletionRequest:
             **getattr(result, 'response_metadata', {})
         }
 
-    def _setup_anthropic_caching(self, messages):
-        """Configure Anthropic-specific message caching."""
-        first_message = messages[0]
-        if isinstance(first_message, SystemMessage):
-            first_message.content = {
-                "type": "text",
-                "text": first_message.content,
-                "cache_control": {"type": "ephemeral"}
-            }
-
-        # Add cache control to the last 3 non-system messages
-        non_system_count = 0
-        for message in reversed(messages):
-            if not isinstance(message, SystemMessage):
-                if isinstance(message.content, str):
-                    message.content = [{"type": "text", "text": message.content}]
-                for content in message.content:
-                    if content["type"] == "text":
-                        content["cache_control"] = {"type": "ephemeral"}
-                non_system_count += 1
-                if non_system_count >= 3:
-                    break
 
     @property
     def result(self) -> Optional[dict]:

@@ -58,7 +58,7 @@ class LlmChatCompletionProvider(CompletionProvider):
 
         client = get_model_client(model_spec=model_conf)
 
-        request_payload = prepare_request_payload(chat, model_conf)
+        request_payload = prepare_request_payload(chat, model_conf, client)
 
         # Create the request
         request = LlmCompletionRequest(client, request_payload)
