@@ -1,16 +1,16 @@
 import asyncio
 from contextlib import contextmanager
-from typing import List, Tuple, TypeAlias
+from typing import List, Tuple, TypeAlias, Sequence
 
 import pytest
 from blinker import Namespace
 
-SignalPair: TypeAlias = Tuple['BaseSignals', 'BaseSignals']
+SourceTarget: TypeAlias = Tuple['BaseSignals', 'BaseSignals']
 
 
-def relay(signal_pairs: List[SignalPair]):
+def relay(source_targets: Sequence[SourceTarget]):
     connected_handlers = []
-    for from_signals, to_signals in signal_pairs:
+    for from_signals, to_signals in source_targets:
         for name, signal in from_signals.namespace.items():
             source = from_signals.namespace[name]
             target = to_signals.namespace[name]
@@ -25,7 +25,7 @@ def disconnect_relay(handlers):
 
 
 @contextmanager
-def connected_signals(signal_pairs: List[SignalPair]):
+def connected_signals(signal_pairs: List[SourceTarget]):
     handlers = relay(signal_pairs)
     try:
         yield

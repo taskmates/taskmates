@@ -3,15 +3,20 @@ from typeguard import typechecked
 
 from taskmates.core.markdown_chat.metadata.get_model_client import get_model_client
 from taskmates.core.markdown_chat.metadata.get_model_conf import get_model_conf
+from taskmates.core.workflow_engine.base_signals import connected_signals
 from taskmates.core.workflow_engine.run import RUN
 from taskmates.core.workflows.markdown_completion.completions.completion_provider import CompletionProvider
-from taskmates.core.workflows.markdown_completion.completions.llm_completion.request.llm_completion_request import LlmCompletionRequest
+from taskmates.core.workflows.markdown_completion.completions.llm_completion._get_last_tool_call_index import \
+    _get_last_tool_call_index
+from taskmates.core.workflows.markdown_completion.completions.llm_completion._get_usernames_stop_sequences import \
+    _get_usernames_stop_sequences
+from taskmates.core.workflows.markdown_completion.completions.llm_completion.request.llm_completion_request import \
+    LlmCompletionRequest
 from taskmates.core.workflows.markdown_completion.completions.llm_completion.request.prepare_request_payload import \
     prepare_request_payload
 from taskmates.core.workflows.markdown_completion.completions.llm_completion.response.llm_completion_markdown_appender import \
     LlmCompletionMarkdownAppender
 from taskmates.core.workflows.signals.control_signals import ControlSignals
-from taskmates.core.workflows.signals.llm_chat_completion_signals import LlmChatCompletionSignals
 from taskmates.core.workflows.signals.markdown_completion_signals import MarkdownCompletionSignals
 from taskmates.core.workflows.signals.status_signals import StatusSignals
 from taskmates.types import Chat
@@ -49,7 +54,7 @@ class LlmChatCompletionProvider(CompletionProvider):
             "stop": ["\n######"],
         })
 
-        model_conf["stop"].extend(self.get_usernames_stop_sequences(chat))
+        model_conf["stop"].extend(_get_usernames_stop_sequences(chat))
 
         client = get_model_client(model_spec=model_conf)
 
@@ -60,38 +65,21 @@ class LlmChatCompletionProvider(CompletionProvider):
 
         markdown_appender = LlmCompletionMarkdownAppender(
             recipient=chat["messages"][-1]["recipient"],
-            last_tool_call_id=self.get_last_tool_call_index(chat),
+            last_tool_call_id=_get_last_tool_call_index(chat),
             is_resume_request=self.has_truncated_code_cell(chat),
             markdown_completion_signals=markdown_completion_signals
         )
 
-        # Connect the markdown appender to the request's chunk signal
-        request.on_chunk(markdown_appender.process_chat_completion_chunk)
-
         # Forward status signals
-        request.forward_status_to(status_signals)
+        with request.llm_chat_completion_signals.llm_chat_completion.connected_to(
+                markdown_appender.process_chat_completion_chunk), \
+                connected_signals([
+                    (request.status_signals, status_signals),
+                    (control_signals, request.control_signals),
 
-        # Forward control signals
-        control_signals.interrupt.connect(request.control_signals.interrupt.send_async)
-        control_signals.kill.connect(request.control_signals.kill.send_async)
-
-        # Execute and return result
-        return await request.execute()
-
-    def get_last_tool_call_index(self, chat):
-        last_tool_call_id = 0
-        for m in chat['messages']:
-            if m.get('tool_calls'):
-                last_tool_call_id = int(m.get('tool_calls')[-1].get('id'))
-        return last_tool_call_id
-
-    def get_usernames_stop_sequences(self, chat):
-        user_participants = ["user"]
-        for name, config in chat["participants"].items():
-            if config["role"] == "user" and name not in user_participants:
-                user_participants.append(name)
-        username_stop_sequences = [f"\n**{u}>** " for u in user_participants]
-        return username_stop_sequences
+                ]):
+            # Execute and return result
+            return await request.execute()
 
 
 @pytest.mark.asyncio

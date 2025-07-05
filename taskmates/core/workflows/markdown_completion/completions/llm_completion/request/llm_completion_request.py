@@ -1,5 +1,5 @@
 import asyncio
-from typing import Callable, Optional
+from typing import Optional
 
 import pytest
 from httpx import ReadError
@@ -47,38 +47,6 @@ class LlmCompletionRequest:
         self._executed = False
         self._result: Optional[dict] = None
         self._streamed_response = StreamedResponse()
-
-    def on_chunk(self, handler: Callable):
-        """Connect a handler for streaming chunks."""
-        self.llm_chat_completion_signals.llm_chat_completion.connect(handler, weak=False)
-        return self
-
-    def forward_status_to(self, external_status_signals: StatusSignals):
-        """Forward internal status signals to external status signals."""
-
-        # Forward each individual status signal
-        async def forward_start(sender, **kwargs):
-            await external_status_signals.start.send_async(sender, **kwargs)
-
-        async def forward_finish(sender, **kwargs):
-            await external_status_signals.finish.send_async(sender, **kwargs)
-
-        async def forward_success(sender, **kwargs):
-            await external_status_signals.success.send_async(sender, **kwargs)
-
-        async def forward_interrupted(sender, **kwargs):
-            await external_status_signals.interrupted.send_async(sender, **kwargs)
-
-        async def forward_killed(sender, **kwargs):
-            await external_status_signals.killed.send_async(sender, **kwargs)
-
-        self.status_signals.start.connect(forward_start, weak=False)
-        self.status_signals.finish.connect(forward_finish, weak=False)
-        self.status_signals.success.connect(forward_success, weak=False)
-        self.status_signals.interrupted.connect(forward_interrupted, weak=False)
-        self.status_signals.killed.connect(forward_killed, weak=False)
-
-        return self
 
     async def execute(self) -> dict:
         """Execute the LLM completion request."""
@@ -253,8 +221,6 @@ async def test_llm_completion_request_happy_path(run):
     # Create and execute request
     client = ChatOpenAI(model="gpt-3.5-turbo")
     request = LlmCompletionRequest(client, request_payload)
-    request.forward_status_to(run.signals["status"])
-
     response = await request.execute()
 
     # Assert that the response matches the new AIMessageChunk protocol
@@ -275,8 +241,6 @@ async def test_llm_completion_request_who_are_you(run):
     # Create and execute request
     client = ChatOpenAI(model="gpt-3.5-turbo")
     request = LlmCompletionRequest(client, request_payload)
-    request.forward_status_to(run.signals["status"])
-
     response = await request.execute()
 
     # Assert the response has correct OpenAI format with expected fields
@@ -354,8 +318,6 @@ async def test_llm_completion_request_with_tool_calls(run):
     # Create and execute request
     client = ChatOpenAI(model="gpt-3.5-turbo")
     request = LlmCompletionRequest(client, request_payload)
-    request.forward_status_to(run.signals["status"])
-
     response = await request.execute()
 
     # Assert the response conforms to OpenAI format
@@ -401,8 +363,7 @@ async def test_llm_completion_request_streaming_with_fixture(run):
 
     # Create and execute request
     request = LlmCompletionRequest(client, request_payload)
-    request.on_chunk(capture_chunk)
-    request.forward_status_to(run.signals["status"])
+    request.llm_chat_completion_signals.llm_chat_completion.connect(capture_chunk, weak=False)
 
     response = await request.execute()
 
@@ -443,8 +404,6 @@ async def test_llm_completion_request_non_streaming_with_fixture(run):
 
     # Create and execute request
     request = LlmCompletionRequest(client, request_payload)
-    request.forward_status_to(run.signals["status"])
-
     response = await request.execute()
 
     # Verify the conversion produces correct OpenAI format
@@ -496,8 +455,7 @@ async def test_llm_completion_request_tool_call_streaming_with_fixture(run):
 
     # Create and execute request
     request = LlmCompletionRequest(client, request_payload)
-    request.on_chunk(capture_chunk)
-    request.forward_status_to(run.signals["status"])
+    request.llm_chat_completion_signals.llm_chat_completion.connect(capture_chunk, weak=False)
 
     response = await request.execute()
 
@@ -556,8 +514,7 @@ async def test_llm_completion_request_with_stop_sequences(run):
 
     # Create and execute request
     request = LlmCompletionRequest(client, request_payload)
-    request.on_chunk(capture_chunk)
-    request.forward_status_to(run.signals["status"])
+    request.llm_chat_completion_signals.llm_chat_completion.connect(capture_chunk, weak=False)
 
     response = await request.execute()
 
@@ -600,7 +557,8 @@ async def test_llm_completion_request_class(run):
     async def collect_chunk(chunk):
         chunks.append(chunk)
 
-    request.on_chunk(collect_chunk)
+    request.llm_chat_completion_signals.llm_chat_completion.connect(collect_chunk, weak=False)
+    request
 
     # Execute
     response = await request.execute()
@@ -646,9 +604,6 @@ async def test_llm_completion_request_status_forwarding(run):
     external_status.success.connect(lambda s, **kw: status_updates.append(('success', s)), weak=False)
     external_status.interrupted.connect(lambda s, **kw: status_updates.append(('interrupted', s)), weak=False)
     external_status.killed.connect(lambda s, **kw: status_updates.append(('killed', s)), weak=False)
-
-    # Forward status
-    request.forward_status_to(external_status)
 
     # Execute
     await request.execute()
