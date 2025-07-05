@@ -5,7 +5,7 @@ from taskmates.core.markdown_chat.metadata.get_model_client import get_model_cli
 from taskmates.core.markdown_chat.metadata.get_model_conf import get_model_conf
 from taskmates.core.workflow_engine.run import RUN
 from taskmates.core.workflows.markdown_completion.completions.completion_provider import CompletionProvider
-from taskmates.core.workflows.markdown_completion.completions.llm_completion.request.api_request import api_request
+from taskmates.core.workflows.markdown_completion.completions.llm_completion.request.llm_completion_request import LlmCompletionRequest
 from taskmates.core.workflows.markdown_completion.completions.llm_completion.request.prepare_request_payload import \
     prepare_request_payload
 from taskmates.core.workflows.markdown_completion.completions.llm_completion.response.llm_completion_markdown_appender import \
@@ -55,6 +55,9 @@ class LlmChatCompletionProvider(CompletionProvider):
 
         request_payload = prepare_request_payload(chat, model_conf)
 
+        # Create the request
+        request = LlmCompletionRequest(client, request_payload)
+
         markdown_appender = LlmCompletionMarkdownAppender(
             recipient=chat["messages"][-1]["recipient"],
             last_tool_call_id=self.get_last_tool_call_index(chat),
@@ -62,19 +65,18 @@ class LlmChatCompletionProvider(CompletionProvider):
             markdown_completion_signals=markdown_completion_signals
         )
 
-        async def restream_completion_chunk(chat_completion_chunk):
-            await markdown_appender.process_chat_completion_chunk(chat_completion_chunk)
+        # Connect the markdown appender to the request's chunk signal
+        request.on_chunk(markdown_appender.process_chat_completion_chunk)
 
-        # 1. we create the llm signals here
-        llm_chat_completion_signals = LlmChatCompletionSignals()
+        # Forward status signals
+        request.forward_status_to(status_signals)
 
-        # 2. we connect llm signals -> markdown response
-        with llm_chat_completion_signals.llm_chat_completion.connected_to(restream_completion_chunk):
-            return await api_request(client,
-                                     request_payload,
-                                     control_signals,
-                                     status_signals,
-                                     llm_chat_completion_signals)
+        # Forward control signals
+        control_signals.interrupt.connect(request.interrupt)
+        control_signals.kill.connect(request.kill)
+
+        # Execute and return result
+        return await request.execute()
 
     def get_last_tool_call_index(self, chat):
         last_tool_call_id = 0
