@@ -1,19 +1,18 @@
 import asyncio
-import json
 from typing import Callable, Optional
 
 import pytest
 from httpx import ReadError
-from langchain.schema import HumanMessage, AIMessage, SystemMessage
+from langchain.schema import SystemMessage
 from langchain_anthropic import ChatAnthropic
 from langchain_core.language_models import BaseChatModel
-from langchain_core.messages import ToolMessage, BaseMessage, ToolCall
-from langchain_core.tools import BaseTool, StructuredTool
 from langchain_openai import ChatOpenAI
 from loguru import logger
 from opentelemetry import trace
 from typeguard import typechecked
 
+from taskmates.core.workflows.markdown_completion.completions.llm_completion.request._convert_openai_payload import \
+    _convert_openai_payload
 from taskmates.core.workflows.markdown_completion.completions.llm_completion.request.request_interruption_monitor import \
     RequestInterruptionMonitor
 from taskmates.core.workflows.markdown_completion.completions.llm_completion.response.llm_completion_pre_processor import \
@@ -31,59 +30,6 @@ from taskmates.lib.matchers_ import matchers
 from taskmates.logging import file_logger
 
 tracer = trace.get_tracer_provider().get_tracer(__name__)
-
-
-def convert_function_to_langchain_tool(func: Callable) -> BaseTool:
-    """Convert a raw function to a LangChain tool using StructuredTool.from_function."""
-    if isinstance(func, StructuredTool):
-        return func
-    return StructuredTool.from_function(func=func)
-
-
-def convert_openai_payload(payload: dict) -> tuple[list[BaseMessage], list[BaseTool]]:
-    # Map OpenAI role strings to LangChain message classes
-    role_map = {
-        "user": HumanMessage,
-        "assistant": AIMessage,
-        "system": SystemMessage,
-        "tool": ToolMessage,
-    }
-
-    # Convert message list
-    messages = []
-    for msg in payload["messages"]:
-        content = msg["content"] or ""
-
-        raw_tool_calls = msg.get("tool_calls", [])
-        tool_calls = []
-
-        for tool_call in raw_tool_calls:
-            id = tool_call["id"]
-            type = tool_call["type"]
-            name = tool_call["function"]["name"]
-            args = json.loads(tool_call["function"]["arguments"])
-            tool_calls.append(ToolCall(name=name, args=args, id=id, type=type))
-
-        msg_args = dict(
-            content=content,
-            tool_calls=tool_calls
-        )
-
-        if "tool_call_id" in msg:
-            msg_args["tool_call_id"] = msg.get("tool_call_id")
-
-        message = role_map[msg["role"]](**msg_args)
-        messages.append(message)
-
-    # Convert raw functions to LangChain tools
-    raw_tools = payload.get("tools", [])
-    tools: list[BaseTool] = []
-    for tool_func in raw_tools:
-        if callable(tool_func):
-            langchain_tool = convert_function_to_langchain_tool(tool_func)
-            tools.append(langchain_tool)
-
-    return messages, tools
 
 
 @typechecked
@@ -105,11 +51,6 @@ class LlmCompletionRequest:
     def on_chunk(self, handler: Callable):
         """Connect a handler for streaming chunks."""
         self.llm_chat_completion_signals.llm_chat_completion.connect(handler, weak=False)
-        return self
-
-    def on_status_change(self, handler: Callable):
-        """Connect a handler for status changes."""
-        self.status_signals.status.connect(handler, weak=False)
         return self
 
     def forward_status_to(self, external_status_signals: StatusSignals):
@@ -139,14 +80,6 @@ class LlmCompletionRequest:
 
         return self
 
-    def interrupt(self):
-        """Signal interruption of the request."""
-        self.control_signals.interrupt.send(True)
-
-    def kill(self):
-        """Signal killing of the request."""
-        self.control_signals.kill.send(True)
-
     async def execute(self) -> dict:
         """Execute the LLM completion request."""
         if self._executed:
@@ -161,7 +94,7 @@ class LlmCompletionRequest:
                     control=self.control_signals
             ) as request_interruption_monitor:
 
-                messages, tools = convert_openai_payload(self.request_payload)
+                messages, tools = _convert_openai_payload(self.request_payload)
 
                 llm = self.client
 

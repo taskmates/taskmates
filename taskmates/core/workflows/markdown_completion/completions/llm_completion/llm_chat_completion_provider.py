@@ -72,8 +72,8 @@ class LlmChatCompletionProvider(CompletionProvider):
         request.forward_status_to(status_signals)
 
         # Forward control signals
-        control_signals.interrupt.connect(request.interrupt)
-        control_signals.kill.connect(request.kill)
+        control_signals.interrupt.connect(request.control_signals.interrupt.send_async)
+        control_signals.kill.connect(request.control_signals.kill.send_async)
 
         # Execute and return result
         return await request.execute()
