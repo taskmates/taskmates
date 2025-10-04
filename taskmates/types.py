@@ -1,17 +1,16 @@
 import time
 from pathlib import Path
-from typing import MutableMapping, Dict, Any
+from typing import MutableMapping, Dict, Any, Union
 
 from typeguard import typechecked
 from typing_extensions import TypedDict, NotRequired, Literal
 
 
-class Chat(TypedDict):
-    markdown_chat: str
-    run_opts: 'RunOpts'
+class ChatCompletionRequest(TypedDict):
     messages: list[dict]
-    participants: dict
     available_tools: list[str]
+    participants: dict
+    run_opts: 'RunOpts'
 
 
 class ApiRequest(TypedDict):
@@ -22,45 +21,40 @@ class ApiRequest(TypedDict):
     run_opts: 'RunOpts'
 
 
-from typing import Union
-
 class RunOpts(TypedDict):
+    # default subject
     model: NotRequired[Union[str, dict]]
-    workflow: NotRequired[str]
     tools: NotRequired[dict]
-    participants: NotRequired[dict]
-
-    max_steps: NotRequired[int]
     jupyter_enabled: NotRequired[bool]
 
-
-class RunnerConfig(TypedDict):
-    endpoint: NotRequired[str]
-    interactive: NotRequired[bool]
-    format: NotRequired[Literal["full", "text", "input", "completion"]]
-    output: NotRequired[str]
-    taskmates_dirs: NotRequired[list[str | Path]]
+    # transaction
+    max_steps: NotRequired[int]
+    workflow: NotRequired[str]
+    participants: NotRequired[dict]
 
 
 class RunnerEnvironment(TypedDict):
+    # run
     request_id: NotRequired[str]
+
+    # run
+    # transaction
     markdown_path: NotRequired[str]
+
+    # server
+    # transaction
     cwd: NotRequired[str]
     env: NotRequired[MutableMapping[str, str]]
 
-
-# TODO: move out
-
-class StepContext(TypedDict):
-    # TODO: move this to outputs
-    markdown_chat: NotRequired[str]
-    # TODO: move this to inputs
-    current_step: NotRequired[int]
+    # server
+    taskmates_dirs: NotRequired[list[str | Path]]
 
 
-class JobContext(TypedDict):
-    # TODO: move this to outputs
-    markdown_chat: NotRequired[str]
+class ResultFormat(TypedDict):
+    # run
+    # request
+    format: NotRequired[Literal["full", "text", "input", "completion"]]
+    interactive: NotRequired[bool]
 
 
 @typechecked

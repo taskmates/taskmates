@@ -4,15 +4,16 @@ from typing import Callable
 import pytest
 from jupyter_core.utils import ensure_async
 
-from taskmates.core.workflow_engine.run import RUN, Objective, ObjectiveKey, Run
-from taskmates.core.workflow_engine.run_context import RunContext, default_taskmates_dirs
+from taskmates.core.workflow_engine.run_context import RunContext
+from taskmates.core.workflow_engine.transaction import TRANSACTION, Objective, ObjectiveKey, Transaction
+from taskmates.core.workflows.markdown_completion.bound_contexts import bound_contexts
 
 
 def fulfills(outcome: str):
     def decorator(fn: Callable):
         @wraps(fn)
         async def _fulfills_wrapper(*args, **kwargs):
-            parent_run = RUN.get()
+            parent_run = TRANSACTION.get()
             parent_objective = parent_run.objective
 
             args_key = {"args": args, "kwargs": kwargs} if args or kwargs else None
@@ -22,13 +23,14 @@ def fulfills(outcome: str):
             if fulfills_objective.result_future.done():
                 return fulfills_objective.result_future.result()
 
-            fulfills_run = Run(objective=fulfills_objective,
-                               context=parent_run.context,
-                               daemons={},
-                               signals=parent_run.signals,
-                               state=parent_run.state)
+            # TODO: here's the part that we need to create the bindings
+            # with the parent transaction
+            fulfills_run = Transaction(objective=fulfills_objective,
+                                       context=parent_run.execution_context.context.copy())
 
-            with fulfills_run:
+            # TODO: review this fulfills_run
+            with fulfills_run.transaction_context(), \
+                    bound_contexts(parent_run, fulfills_run):
                 result = await ensure_async(fn(*args, **kwargs))
                 fulfills_objective.result_future.set_result(result)
                 return result
@@ -41,12 +43,8 @@ def fulfills(outcome: str):
 @pytest.fixture
 def test_context() -> RunContext:
     return RunContext(
-        runner_config={
-            "interactive": False,
-            "format": "full",
-            "taskmates_dirs": default_taskmates_dirs
-        },
         runner_environment={
+            "taskmates_dirs": [],
             "markdown_path": "test.md",
             "cwd": "/tmp"
         },
@@ -60,9 +58,9 @@ def test_context() -> RunContext:
 @pytest.fixture
 def run(test_context):
     run = Objective(key=ObjectiveKey(outcome="test_runner")).environment(context=test_context)
-    token = RUN.set(run)
+    token = TRANSACTION.set(run)
     yield run
-    RUN.reset(token)
+    TRANSACTION.reset(token)
 
 
 async def test_fulfills_decorator_basic_functionality(run):

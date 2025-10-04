@@ -11,6 +11,11 @@ class LlmCompletionWithUsername(AsyncIterable[AIMessageChunk]):
         self.buffered_tokens: List[str] = []
         self.buffering = True
 
+    async def aclose(self):
+        """Close the underlying stream."""
+        if hasattr(self.chat_completion, 'aclose'):
+            await self.chat_completion.aclose()
+
     def _extract_text_content(self, content):
         """Extract text from content, handling both string and list formats."""
         if content is None:

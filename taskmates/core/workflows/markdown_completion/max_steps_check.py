@@ -1,7 +1,7 @@
-from taskmates.core.workflow_engine.run import RUN
-
-
 class MaxStepsCheck:
+    def __init__(self, current_step, max_steps):
+        self.current_step = current_step
+        self.max_steps = max_steps
+
     def should_break(self):
-        run = RUN.get()
-        return run.state["current_step"].get() > run.context['run_opts']["max_steps"]
+        return self.current_step.get() > self.max_steps

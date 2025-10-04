@@ -3,15 +3,18 @@ import textwrap
 import pytest
 from loguru import logger
 
-from taskmates.core.markdown_chat.parse_markdown_chat import parse_markdown_chat
-from taskmates.core.workflows.markdown_completion.completions.llm_completion.llm_chat_completion_provider import LlmChatCompletionProvider
+from taskmates.core.workflows.markdown_completion.build_chat_completion_request import build_chat_completion_request
 from taskmates.core.workflows.markdown_completion.completions.code_cell_execution.code_cell_execution_completion_provider import \
     CodeCellExecutionCompletionProvider
+from taskmates.core.workflows.markdown_completion.completions.completion_provider import CompletionProvider
+from taskmates.core.workflows.markdown_completion.completions.llm_completion.llm_chat_completion_provider import \
+    LlmChatCompletionProvider
 from taskmates.core.workflows.markdown_completion.completions.tool_execution.tool_execution_completion_provider import \
     ToolExecutionCompletionProvider
+from taskmates.types import ChatCompletionRequest
 
 
-def compute_next_completion(chat):
+def compute_next_completion(chat: ChatCompletionRequest) -> CompletionProvider | None:
     logger.debug("Computing next completion")
 
     assistances = [
@@ -30,7 +33,7 @@ def compute_next_completion(chat):
 
 
 @pytest.fixture
-def taskmates_dir(tmp_path):
+def taskmates_dir(tmp_path, run):
     base_dir = tmp_path / ".taskmates"
     (base_dir / "engine").mkdir(parents=True)
     (base_dir / "engine" / "chat_introduction.md").write_text("CHAT_INTRODUCTION\n")
@@ -56,7 +59,7 @@ async def test_compute_next_completion_code_cell(taskmates_dir, tmp_path):
     ```
     """)
 
-    chat = await parse_markdown_chat(markdown_chat, tmp_path / "chat.md", [taskmates_dir])
+    chat = build_chat_completion_request(markdown_chat, markdown_path=str(tmp_path / "test.md"))
     result = compute_next_completion(chat)
     assert isinstance(result, CodeCellExecutionCompletionProvider)
 
@@ -71,13 +74,15 @@ async def test_compute_next_completion_tool(taskmates_dir, tmp_path):
           run_shell_command:
     ---
     
+    Check something
+    
     **assistant>** Let me check something.
     
     ###### Steps
     - Run Shell Command [1] `{"cmd":"cd /tmp"}`
     """)
 
-    chat = await parse_markdown_chat(markdown_chat, tmp_path / "chat.md", [taskmates_dir])
+    chat = build_chat_completion_request(markdown_chat, markdown_path=str(tmp_path / "test.md"))
     result = compute_next_completion(chat)
     assert isinstance(result, ToolExecutionCompletionProvider)
 
@@ -92,7 +97,7 @@ async def test_compute_next_completion_chat(taskmates_dir, tmp_path):
     **user>** How much is 1 + 1?
     """)
 
-    chat = await parse_markdown_chat(markdown_chat, tmp_path / "chat.md", [taskmates_dir])
+    chat = build_chat_completion_request(markdown_chat, markdown_path=str(tmp_path / "test.md"))
     result = compute_next_completion(chat)
     assert isinstance(result, LlmChatCompletionProvider)
 
@@ -113,7 +118,7 @@ async def test_compute_next_completion_incomplete_code_cell(taskmates_dir, tmp_p
     
     """)  # Note: missing closing ```
 
-    chat = await parse_markdown_chat(markdown_chat, tmp_path / "chat.md", [taskmates_dir])
+    chat = build_chat_completion_request(markdown_chat, markdown_path=str(tmp_path / "test.md"))
     result = compute_next_completion(chat)
     assert isinstance(result, LlmChatCompletionProvider)
 
@@ -135,7 +140,7 @@ async def test_compute_next_completion_incomplete_code_cell(taskmates_dir, tmp_p
 #     - Run Shell Command [1] `{"cmd":"cd
 #     """).rstrip()  # Note: missing closing tags and output
 #
-#     chat = await parse_markdown_chat(markdown_chat, tmp_path / "chat.md", [taskmates_dir])
+#     chat = await build_chat_payload(markdown_chat, tmp_path / "chat.md", [taskmates_dir])
 #     result = compute_next_completion(chat)
 #     assert isinstance(result, ChatCompletionProvider)
 
@@ -152,7 +157,7 @@ async def test_compute_next_completion_completed_chat(taskmates_dir, tmp_path):
     **assistant>** 1 + 1 equals 2
     """)
 
-    chat = await parse_markdown_chat(markdown_chat, tmp_path / "chat.md", [taskmates_dir])
+    chat = build_chat_completion_request(markdown_chat, markdown_path=str(tmp_path / "test.md"))
     result = compute_next_completion(chat)
     assert result is None
 
@@ -166,7 +171,7 @@ async def test_compute_next_completion_completed_chat(taskmates_dir, tmp_path):
 #     ---
 #     """)
 #
-#     chat = await parse_markdown_chat(markdown_chat, tmp_path / "chat.md", [taskmates_dir])
+#     chat = await build_chat_payload(markdown_chat, tmp_path / "chat.md", [taskmates_dir])
 #     result = compute_next_completion(chat)
 #     assert result is None
 
@@ -193,7 +198,7 @@ async def test_compute_next_completion_code_cell_with_error(taskmates_dir, tmp_p
     </pre>
     """)
 
-    chat = await parse_markdown_chat(markdown_chat, tmp_path / "chat.md", [taskmates_dir])
+    chat = build_chat_completion_request(markdown_chat, markdown_path=str(tmp_path / "test.md"))
     result = compute_next_completion(chat)
     assert isinstance(result, LlmChatCompletionProvider)
 
@@ -228,7 +233,7 @@ async def test_compute_next_completion_mixed_incomplete_states(taskmates_dir, tm
     - Run Shell Command [1] `{"cmd":"ls"}`
     """)
 
-    chat = await parse_markdown_chat(markdown_chat, tmp_path / "chat.md", [taskmates_dir])
+    chat = build_chat_completion_request(markdown_chat, markdown_path=str(tmp_path / "test.md"))
     result = compute_next_completion(chat)
     assert isinstance(result, ToolExecutionCompletionProvider)
 
@@ -247,6 +252,6 @@ async def test_compute_next_completion_malformed_chat(taskmates_dir, tmp_path):
     **user>** What should I do?
     """)
 
-    chat = await parse_markdown_chat(markdown_chat, tmp_path / "chat.md", [taskmates_dir])
+    chat = build_chat_completion_request(markdown_chat, markdown_path=str(tmp_path / "test.md"))
     result = compute_next_completion(chat)
     assert isinstance(result, LlmChatCompletionProvider)

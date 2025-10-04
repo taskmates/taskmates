@@ -5,7 +5,7 @@ import textwrap
 
 import pytest
 
-from taskmates.types import Chat
+from taskmates.types import ChatCompletionRequest
 
 
 @pytest.fixture
@@ -87,7 +87,7 @@ def test_parse_with_mention(cli_runner, tmp_path):
     assert returncode == 0
     assert not stderr
 
-    result: Chat = json.loads(stdout)
+    result: ChatCompletionRequest = json.loads(stdout)
 
     assert len(result["messages"]) == 2
 

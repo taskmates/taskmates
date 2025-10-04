@@ -1,7 +1,28 @@
 default:
   client_type: langchain_anthropic.ChatAnthropic
   max_context_window: 4096
-  model: claude-opus-4-20250514
+  model: claude-sonnet-4-5-20250929
+
+gpt-5:
+  client_type: langchain_openai.ChatOpenAI
+  max_context_window: 400000
+  model: gpt-5
+
+gpt-5-mini:
+  client_type: langchain_openai.ChatOpenAI
+  max_context_window: 400000
+  model: gpt-5-mini
+
+gpt-5-nano:
+  client_type: langchain_openai.ChatOpenAI
+  max_context_window: 400000
+  model: gpt-5-nano
+
+gpt-5-chat-latest:
+  client_type: langchain_openai.ChatOpenAI
+  max_context_window: 400000
+  model: gpt-5-chat-latest
+
 
 gpt-4.1:
   client_type: langchain_openai.ChatOpenAI
@@ -31,6 +52,11 @@ claude-3-5-haiku-latest:
   max_context_window: 4096
   model: claude-3-5-haiku-latest
 
+claude-opus-4-1:
+  client_type: langchain_anthropic.ChatAnthropic
+  max_context_window: 4096
+  model: claude-opus-4-1
+
 claude-opus-4-20250514:
   client_type: langchain_anthropic.ChatAnthropic
   max_context_window: 4096
@@ -41,10 +67,27 @@ claude-sonnet-4-20250514:
   max_context_window: 4096
   model: claude-sonnet-4-20250514
 
-grok-3:
+claude-sonnet-4-5-20250929:
+  client_type: langchain_anthropic.ChatAnthropic
+  max_context_window: 4096
+  model: claude-sonnet-4-5-20250929
+
+grok-4:
   client_type: langchain_xai.ChatXAI
-  max_context_window: 131072
-  model: grok-3-beta
+  max_context_window: 256000
+  model: grok-4-latest
+  api_key: env:XAI_API_KEY
+
+grok-4-fast-reasoning:
+  client_type: langchain_xai.ChatXAI
+  max_context_window: 2000000
+  model: grok-4-fast-reasoning
+  api_key: env:XAI_API_KEY
+
+grok-4-fast-non-reasoning:
+  client_type: langchain_xai.ChatXAI
+  max_context_window: 2000000
+  model: grok-4-fast-non-reasoning
   api_key: env:XAI_API_KEY
 
 gemini-2.5-pro:
@@ -161,3 +204,17 @@ qwq:
   endpoint: http://localhost:11434/v1
   max_context_window: 131072
   model: qwq:latest
+
+gpt-oss-20g:
+  client_type: langchain_ollama.ChatOllama
+  endpoint: http://localhost:11434/v1
+  max_context_window: 120000
+  reasoning: true
+  model: gpt-oss:latest
+
+gpt-oss-120b:
+  client_type: langchain_ollama.ChatOllama
+  endpoint: http://localhost:11434/v1
+  max_context_window: 120000
+  reasoning: true
+  model: gpt-oss:120b

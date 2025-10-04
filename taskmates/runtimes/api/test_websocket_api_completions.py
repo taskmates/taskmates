@@ -8,7 +8,6 @@ from quart.testing.connections import WebsocketDisconnectError
 from typeguard import typechecked
 
 import taskmates
-from taskmates.core.workflow_engine.run import RUN
 from taskmates.server.blueprints.api_completions import completions_bp as completions_v2_bp
 from taskmates.types import ApiRequest
 
@@ -23,7 +22,7 @@ def app():
 
 
 @pytest.mark.timeout(5)
-async def test_chat_completion(app, tmp_path):
+async def test_chat_completion(app, tmp_path, context):
     test_client = app.test_client()
 
     markdown_chat = textwrap.dedent("""\
@@ -42,7 +41,7 @@ async def test_chat_completion(app, tmp_path):
         "type": "completions_request",
         "version": taskmates.__version__,
         "markdown_chat": markdown_chat,
-        "runner_environment": RUN.get().context["runner_environment"],
+        "runner_environment": context["runner_environment"],
         "run_opts": {
             "model": "quote",
             "max_steps": 1,
@@ -56,7 +55,7 @@ async def test_chat_completion(app, tmp_path):
 
 
 @pytest.mark.timeout(5)
-async def test_chat_completion_with_mention(app, tmp_path):
+async def test_chat_completion_with_mention(app, tmp_path, context):
     test_client = app.test_client()
 
     taskmates_home = tmp_path / ".taskmates"
@@ -79,7 +78,7 @@ async def test_chat_completion_with_mention(app, tmp_path):
         "type": "completions_request",
         "version": taskmates.__version__,
         "markdown_chat": markdown_chat,
-        "runner_environment": RUN.get().context["runner_environment"],
+        "runner_environment": context["runner_environment"],
         "run_opts": {
             "model": "quote",
             "max_steps": 1,
@@ -93,7 +92,7 @@ async def test_chat_completion_with_mention(app, tmp_path):
 
 
 @pytest.mark.timeout(5)
-async def test_tool_execution(app, tmp_path):
+async def test_tool_execution(app, tmp_path, context):
     test_client = app.test_client()
 
     markdown_chat = textwrap.dedent("""\
@@ -124,7 +123,7 @@ async def test_tool_execution(app, tmp_path):
         "type": "completions_request",
         "version": taskmates.__version__,
         "markdown_chat": markdown_chat,
-        "runner_environment": RUN.get().context["runner_environment"],
+        "runner_environment": context["runner_environment"],
         "run_opts": {
             "model": "quote",
             "max_steps": 1,
@@ -138,7 +137,7 @@ async def test_tool_execution(app, tmp_path):
 
 
 @pytest.mark.timeout(5)
-async def test_code_cell_completion(app, tmp_path):
+async def test_code_cell_completion(app, tmp_path, context):
     test_client = app.test_client()
 
     markdown_chat = textwrap.dedent("""\
@@ -163,12 +162,11 @@ async def test_code_cell_completion(app, tmp_path):
     </pre>
     \n''')
 
-
     test_payload: ApiRequest = {
         "type": "completions_request",
         "version": taskmates.__version__,
         "markdown_chat": markdown_chat,
-        "runner_environment": RUN.get().context["runner_environment"],
+        "runner_environment": context["runner_environment"],
         "run_opts": {
             "model": "quote",
             "max_steps": 1,
@@ -182,7 +180,7 @@ async def test_code_cell_completion(app, tmp_path):
 
 
 @pytest.mark.timeout(5)
-async def test_error_completion(app, tmp_path):
+async def test_error_completion(app, tmp_path, context):
     test_client = app.test_client()
 
     expected_completion_prefix = "**error>** "
@@ -195,7 +193,7 @@ async def test_error_completion(app, tmp_path):
         "type": "completions_request",
         "version": taskmates.__version__,
         "markdown_chat": "REQUEST\n\n",
-        "runner_environment": RUN.get().context["runner_environment"],
+        "runner_environment": context["runner_environment"],
         "run_opts": {
             "model": "non-existent-model",
         },
@@ -209,7 +207,7 @@ async def test_error_completion(app, tmp_path):
 
 
 @pytest.mark.timeout(5)
-async def test_interrupt_tool(app, tmp_path):
+async def test_interrupt_tool(app, tmp_path, context):
     test_client = app.test_client()
 
     if platform.system() == "Windows":
@@ -263,7 +261,7 @@ async def test_interrupt_tool(app, tmp_path):
         "type": "completions_request",
         "version": taskmates.__version__,
         "markdown_chat": markdown_chat,
-        "runner_environment": RUN.get().context["runner_environment"],
+        "runner_environment": context["runner_environment"],
         "run_opts": {
             "model": "quote",
             "max_steps": 1,
@@ -281,7 +279,7 @@ async def test_interrupt_tool(app, tmp_path):
                 if "5" in message["payload"]["markdown_chunk"]:
                     break
 
-        await ws.send(json.dumps({"type": "interrupt", "runner_environment": RUN.get().context["runner_environment"]}))
+        await ws.send(json.dumps({"type": "interrupt", "runner_environment": context["runner_environment"]}))
 
         remaining = await collect_until_closed(ws)
         messages.extend(remaining)
@@ -292,7 +290,7 @@ async def test_interrupt_tool(app, tmp_path):
 
 
 @pytest.mark.timeout(5)
-async def test_code_cell_no_output(app, tmp_path):
+async def test_code_cell_no_output(app, tmp_path, context):
     test_client = app.test_client()
 
     markdown_chat = textwrap.dedent("""\
@@ -316,7 +314,7 @@ async def test_code_cell_no_output(app, tmp_path):
         "type": "completions_request",
         "version": taskmates.__version__,
         "markdown_chat": markdown_chat,
-        "runner_environment": RUN.get().context["runner_environment"],
+        "runner_environment": context["runner_environment"],
         "run_opts": {
             "model": "quote",
             "max_steps": 1,
@@ -330,7 +328,7 @@ async def test_code_cell_no_output(app, tmp_path):
 
 
 @pytest.mark.timeout(5)
-async def test_interrupt_code_cell(app, tmp_path):
+async def test_interrupt_code_cell(app, tmp_path, context):
     test_client = app.test_client()
 
     markdown_chat = textwrap.dedent("""\
@@ -374,7 +372,7 @@ async def test_interrupt_code_cell(app, tmp_path):
         "type": "completions_request",
         "version": taskmates.__version__,
         "markdown_chat": markdown_chat,
-        "runner_environment": RUN.get().context["runner_environment"],
+        "runner_environment": context["runner_environment"],
         "run_opts": {
             "model": "quote",
             "max_steps": 1,
@@ -392,7 +390,7 @@ async def test_interrupt_code_cell(app, tmp_path):
                 if "2" in message["payload"]["markdown_chunk"]:
                     break
 
-        await ws.send(json.dumps({"type": "interrupt", "runner_environment": RUN.get().context["runner_environment"]}))
+        await ws.send(json.dumps({"type": "interrupt", "runner_environment": context["runner_environment"]}))
 
         remaining = await collect_until_closed(ws)
         messages.extend(remaining)
@@ -403,7 +401,7 @@ async def test_interrupt_code_cell(app, tmp_path):
 
 
 @pytest.mark.timeout(5)
-async def test_kill_tool(app, tmp_path):
+async def test_kill_tool(app, tmp_path, context):
     test_client = app.test_client()
 
     markdown_chat = textwrap.dedent("""\
@@ -433,7 +431,7 @@ async def test_kill_tool(app, tmp_path):
         "type": "completions_request",
         "version": taskmates.__version__,
         "markdown_chat": markdown_chat,
-        "runner_environment": RUN.get().context["runner_environment"],
+        "runner_environment": context["runner_environment"],
         "run_opts": {
             "model": "quote",
             "max_steps": 1,
@@ -451,7 +449,7 @@ async def test_kill_tool(app, tmp_path):
                 if "Starting" in message["payload"]["markdown_chunk"]:
                     break
 
-        await ws.send(json.dumps({"type": "kill", "runner_environment": RUN.get().context["runner_environment"]}))
+        await ws.send(json.dumps({"type": "kill", "runner_environment": context["runner_environment"]}))
 
         remaining = await collect_until_closed(ws)
         messages.extend(remaining)
@@ -462,7 +460,7 @@ async def test_kill_tool(app, tmp_path):
 
 
 @pytest.mark.timeout(5)
-async def test_kill_code_cell(app, tmp_path):
+async def test_kill_code_cell(app, tmp_path, context):
     test_client = app.test_client()
 
     markdown_chat = textwrap.dedent("""\
@@ -484,7 +482,7 @@ async def test_kill_code_cell(app, tmp_path):
         "type": "completions_request",
         "version": taskmates.__version__,
         "markdown_chat": markdown_chat,
-        "runner_environment": RUN.get().context["runner_environment"],
+        "runner_environment": context["runner_environment"],
         "run_opts": {
             "model": "quote",
             "max_steps": 1,
@@ -502,7 +500,7 @@ async def test_kill_code_cell(app, tmp_path):
                 if "Starting" in message["payload"]["markdown_chunk"]:
                     break
 
-        await ws.send(json.dumps({"type": "kill", "runner_environment": RUN.get().context["runner_environment"]}))
+        await ws.send(json.dumps({"type": "kill", "runner_environment": context["runner_environment"]}))
 
         remaining = await collect_until_closed(ws)
         messages.extend(remaining)
@@ -541,7 +539,7 @@ async def collect_until_closed(ws):
 
 
 @pytest.mark.timeout(5)
-async def test_tool_call(app, tmp_path):
+async def test_tool_call(app, tmp_path, context):
     test_client = app.test_client()
 
     # Use the fixture file path relative to the project root
@@ -553,7 +551,7 @@ async def test_tool_call(app, tmp_path):
         "type": "completions_request",
         "version": taskmates.__version__,
         "markdown_chat": markdown_chat,
-        "runner_environment": RUN.get().context["runner_environment"],
+        "runner_environment": context["runner_environment"],
         "run_opts": {
             "model": {
                 "name": "fixture",
@@ -576,7 +574,7 @@ async def test_tool_call(app, tmp_path):
 
 
 @pytest.mark.timeout(5)
-async def test_client_disconnect(app, tmp_path):
+async def test_client_disconnect(app, tmp_path, context):
     test_client = app.test_client()
 
     markdown_chat = textwrap.dedent("""\
@@ -600,7 +598,7 @@ async def test_client_disconnect(app, tmp_path):
         "type": "completions_request",
         "version": taskmates.__version__,
         "markdown_chat": markdown_chat,
-        "runner_environment": RUN.get().context["runner_environment"],
+        "runner_environment": context["runner_environment"],
         "run_opts": {
             "model": "quote",
             "max_steps": 1,

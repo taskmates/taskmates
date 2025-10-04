@@ -3,10 +3,10 @@ import json
 import sys
 from io import StringIO
 
-from taskmates.core.markdown_chat.parse_markdown_chat import parse_markdown_chat
 from taskmates.cli.commands.base import Command
+from taskmates.core.workflow_engine.transaction import Objective, ObjectiveKey, Transaction
+from taskmates.core.workflows.markdown_completion.build_chat_completion_request import build_chat_completion_request
 from taskmates.runtimes.cli.cli_context_builder import CliContextBuilder
-from taskmates.core.workflow_engine.run import Objective, ObjectiveKey
 
 
 class ParseCommand(Command):
@@ -14,22 +14,26 @@ class ParseCommand(Command):
         parser.add_argument('file', nargs='?', help='Markdown file to parse (reads from stdin if not provided)')
 
     async def execute(self, args: argparse.Namespace):
-        builder = CliContextBuilder(args)
-        contexts = builder.build()
-
-        async def attempt_parse_markdown(contexts):
-            with Objective(key=ObjectiveKey(outcome="cli_parse_markdown_runner")).environment(context=contexts):
-                taskmates_dirs = contexts["runner_config"]["taskmates_dirs"]
-
+        async def attempt_parse_markdown():
+            context = CliContextBuilder(args).build()
+            async with Transaction(objective=Objective(key=ObjectiveKey(outcome="cli_parse_markdown_runner")),
+                                   context=context).async_transaction_context():
                 if hasattr(args, 'file') and args.file:
                     with open(args.file, 'r') as f:
                         markdown_chat = f.read()
                 else:
                     markdown_chat = "".join(sys.stdin.readlines())
-                result = await parse_markdown_chat(markdown_chat, None, taskmates_dirs)
+
+                markdown_path = args.file if hasattr(args, 'file') and args.file else None
+                result = build_chat_completion_request(
+                    markdown_chat=markdown_chat, 
+                    markdown_path=markdown_path,
+                    run_opts=context.get("run_opts", {})
+                )
+
                 print(json.dumps(result, ensure_ascii=False))
 
-        await attempt_parse_markdown(contexts)
+        await attempt_parse_markdown()
 
 
 async def test_parse(tmp_path):

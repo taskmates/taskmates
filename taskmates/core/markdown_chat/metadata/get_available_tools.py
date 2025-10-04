@@ -1,4 +1,4 @@
-def get_available_tools(front_matter: dict, recipient_config) -> dict:
+def get_available_tools(front_matter: dict, recipient_config: dict) -> dict:
     if recipient_config.get("tools") is not None:
         return recipient_config["tools"]
 

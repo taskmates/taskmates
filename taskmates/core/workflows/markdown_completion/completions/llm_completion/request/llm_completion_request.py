@@ -3,14 +3,18 @@ from typing import Optional
 
 import pytest
 from httpx import ReadError
-from langchain_core.language_models import BaseChatModel
-from langchain_openai import ChatOpenAI
 from loguru import logger
 from opentelemetry import trace
 from typeguard import typechecked
 
+from taskmates.core.markdown_chat.metadata.get_model_client import get_model_client
+from taskmates.core.markdown_chat.metadata.get_model_conf import get_model_conf
+from taskmates.core.workflows.markdown_completion.completions.llm_completion._get_usernames_stop_sequences import \
+    _get_usernames_stop_sequences
 from taskmates.core.workflows.markdown_completion.completions.llm_completion.request._convert_openai_payload_to_langchain import \
     _convert_openai_payload_to_langchain
+from taskmates.core.workflows.markdown_completion.completions.llm_completion.request.prepare_request_payload import \
+    prepare_request_payload
 from taskmates.core.workflows.markdown_completion.completions.llm_completion.request.request_interruption_monitor import \
     RequestInterruptionMonitor
 from taskmates.core.workflows.markdown_completion.completions.llm_completion.response.llm_completion_pre_processor import \
@@ -19,35 +23,51 @@ from taskmates.core.workflows.markdown_completion.completions.llm_completion.res
     LlmCompletionWithUsername
 from taskmates.core.workflows.markdown_completion.completions.llm_completion.response.stop_sequence_processor import \
     StopSequenceProcessor
-from taskmates.core.workflows.markdown_completion.completions.llm_completion.response.streamed_response import \
-    StreamedResponse
 from taskmates.core.workflows.signals.control_signals import ControlSignals
 from taskmates.core.workflows.signals.llm_chat_completion_signals import LlmChatCompletionSignals
 from taskmates.core.workflows.signals.status_signals import StatusSignals
-from taskmates.lib.matchers_ import matchers
+from taskmates.defaults.settings import Settings
 from taskmates.logging import file_logger
+from taskmates.types import ChatCompletionRequest
 
 tracer = trace.get_tracer_provider().get_tracer(__name__)
 
 
 @typechecked
 class LlmCompletionRequest:
-    def __init__(self, client: BaseChatModel, request_payload: dict):
-        self.client = client
-        self.request_payload = request_payload
+    def __init__(self, chat: ChatCompletionRequest):
+        self.chat = chat
+
+        model_alias = chat["run_opts"]["model"]
+        taskmates_dirs = Settings.get()["runner_environment"]["taskmates_dirs"]
+
+        # Get model configuration
+        self.model_conf = get_model_conf(
+            model_alias=model_alias,
+            messages=chat["messages"],
+            taskmates_dirs=taskmates_dirs
+        )
+
+        # TODO we shouldn't mutate this
+        self.model_conf["stop"].extend(_get_usernames_stop_sequences(chat))
+
+        # Get client
+        self.client = get_model_client(model_spec=self.model_conf)
+
+        # Prepare request payload
+        self.request_payload = prepare_request_payload(chat, self.model_conf, self.client)
 
         # Signals
-        self.control_signals = ControlSignals()
-        self.status_signals = StatusSignals()
-        self.llm_chat_completion_signals = LlmChatCompletionSignals()
+        self.control_signals = ControlSignals(name="ControlSignals")
+        self.status_signals = StatusSignals(name="StatusSignals")
+        self.llm_chat_completion_signals = LlmChatCompletionSignals(name="LlmChatCompletionSignals")
 
         # Internal state
         self._executed = False
         self._result: Optional[dict] = None
-        self._streamed_response = StreamedResponse()
 
-    async def execute(self) -> dict:
-        """Execute the LLM completion request."""
+    async def execute_streaming(self) -> None:
+        """Execute the LLM completion request with streaming - emits chunks via signals."""
         if self._executed:
             raise RuntimeError("Request already executed")
         self._executed = True
@@ -55,42 +75,45 @@ class LlmCompletionRequest:
         file_logger.debug("request_payload.json", content=self.request_payload)
 
         with tracer.start_as_current_span(name="chat-completion"):
+            llm = self.client
+            messages, tools = _convert_openai_payload_to_langchain(self.request_payload)
+
+            if tools:
+                llm = llm.bind_tools(tools)
+
             async with RequestInterruptionMonitor(
                     status=self.status_signals,
                     control=self.control_signals
             ) as request_interruption_monitor:
-                llm = self.client
+                stop_sequences = self.request_payload.pop("stop", [])
+                await self._stream_and_emit(
+                    llm, messages, stop_sequences, request_interruption_monitor
+                )
 
-                messages, tools = _convert_openai_payload_to_langchain(self.request_payload)
+    async def execute_non_streaming(self):
+        """Execute the LLM completion request without streaming."""
+        if self._executed:
+            raise RuntimeError("Request already executed")
+        self._executed = True
 
-                if tools:
-                    llm = llm.bind_tools(tools)
+        file_logger.debug("request_payload.json", content=self.request_payload)
 
-                force_stream = bool(self.llm_chat_completion_signals.llm_chat_completion.receivers)
+        with tracer.start_as_current_span(name="chat-completion"):
+            llm = self.client
+            messages, tools = _convert_openai_payload_to_langchain(self.request_payload)
 
-                if self.request_payload.get("stream", force_stream):
-                    # Extract stop sequences
-                    stop_sequences = self.request_payload.pop("stop", [])
-                    self._result = await self._execute_streaming(
-                        llm, messages, stop_sequences, request_interruption_monitor
-                    )
-                else:
-                    self._result = await self._execute_non_streaming(llm, messages)
+            if tools:
+                llm = llm.bind_tools(tools)
 
-        file_logger.debug("response.json", content=self._result)
+            result = await llm.ainvoke(messages)
 
-        finish_reason = self._result['choices'][0]['finish_reason']
-        logger.debug(f"Finish Reason: {finish_reason}")
+            file_logger.debug("response.json", content=result)
 
-        if finish_reason not in ('stop', 'tool_calls'):
-            raise Exception(f"API response has been truncated: finish_reason={finish_reason}")
+            return result
 
-        return self._result
-
-    async def _execute_streaming(self, llm, messages, stop_sequences, request_interruption_monitor):
+    async def _stream_and_emit(self, llm, messages, stop_sequences, request_interruption_monitor):
+        """Stream chunks and emit them via signals without accumulating."""
         chat_completion = llm.astream(messages)
-
-        self.llm_chat_completion_signals.llm_chat_completion.connect(self._streamed_response.accept, weak=False)
 
         received_chunk = False
 
@@ -108,7 +131,7 @@ class LlmCompletionRequest:
                 if request_interruption_monitor.interrupted_or_killed:
                     break
 
-                # Send chunk to all connected handlers
+                # Just emit chunks - don't accumulate
                 await self.llm_chat_completion_signals.llm_chat_completion.send_async(
                     chat_completion_chunk
                 )
@@ -119,33 +142,9 @@ class LlmCompletionRequest:
         except ReadError as e:
             file_logger.debug("response_read_error.json", content=str(e))
 
-        response = self._streamed_response.payload
-        if not response.get('choices'):
-            logger.debug(f"Empty response['choices'].. Cancelling request. received_chunk={received_chunk}")
+        if not received_chunk:
+            logger.debug(f"No chunks received. Cancelling request.")
             raise asyncio.CancelledError
-
-        return response
-
-    async def _execute_non_streaming(self, llm, messages):
-        """Execute non-streaming request."""
-        result = await llm.ainvoke(messages)
-
-        # Convert LangChain response to OpenAI format
-        return {
-            'choices': [{
-                'index': 0,
-                'message': {
-                    'role': 'assistant',
-                    'content': result.content,
-                    'tool_calls': result.tool_calls if hasattr(result, 'tool_calls') and result.tool_calls else None
-                },
-                'finish_reason': 'tool_calls' if hasattr(result, 'tool_calls') and result.tool_calls else 'stop'
-            }],
-            'object': 'chat.completion',
-            'model': getattr(result, 'response_metadata', {}).get('model_name', 'unknown'),
-            'id': getattr(result, 'id', None),
-            **getattr(result, 'response_metadata', {})
-        }
 
     @property
     def result(self) -> Optional[dict]:
@@ -160,79 +159,63 @@ class LlmCompletionRequest:
 
 @pytest.mark.integration
 async def test_llm_completion_request_happy_path(run):
-    # Define the model configuration and parameters as per your actual use case
-    request_payload = {
-        "model": "gpt-3.5-turbo",
-        "stream": True,
+    # Create a chat
+    chat = {
         "messages": [
-            {"role": "user", "content": "Answer with a single number. 1 + 1="},
-        ]
+            {"role": "user", "content": "Answer with a single number. 1 + 1=", "recipient": "assistant",
+             "recipient_role": "assistant"}
+        ],
+        "participants": {"assistant": {"role": "assistant"}},
+        "available_tools": [],
+        "run_opts": {"model": "gpt-3.5-turbo"}
     }
 
-    expected = {'choices': [{'finish_reason': 'stop',
-                             'index': 0,
-                             'message': {'content': '2', 'role': 'assistant'}}],
-                'finish_reason': 'stop',
-                'id': matchers.any_string,
-                'model_name': 'gpt-3.5-turbo-0125',
-                'object': 'chat.completion',
-                'service_tier': 'default'}
-
     # Create and execute request
-    client = ChatOpenAI(model="gpt-3.5-turbo")
-    request = LlmCompletionRequest(client, request_payload)
-    response = await request.execute()
+    request = LlmCompletionRequest(chat)
+    response = await request.execute_non_streaming()
 
-    # Assert that the response matches the new AIMessageChunk protocol
-    assert response == expected
+    # Assert that the response is a LangChain AIMessage
+    assert hasattr(response, 'content')
+    assert response.content == '2'
 
 
 @pytest.mark.integration
 async def test_llm_completion_request_who_are_you(run):
-    # Define the model configuration and parameters as per your actual use case
-    request_payload = {
-        "model": "gemini-2.5-pro-exp-03-25",
-        "stream": True,
+    # Create a chat
+    chat = {
         "messages": [
-            {"role": "user", "content": "Who are you"},
-        ]
+            {"role": "user", "content": "Who are you", "recipient": "assistant",
+             "recipient_role": "assistant"}
+        ],
+        "participants": {"assistant": {"role": "assistant"}},
+        "available_tools": [],
+        "run_opts": {"model": "gpt-3.5-turbo"}
     }
 
     # Create and execute request
-    client = ChatOpenAI(model="gpt-3.5-turbo")
-    request = LlmCompletionRequest(client, request_payload)
-    response = await request.execute()
+    request = LlmCompletionRequest(chat)
+    response = await request.execute_non_streaming()
 
-    # Assert the response has correct OpenAI format with expected fields
-    assert response == {
-        'choices': [{
-            'finish_reason': 'stop',
-            'index': 0,
-            'message': {
-                'content': matchers.any_string,
-                'role': 'assistant'
-            }
-        }],
-        'finish_reason': 'stop',
-        'id': matchers.any_string,
-        'model_name': matchers.any_string,
-        'object': 'chat.completion',
-        'service_tier': matchers.any_string
-    }
+    # Assert that the response is a LangChain AIMessage
+    assert hasattr(response, 'content')
+    assert isinstance(response.content, str)
+    assert len(response.content) > 0
 
 
 @pytest.mark.integration
-async def test_llm_completion_request_with_tool_calls(run):
-    # Define the complex payload based on the JSON you provided
-    request_payload = {
-        "model": "gpt-3.5-turbo",
-        "stream": True,
-        "temperature": 0.2,
-        "max_tokens": 4096,
+async def test_llm_completion_request_with_tool_calls(run, tmp_path):
+    # Create a temp file
+    test_file = tmp_path / "test.txt"
+    test_file.write_text("Hello from test file")
+
+    # Create a chat with tool calls
+    chat = {
         "messages": [
             {
-                "content": "what is on https://asurprisingimage.com?\n",
-                "role": "user"
+                "content": f"Read the file at {test_file}",
+                "role": "user",
+                "recipient": "assistant",
+                "recipient_role": "assistant"
             },
             {
                 "content": None,
@@ -240,8 +223,8 @@ async def test_llm_completion_request_with_tool_calls(run):
                 "tool_calls": [
                     {
                         "function": {
-                            "arguments": "{\"url\":\"https://asurprisingimage.com\"}",
-                            "name": "visit_page"
+                            "arguments": {"path": str(test_file)},
+                            "name": "read_file"
                         },
                         "id": "tool_call_1701668882083",
                         "type": "function"
@@ -249,70 +232,50 @@ async def test_llm_completion_request_with_tool_calls(run):
                 ]
             },
             {
-                "content": "[cat.jpeg](..%2F..%2F..%2F..%2F..%2FDownloads%2Fcat.jpeg)\n",
-                "name": "visit_page",
+                "content": "Hello from test file",
+                "name": "read_file",
                 "role": "tool",
                 "tool_call_id": "tool_call_1701668882083"
             },
             {
                 "role": "assistant",
-                "content": "![[/Users/ralphus/Downloads/cat.jpeg]]\n\nI can see a cat in the image."
+                "content": "The file contains: Hello from test file"
             }
         ],
-        "tools": [{
-            "type": "function",
-            "name": "visit_page",
-            "description": "Visits a page",
-            "parameters": {
-                "properties": {
-                    "url": {
-                        "description": "the url"
-                    }
-                },
-                "required": ["url"],
-                "type": "object"
-            }
-        }]
+        "participants": {"assistant": {"role": "assistant"}},
+        "available_tools": ["read_file"],
+        "run_opts": {}
     }
 
     # Create and execute request
-    client = ChatOpenAI(model="gpt-3.5-turbo")
-    request = LlmCompletionRequest(client, request_payload)
-    response = await request.execute()
+    request = LlmCompletionRequest(chat)
+    response = await request.execute_non_streaming()
 
-    # Assert the response conforms to OpenAI format
-    assert response == {
-        'choices': [{
-            'finish_reason': 'stop',
-            'index': 0,
-            'message': {
-                'content': matchers.any_string,
-                'role': 'assistant'
-            }
-        }],
-        'finish_reason': 'stop',
-        'id': matchers.any_string,
-        'model_name': matchers.any_string,
-        'object': 'chat.completion',
-        'service_tier': matchers.any_string
-    }
+    # Assert that the response is a LangChain AIMessage
+    assert hasattr(response, 'content')
+    assert isinstance(response.content, str)
+    assert len(response.content) > 0
 
 
 @pytest.mark.asyncio
 async def test_llm_completion_request_streaming_with_fixture(run):
     """Test LlmCompletionRequest with streaming response using fixture."""
-    from taskmates.core.workflows.markdown_completion.completions.llm_completion.testing.fixture_chat_model import \
-        FixtureChatModel
-
-    # Use the streaming fixture
-    client = FixtureChatModel(fixture_path="tests/fixtures/api-responses/openai_streaming_response.jsonl")
-
-    request_payload = {
-        "model": "fixture-model",
-        "stream": True,
+    # Create a chat
+    chat = {
         "messages": [
-            {"role": "user", "content": "Count to 5"},
-        ]
+            {"role": "user", "content": "Count to 5", "recipient": "assistant",
+             "recipient_role": "assistant"}
+        ],
+        "participants": {"assistant": {"role": "assistant"}},
+        "available_tools": [],
+        "run_opts": {
+            "model": {
+                "name": "fixture",
+                "kwargs": {
+                    "fixture_path": "tests/fixtures/api-responses/openai_streaming_response.jsonl"
+                }
+            }
+        }
     }
 
     # Collect streamed chunks
@@ -322,89 +285,68 @@ async def test_llm_completion_request_streaming_with_fixture(run):
         streamed_chunks.append(chunk)
 
     # Create and execute request
-    request = LlmCompletionRequest(client, request_payload)
+    request = LlmCompletionRequest(chat)
     request.llm_chat_completion_signals.llm_chat_completion.connect(capture_chunk, weak=False)
 
-    response = await request.execute()
-
-    # Verify the conversion produces correct OpenAI format
-    assert response == matchers.dict_containing({
-        'choices': [{
-            'finish_reason': 'stop',
-            'index': 0,
-            'message': {
-                'content': '1, 2, 3, 4, 5',
-                'role': 'assistant'
-            }
-        }],
-        'id': matchers.any_string,
-        'object': 'chat.completion'
-    })
+    await request.execute_streaming()
 
     # Verify streaming occurred
     assert len(streamed_chunks) > 0
+
+    # Verify we received the expected content through chunks
+    content = ''.join(chunk.content for chunk in streamed_chunks if hasattr(chunk, 'content') and chunk.content)
+    assert content == '1, 2, 3, 4, 5'
 
 
 @pytest.mark.asyncio
 async def test_llm_completion_request_non_streaming_with_fixture(run):
     """Test LlmCompletionRequest with non-streaming response using fixture."""
-    from taskmates.core.workflows.markdown_completion.completions.llm_completion.testing.fixture_chat_model import \
-        FixtureChatModel
-
-    # Use the non-streaming fixture
-    client = FixtureChatModel(fixture_path="tests/fixtures/api-responses/openai_non_streaming_response.json")
-
-    request_payload = {
-        "model": "fixture-model",
-        "stream": False,
+    # Create a chat
+    chat = {
         "messages": [
-            {"role": "user", "content": "Count to 5"},
-        ]
+            {"role": "user", "content": "Count to 5", "recipient": "assistant",
+             "recipient_role": "assistant"}
+        ],
+        "participants": {"assistant": {"role": "assistant"}},
+        "available_tools": [],
+        "run_opts": {
+            "model": {
+                "name": "fixture",
+                "kwargs": {
+                    "fixture_path": "tests/fixtures/api-responses/openai_non_streaming_response.json"
+                }
+            }
+        }
     }
 
     # Create and execute request
-    request = LlmCompletionRequest(client, request_payload)
-    response = await request.execute()
+    request = LlmCompletionRequest(chat)
+    response = await request.execute_non_streaming()
 
-    # Verify the conversion produces correct OpenAI format
-    assert response == matchers.dict_containing({
-        'choices': [{
-            'finish_reason': 'stop',
-            'index': 0,
-            'message': {
-                'content': '1, 2, 3, 4, 5',
-                'role': 'assistant',
-                'tool_calls': None
-            }
-        }],
-        'object': 'chat.completion',
-        'model_name': matchers.any_string,
-        'id': matchers.any_string,
-        'service_tier': 'default'
-    })
+    # Verify we get a LangChain AIMessage
+    assert hasattr(response, 'content')
+    assert response.content == '1, 2, 3, 4, 5'
 
 
 @pytest.mark.asyncio
 async def test_llm_completion_request_tool_call_streaming_with_fixture(run):
     """Test LlmCompletionRequest with tool call streaming response using fixture."""
-    from taskmates.core.workflows.markdown_completion.completions.llm_completion.testing.fixture_chat_model import \
-        FixtureChatModel
-
-    # Use the tool call streaming fixture
-    client = FixtureChatModel(fixture_path="tests/fixtures/api-responses/openai_tool_call_streaming_response.jsonl")
-
-    # Define a dummy weather tool
-    def get_weather(location: str) -> str:
-        """Get the weather for a location."""
-        return f"The weather in {location} is sunny and 72°F"
-
-    request_payload = {
-        "model": "fixture-model",
-        "stream": True,
+    # Create a chat
+    chat = {
         "messages": [
-            {"role": "user", "content": "What's the weather in San Francisco?"},
+            {"role": "user", "content": "What's the weather in San Francisco?", "recipient": "assistant",
+             "recipient_role": "assistant"}
         ],
-        "tools": [get_weather]
+        "participants": {"assistant": {"role": "assistant"}},
+        "available_tools": ["get_weather"],
+        "run_opts": {
+            "model": {
+                "name": "fixture",
+                "kwargs": {
+                    "fixture_path": "tests/fixtures/api-responses/openai_tool_call_streaming_response.jsonl"
+                }
+            }
+        }
     }
 
     # Collect streamed chunks
@@ -414,56 +356,34 @@ async def test_llm_completion_request_tool_call_streaming_with_fixture(run):
         streamed_chunks.append(chunk)
 
     # Create and execute request
-    request = LlmCompletionRequest(client, request_payload)
+    request = LlmCompletionRequest(chat)
     request.llm_chat_completion_signals.llm_chat_completion.connect(capture_chunk, weak=False)
 
-    response = await request.execute()
-
-    # Verify the conversion produces correct OpenAI format with tool calls
-    assert response == matchers.dict_containing({
-        'choices': [{
-            'finish_reason': 'tool_calls',
-            'index': 0,
-            'message': {
-                'content': None,
-                'role': 'assistant',
-                'tool_calls': [{
-                    'function': {
-                        'name': 'get_weather',
-                        'arguments': matchers.json_matching('{"location": "San Francisco"}')
-                    },
-                    'id': matchers.any_string,
-                    'type': 'function'
-                }]
-            }
-        }],
-        'finish_reason': 'tool_calls',
-        'id': matchers.any_string,
-        'model_name': matchers.any_string,
-        'object': 'chat.completion',
-        'service_tier': 'default'
-    })
+    await request.execute_streaming()
 
     # Verify streaming occurred
     assert len(streamed_chunks) > 0
+
+    # Verify we got tool call chunks
+    has_tool_calls = any(
+        hasattr(chunk, 'tool_call_chunks') and chunk.tool_call_chunks
+        for chunk in streamed_chunks
+    )
+    assert has_tool_calls
 
 
 @pytest.mark.asyncio
 async def test_llm_completion_request_with_stop_sequences(run):
     """Test that stop sequences are properly handled during streaming."""
-    from taskmates.core.workflows.markdown_completion.completions.llm_completion.testing.fixture_chat_model import \
-        FixtureChatModel
-
-    # Use the existing streaming fixture
-    client = FixtureChatModel(fixture_path="tests/fixtures/api-responses/openai_streaming_response.jsonl")
-
-    request_payload = {
-        "model": "fixture-model",
-        "stream": True,
+    # Create a chat - stop sequences will be added via model_conf
+    chat = {
         "messages": [
-            {"role": "user", "content": "Count to 5"},
+            {"role": "user", "content": "Count to 5", "recipient": "assistant",
+             "recipient_role": "assistant"}
         ],
-        "stop": [", 3"]  # This should stop the stream at "1, 2"
+        "participants": {"assistant": {"role": "assistant"}},
+        "available_tools": [],
+        "run_opts": {}
     }
 
     # Collect streamed chunks
@@ -473,13 +393,20 @@ async def test_llm_completion_request_with_stop_sequences(run):
         streamed_chunks.append(chunk)
 
     # Create and execute request
-    request = LlmCompletionRequest(client, request_payload)
+    chat["run_opts"] = {
+        "model": {
+            "name": "fixture",
+            "kwargs": {
+                "fixture_path": "tests/fixtures/api-responses/openai_streaming_response.jsonl"
+            }
+        }
+    }
+    request = LlmCompletionRequest(chat)
+    # Manually add stop sequence to test
+    request.request_payload["stop"] = [", 3"]  # This should stop the stream at "1, 2"
     request.llm_chat_completion_signals.llm_chat_completion.connect(capture_chunk, weak=False)
 
-    response = await request.execute()
-
-    # Verify the content stops at the stop sequence
-    assert response['choices'][0]['message']['content'] == '1, 2'
+    await request.execute_streaming()
 
     # Verify we received the correct chunks
     # The chunks are AIMessageChunk objects, not OpenAI format dicts
@@ -495,21 +422,26 @@ async def test_llm_completion_request_with_stop_sequences(run):
 @pytest.mark.asyncio
 async def test_llm_completion_request_class(run):
     """Test the new LlmCompletionRequest class directly."""
-    from taskmates.core.workflows.markdown_completion.completions.llm_completion.testing.fixture_chat_model import \
-        FixtureChatModel
-
-    client = FixtureChatModel(fixture_path="tests/fixtures/api-responses/openai_streaming_response.jsonl")
-
-    request_payload = {
-        "model": "fixture-model",
-        "stream": True,
+    # Create a chat
+    chat = {
         "messages": [
-            {"role": "user", "content": "Count to 5"},
-        ]
+            {"role": "user", "content": "Count to 5", "recipient": "assistant",
+             "recipient_role": "assistant"}
+        ],
+        "participants": {"assistant": {"role": "assistant"}},
+        "available_tools": [],
+        "run_opts": {
+            "model": {
+                "name": "fixture",
+                "kwargs": {
+                    "fixture_path": "tests/fixtures/api-responses/openai_streaming_response.jsonl"
+                }
+            }
+        }
     }
 
     # Create request
-    request = LlmCompletionRequest(client, request_payload)
+    request = LlmCompletionRequest(chat)
 
     # Collect chunks
     chunks = []
@@ -518,55 +450,65 @@ async def test_llm_completion_request_class(run):
         chunks.append(chunk)
 
     request.llm_chat_completion_signals.llm_chat_completion.connect(collect_chunk, weak=False)
-    request
 
-    # Execute
-    response = await request.execute()
+    # Execute streaming
+    await request.execute_streaming()
 
-    # Verify response
-    assert response['choices'][0]['message']['content'] == '1, 2, 3, 4, 5'
+    # Verify chunks were received
     assert len(chunks) > 0
+    content = ''.join(chunk.content for chunk in chunks if hasattr(chunk, 'content') and chunk.content)
+    assert content == '1, 2, 3, 4, 5'
 
     # Verify can't execute twice
     with pytest.raises(RuntimeError, match="Request already executed"):
-        await request.execute()
+        await request.execute_streaming()
 
 
 @pytest.mark.asyncio
 async def test_llm_completion_request_status_forwarding(run):
     """Test that status signals are properly forwarded."""
-    from taskmates.core.workflows.markdown_completion.completions.llm_completion.testing.fixture_chat_model import \
-        FixtureChatModel
-
-    client = FixtureChatModel(fixture_path="tests/fixtures/api-responses/openai_streaming_response.jsonl")
-
-    request_payload = {
-        "model": "fixture-model",
-        "stream": True,
+    # Create a chat
+    chat = {
         "messages": [
-            {"role": "user", "content": "Count to 5"},
-        ]
+            {"role": "user", "content": "Count to 5", "recipient": "assistant",
+             "recipient_role": "assistant"}
+        ],
+        "participants": {"assistant": {"role": "assistant"}},
+        "available_tools": [],
+        "run_opts": {
+            "model": {
+                "name": "fixture",
+                "kwargs": {
+                    "fixture_path": "tests/fixtures/api-responses/openai_streaming_response.jsonl"
+                }
+            }
+        }
     }
 
     # Create request
-    request = LlmCompletionRequest(client, request_payload)
+    request = LlmCompletionRequest(chat)
 
     # Create external status signals
-    external_status = StatusSignals()
+    external_status = StatusSignals(name="StatusSignals")
     status_updates = []
 
     async def capture_status(sender, **kwargs):
         status_updates.append(('any', sender))
 
+    # Need to connect a receiver for streaming to work
+    chunks = []
+
+    async def capture_chunk(chunk):
+        chunks.append(chunk)
+
+    request.llm_chat_completion_signals.llm_chat_completion.connect(capture_chunk, weak=False)
+
     # Connect to all status signals to capture any updates
-    external_status.start.connect(lambda s, **kw: status_updates.append(('start', s)), weak=False)
-    external_status.finish.connect(lambda s, **kw: status_updates.append(('finish', s)), weak=False)
-    external_status.success.connect(lambda s, **kw: status_updates.append(('success', s)), weak=False)
     external_status.interrupted.connect(lambda s, **kw: status_updates.append(('interrupted', s)), weak=False)
     external_status.killed.connect(lambda s, **kw: status_updates.append(('killed', s)), weak=False)
 
     # Execute
-    await request.execute()
+    await request.execute_streaming()
 
     # Verify status updates were forwarded
     # Note: The actual status updates depend on RequestInterruptionMonitor

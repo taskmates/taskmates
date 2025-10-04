@@ -1,76 +1,62 @@
-import functools
-
 from loguru import logger
 
-from taskmates.lib.contextlib_.stacked_contexts import stacked_contexts
 from taskmates.core.workflow_engine.composite_context_manager import CompositeContextManager
-from taskmates.core.workflow_engine.run import RUN, Run, Objective, ObjectiveKey
-from taskmates.core.workflow_engine.run_context import RunContext
 from taskmates.core.workflows.signals.control_signals import ControlSignals
-from taskmates.core.workflows.states.interrupted import Interrupted
+from taskmates.core.workflows.states.interrupt_state import InterruptState
+from taskmates.lib.contextlib_.stacked_contexts import stacked_contexts
 
 
 class InterruptRequestDaemon(CompositeContextManager):
-    async def handle_interrupt_request(self, _sender, run: Run):
-        interrupted = run.state["interrupted"]
-        control = run.signals["control"]
+    def __init__(self, control_signals: ControlSignals, interrupt_state: InterruptState):
+        super().__init__()
+        self.control_signals = control_signals
+        self.interrupt_state = interrupt_state
 
-        if interrupted.get():
+    async def handle_interrupt_request(self, _sender):
+        if self.interrupt_state.value == "interrupting":
             logger.info("Interrupt requested again. Killing the request.")
-            await control.kill.send_async({})
+            self.interrupt_state.value = "killed"
+            await self.control_signals.kill.send_async({})
         else:
             logger.info("Interrupt requested")
-            await control.interrupt.send_async({})
-            interrupted.set(True)
+            self.interrupt_state.value = "interrupting"
+            await self.control_signals.interrupt.send_async({})
 
     def __enter__(self):
-        run = RUN.get()
-        control = run.signals["control"]
         self.exit_stack.enter_context(stacked_contexts([
-            control.interrupt_request.connected_to(
-                functools.partial(self.handle_interrupt_request, run=run))
-        ]))
+            self.control_signals.interrupt_request.connected_to(self.handle_interrupt_request)]))
 
 
-async def test_interrupt_request_mediator(context: RunContext):
-    # Create a real Run with real signals
-    request = Objective(key=ObjectiveKey(outcome="test"))
+async def test_interrupt_request_mediator():
+    # Create control signals and interrupt state
+    control_signals = ControlSignals(name="test-control-signals")
+    interrupt_state = InterruptState()
 
-    # Create a real Run
-    run = Run(
-        objective=request,
-        context=context,
-        signals={"control": ControlSignals()},
-        state={"interrupted": Interrupted()}
-    )
+    mediator = InterruptRequestDaemon(control_signals, interrupt_state)
+    with mediator:
+        # Track signal emissions
+        interrupt_calls = []
+        kill_calls = []
 
-    # Use context manager to properly initialize the run
-    with run:
-        mediator = InterruptRequestDaemon()
-        with mediator:
-            # Track signal emissions
-            interrupt_calls = []
-            kill_calls = []
+        async def interrupt_handler(_):
+            interrupt_calls.append(True)
 
-            async def interrupt_handler(_):
-                interrupt_calls.append(True)
+        async def kill_handler(_):
+            kill_calls.append(True)
 
-            async def kill_handler(_):
-                kill_calls.append(True)
+        control_signals.interrupt.connect(interrupt_handler)
+        control_signals.kill.connect(kill_handler)
 
-            run.signals["control"].interrupt.connect(interrupt_handler)
-            run.signals["control"].kill.connect(kill_handler)
+        # Test first interrupt
+        await mediator.handle_interrupt_request(None)
 
-            # Test first interrupt
-            await mediator.handle_interrupt_request(None, run)
+        assert interrupt_state.value == "interrupting"
+        assert len(interrupt_calls) == 1
+        assert len(kill_calls) == 0
 
-            assert run.state["interrupted"].get()
-            assert len(interrupt_calls) == 1
-            assert len(kill_calls) == 0
+        # Test second interrupt
+        await mediator.handle_interrupt_request(None)
 
-            # Test second interrupt
-            await mediator.handle_interrupt_request(None, run)
-
-            assert run.state["interrupted"].get()
-            assert len(interrupt_calls) == 1
-            assert len(kill_calls) == 1
+        assert interrupt_state.value == "killed"
+        assert len(interrupt_calls) == 1
+        assert len(kill_calls) == 1

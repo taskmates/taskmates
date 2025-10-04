@@ -1,7 +1,7 @@
 import sys
 from pathlib import Path
 
-from taskmates.core.workflow_engine.run import RUN
+from taskmates.core.workflow_engine.transaction import TRANSACTION
 from taskmates.defaults.tools.filesystem_.is_path_allowed import is_path_allowed
 
 
@@ -14,7 +14,7 @@ def create_directory(path, parents=True, exist_ok=True):
     :return: True if successful, None if not allowed or error occurred
     """
 
-    contexts = RUN.get().context
+    contexts = TRANSACTION.get().execution_context.context
     run_opts = contexts["run_opts"]
 
     allow = ((run_opts.get("tools") or {}).get("create_directory") or {}).get("allow", "**")

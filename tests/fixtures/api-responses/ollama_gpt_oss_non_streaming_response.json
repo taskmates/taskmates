@@ -1,0 +1,30 @@
+{
+  "content": "1  \n2  \n3  \n4  \n5",
+  "additional_kwargs": {
+    "reasoning_content": "The user wants to count from 1 to 5. Just output numbers 1 2 3 4 5 maybe each on separate line. Simple."
+  },
+  "response_metadata": {
+    "model": "gpt-oss:120b",
+    "created_at": "2025-08-19T07:33:38.862441Z",
+    "done": true,
+    "done_reason": "stop",
+    "total_duration": 1330847417,
+    "load_duration": 34090375,
+    "prompt_eval_count": 74,
+    "prompt_eval_duration": 27550459,
+    "eval_count": 52,
+    "eval_duration": 1268805166,
+    "model_name": "gpt-oss:120b"
+  },
+  "type": "ai",
+  "name": null,
+  "id": "run--b0f359b0-e1c4-4a39-9fe6-c9e932656eb2-0",
+  "example": false,
+  "tool_calls": [],
+  "invalid_tool_calls": [],
+  "usage_metadata": {
+    "input_tokens": 74,
+    "output_tokens": 52,
+    "total_tokens": 126
+  }
+}

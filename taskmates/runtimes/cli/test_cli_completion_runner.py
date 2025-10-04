@@ -342,6 +342,7 @@ def test_chat_completion_from_stdin(tmp_path):
     assert stderr == ""
     assert stdout == expected_response
 
+
 def test_cli_completion_with_history(cli_runner, tmp_path):
     # Create initial history file
     history_file = tmp_path / "history.txt"

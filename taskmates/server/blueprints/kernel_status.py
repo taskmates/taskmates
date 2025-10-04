@@ -1,9 +1,13 @@
 import pytest
 from quart import Blueprint, jsonify
 
-from taskmates.core.workflows.markdown_completion.completions.code_cell_execution.execution.kernel_manager import get_kernel_manager
-from taskmates.core.workflows.markdown_completion.completions.code_cell_execution.jupyter_notebook_logger import jupyter_notebook_logger
-from taskmates.core.workflows.signals.code_cell_output_signals import CodeCellOutputSignals
+from taskmates.core.workflows.markdown_completion.completions.code_cell_execution.execution.kernel_manager import \
+    get_kernel_manager
+from taskmates.core.workflows.markdown_completion.completions.code_cell_execution.jupyter_notebook_logger import \
+    jupyter_notebook_logger
+from taskmates.core.workflows.signals.control_signals import ControlSignals
+from taskmates.core.workflows.signals.execution_environment_signals import ExecutionEnvironmentSignals
+from taskmates.core.workflows.signals.status_signals import StatusSignals
 
 kernel_status_bp = Blueprint('kernel_status', __name__)
 
@@ -14,7 +18,8 @@ async def get_kernel_status():
     kernel_manager = get_kernel_manager()
     status = {}
 
-    jupyter_notebook_logger.debug(f"Kernels: {len(kernel_manager._kernel_pool)}, Cell trackers: {len(kernel_manager._cell_trackers)}")
+    jupyter_notebook_logger.debug(
+        f"Kernels: {len(kernel_manager._kernel_pool)}, Cell trackers: {len(kernel_manager._cell_trackers)}")
 
     for key, kernel_manager_instance in kernel_manager._kernel_pool.items():
         cwd, markdown_path, env_hash = key
@@ -106,12 +111,17 @@ async def test_kernel_status_with_executed_cell(tmp_path):
     app.register_blueprint(kernel_status_bp)
 
     # Start a kernel and execute a cell
-    from taskmates.core.workflows.markdown_completion.completions.code_cell_execution.execution.markdown_executor import MarkdownExecutor
-    from taskmates.core.workflow_engine.run import RUN
+    from taskmates.core.workflows.markdown_completion.completions.code_cell_execution.execution.markdown_executor import \
+        MarkdownExecutor
 
-    run = RUN.get()
-    run.signals["code_cell_output"] = CodeCellOutputSignals()
-    executor = MarkdownExecutor(run.signals["control"], run.signals["status"], run.signals["code_cell_output"])
+    async def capture_response(sender, value):
+        pass
+
+    execution_environment_signals = ExecutionEnvironmentSignals(name="ExecutionEnvironmentSignals")
+    execution_environment_signals.response.connect(capture_response)
+    control_signals = ControlSignals(name="ControlSignals")
+    status_signals = StatusSignals(name="StatusSignals")
+    executor = MarkdownExecutor(control_signals, status_signals, execution_environment_signals)
 
     input_md = """\
 ```python .eval

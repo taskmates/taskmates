@@ -126,7 +126,7 @@ langchain-xai = "^0.2.3"
 ruff = "^0.11.13"
 pylint = "^3.3.7"
 openai = "^1.86.0"
-langchain-ollama = "^0.3.3"
+langchain-ollama = "^0.3.6"
 [tool.poetry.group.dev.dependencies]
 pytest-socket = "^0.7.0"
 icecream = "^2.1.3"

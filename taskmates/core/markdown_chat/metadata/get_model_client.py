@@ -25,10 +25,11 @@ def get_model_client(model_spec: dict) -> BaseChatModel:
 
     # Remove non-LLM keys
     model_name = model_spec.get("model", model_spec.get("model_name"))
-    if "gpt" in model_name or "gemini" in model_name:
-        exclude_keys = {"client_type", "max_context_window", "stop"}
-    else:
-        exclude_keys = {"client_type", "max_context_window"}
+    exclude_keys = {"client_type", "max_context_window", "stop"}
+    # if "gpt" in model_name or "gemini" in model_name or "grok" in model_name:
+    #     exclude_keys = {"client_type", "max_context_window", "stop"}
+    # else:
+    #     exclude_keys = {"client_type", "max_context_window"}
     model_spec_clean = {k: v for k, v in model_spec.items() if k not in exclude_keys}
 
     # Special handling for OpenAI models: map endpoint -> openai_api_base

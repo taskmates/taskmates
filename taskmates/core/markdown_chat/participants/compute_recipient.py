@@ -4,15 +4,15 @@ import pytest
 from loguru import logger
 from typeguard import typechecked
 
-from taskmates.core.markdown_chat.participants.parse_mention import parse_mention
 from taskmates.core.chat.openai.get_text_content import get_text_content
+from taskmates.core.markdown_chat.parse_front_matter_and_messages import parse_front_matter_and_messages
+from taskmates.core.markdown_chat.participants.parse_mention import parse_mention
 
 
 @typechecked
-def compute_recipient(messages, participants_configs) -> str | None:
+def compute_recipient(messages, participants: list[str]) -> str | None:
     recipient = None
 
-    participants = list(participants_configs.keys())
     participant_messages = [message for message in messages
                             if message["role"] not in ("system", "tool")
                             and message.get("name") not in ("cell_output",)
@@ -23,7 +23,7 @@ def compute_recipient(messages, participants_configs) -> str | None:
 
     last_participant_message = participant_messages[-1]
     last_participant_message.setdefault("name", last_participant_message.get("role"))
-    last_participant_message_role = participants_configs.get(last_participant_message["name"], {}).get("role")
+    last_participant_message_role = last_participant_message.get("role")
 
     mention = None
     if last_participant_message is not None:
@@ -83,7 +83,7 @@ def compute_recipient(messages, participants_configs) -> str | None:
 # Test cases
 
 @pytest.fixture
-def taskmates_dir(tmp_path):
+def taskmates_dir(tmp_path, run):
     base_dir = tmp_path / ".taskmates"
     (base_dir / "engine").mkdir(parents=True)
     (base_dir / "engine" / "chat_introduction.md").write_text("CHAT_INTRODUCTION\n")
@@ -97,9 +97,8 @@ def taskmates_dir(tmp_path):
     return base_dir
 
 
-@pytest.mark.asyncio
-async def test_implicit_assistant(taskmates_dir, tmp_path):
-    from taskmates.core.markdown_chat.parse_markdown_chat import parse_markdown_chat
+def test_implicit_assistant(taskmates_dir, tmp_path):
+    from taskmates.core.markdown_chat.participants.compute_participants import compute_participants
 
     markdown_chat = """\
     ---
@@ -109,14 +108,15 @@ async def test_implicit_assistant(taskmates_dir, tmp_path):
     **user>** Hello
     """
 
-    chat = await parse_markdown_chat(textwrap.dedent(markdown_chat), tmp_path / "chat.md", [taskmates_dir])
-    recipient = compute_recipient(chat['messages'], chat['participants'])
+    front_matter, messages = parse_front_matter_and_messages(textwrap.dedent(markdown_chat), tmp_path / "chat.md")
+    _, participants_configs = compute_participants(front_matter, messages)
+    participants = list(participants_configs.keys())
+    recipient = compute_recipient(messages, participants)
     assert recipient == "assistant"
 
 
-@pytest.mark.asyncio
-async def test_mention_reply(taskmates_dir, tmp_path):
-    from taskmates.core.markdown_chat.parse_markdown_chat import parse_markdown_chat
+def test_mention_reply(taskmates_dir, tmp_path):
+    from taskmates.core.markdown_chat.participants.compute_participants import compute_participants
 
     markdown_chat = """\
     ---
@@ -132,14 +132,15 @@ async def test_mention_reply(taskmates_dir, tmp_path):
     **alice>** 2
     """
 
-    chat = await parse_markdown_chat(textwrap.dedent(markdown_chat), tmp_path / "chat.md", [taskmates_dir])
-    recipient = compute_recipient(chat['messages'], chat['participants'])
+    front_matter, messages = parse_front_matter_and_messages(textwrap.dedent(markdown_chat), tmp_path / "chat.md")
+    _, participants_configs = compute_participants(front_matter, messages)
+    participants = list(participants_configs.keys())
+    recipient = compute_recipient(messages, participants)
     assert recipient == "dave"
 
 
-@pytest.mark.asyncio
-async def test_mention(taskmates_dir, tmp_path):
-    from taskmates.core.markdown_chat.parse_markdown_chat import parse_markdown_chat
+def test_mention(taskmates_dir, tmp_path):
+    from taskmates.core.markdown_chat.participants.compute_participants import compute_participants
 
     markdown_chat = """\
     ---
@@ -152,14 +153,15 @@ async def test_mention(taskmates_dir, tmp_path):
     **user>** Hello @assistant2
     """
 
-    chat = await parse_markdown_chat(textwrap.dedent(markdown_chat), tmp_path / "chat.md", [taskmates_dir])
-    recipient = compute_recipient(chat['messages'], chat['participants'])
+    front_matter, messages = parse_front_matter_and_messages(textwrap.dedent(markdown_chat), tmp_path / "chat.md")
+    _, participants_configs = compute_participants(front_matter, messages)
+    participants = list(participants_configs.keys())
+    recipient = compute_recipient(messages, participants)
     assert recipient == "assistant2"
 
 
-@pytest.mark.asyncio
-async def test_alternating(taskmates_dir, tmp_path):
-    from taskmates.core.markdown_chat.parse_markdown_chat import parse_markdown_chat
+def test_alternating(taskmates_dir, tmp_path):
+    from taskmates.core.markdown_chat.participants.compute_participants import compute_participants
 
     markdown_chat = """\
     ---
@@ -175,14 +177,15 @@ async def test_alternating(taskmates_dir, tmp_path):
     **user>** How are you?
     """
 
-    chat = await parse_markdown_chat(textwrap.dedent(markdown_chat), tmp_path / "chat.md", [taskmates_dir])
-    recipient = compute_recipient(chat['messages'], chat['participants'])
+    front_matter, messages = parse_front_matter_and_messages(textwrap.dedent(markdown_chat), tmp_path / "chat.md")
+    _, participants_configs = compute_participants(front_matter, messages)
+    participants = list(participants_configs.keys())
+    recipient = compute_recipient(messages, participants)
     assert recipient == "assistant1"
 
 
-@pytest.mark.asyncio
-async def test_tool_call(taskmates_dir, tmp_path):
-    from taskmates.core.markdown_chat.parse_markdown_chat import parse_markdown_chat
+def test_tool_call(taskmates_dir, tmp_path):
+    from taskmates.core.markdown_chat.participants.compute_participants import compute_participants
 
     markdown_chat = """\
     ---
@@ -202,14 +205,15 @@ async def test_tool_call(taskmates_dir, tmp_path):
     
     """
 
-    chat = await parse_markdown_chat(textwrap.dedent(markdown_chat), tmp_path / "chat.md", [taskmates_dir])
-    recipient = compute_recipient(chat['messages'], chat['participants'])
+    front_matter, messages = parse_front_matter_and_messages(textwrap.dedent(markdown_chat), tmp_path / "chat.md")
+    _, participants_configs = compute_participants(front_matter, messages)
+    participants = list(participants_configs.keys())
+    recipient = compute_recipient(messages, participants)
     assert recipient == "user"
 
 
-@pytest.mark.asyncio
-async def test_tool_call_response(taskmates_dir, tmp_path):
-    from taskmates.core.markdown_chat.parse_markdown_chat import parse_markdown_chat
+def test_tool_call_response(taskmates_dir, tmp_path):
+    from taskmates.core.markdown_chat.participants.compute_participants import compute_participants
 
     markdown_chat = """\
     ---
@@ -238,14 +242,15 @@ async def test_tool_call_response(taskmates_dir, tmp_path):
     
     """
 
-    chat = await parse_markdown_chat(textwrap.dedent(markdown_chat), tmp_path / "chat.md", [taskmates_dir])
-    recipient = compute_recipient(chat['messages'], chat['participants'])
+    front_matter, messages = parse_front_matter_and_messages(textwrap.dedent(markdown_chat), tmp_path / "chat.md")
+    _, participants_configs = compute_participants(front_matter, messages)
+    participants = list(participants_configs.keys())
+    recipient = compute_recipient(messages, participants)
     assert recipient == "assistant"  # The tool output should be handled by the assistant that called it
 
 
-@pytest.mark.asyncio
-async def test_tool_call_and_assistant_reply(taskmates_dir, tmp_path):
-    from taskmates.core.markdown_chat.parse_markdown_chat import parse_markdown_chat
+def test_tool_call_and_assistant_reply(taskmates_dir, tmp_path):
+    from taskmates.core.markdown_chat.participants.compute_participants import compute_participants
 
     markdown_chat = """\
     ---
@@ -279,14 +284,15 @@ async def test_tool_call_and_assistant_reply(taskmates_dir, tmp_path):
     
     """
 
-    chat = await parse_markdown_chat(textwrap.dedent(markdown_chat), tmp_path / "chat.md", [taskmates_dir])
-    recipient = compute_recipient(chat['messages'], chat['participants'])
+    front_matter, messages = parse_front_matter_and_messages(textwrap.dedent(markdown_chat), tmp_path / "chat.md")
+    _, participants_configs = compute_participants(front_matter, messages)
+    participants = list(participants_configs.keys())
+    recipient = compute_recipient(messages, participants)
     assert recipient == "user"  # The tool output should be handled by the assistant that called it
 
 
-@pytest.mark.asyncio
-async def test_code_cell(taskmates_dir, tmp_path):
-    from taskmates.core.markdown_chat.parse_markdown_chat import parse_markdown_chat
+def test_code_cell(taskmates_dir, tmp_path):
+    from taskmates.core.markdown_chat.participants.compute_participants import compute_participants
 
     markdown_chat = """\
     ---
@@ -304,14 +310,15 @@ async def test_code_cell(taskmates_dir, tmp_path):
     ```
     """
 
-    chat = await parse_markdown_chat(textwrap.dedent(markdown_chat), tmp_path / "chat.md", [taskmates_dir])
-    recipient = compute_recipient(chat['messages'], chat['participants'])
+    front_matter, messages = parse_front_matter_and_messages(textwrap.dedent(markdown_chat), tmp_path / "chat.md")
+    _, participants_configs = compute_participants(front_matter, messages)
+    participants = list(participants_configs.keys())
+    recipient = compute_recipient(messages, participants)
     assert recipient == "user"
 
 
-@pytest.mark.asyncio
-async def test_code_cell_execution(taskmates_dir, tmp_path):
-    from taskmates.core.markdown_chat.parse_markdown_chat import parse_markdown_chat
+def test_code_cell_execution(taskmates_dir, tmp_path):
+    from taskmates.core.markdown_chat.participants.compute_participants import compute_participants
 
     markdown_chat = """\
     ---
@@ -333,14 +340,15 @@ async def test_code_cell_execution(taskmates_dir, tmp_path):
     
     """
 
-    chat = await parse_markdown_chat(textwrap.dedent(markdown_chat), tmp_path / "chat.md", [taskmates_dir])
-    recipient = compute_recipient(chat['messages'], chat['participants'])
+    front_matter, messages = parse_front_matter_and_messages(textwrap.dedent(markdown_chat), tmp_path / "chat.md")
+    _, participants_configs = compute_participants(front_matter, messages)
+    participants = list(participants_configs.keys())
+    recipient = compute_recipient(messages, participants)
     assert recipient == "coder"
 
 
-@pytest.mark.asyncio
-async def test_code_cell_execution_and_assistant_reply(taskmates_dir, tmp_path):
-    from taskmates.core.markdown_chat.parse_markdown_chat import parse_markdown_chat
+def test_code_cell_execution_and_assistant_reply(taskmates_dir, tmp_path):
+    from taskmates.core.markdown_chat.participants.compute_participants import compute_participants
 
     markdown_chat = """\
     ---
@@ -365,14 +373,15 @@ async def test_code_cell_execution_and_assistant_reply(taskmates_dir, tmp_path):
     
     """
 
-    chat = await parse_markdown_chat(textwrap.dedent(markdown_chat), tmp_path / "chat.md", [taskmates_dir])
-    recipient = compute_recipient(chat['messages'], chat['participants'])
+    front_matter, messages = parse_front_matter_and_messages(textwrap.dedent(markdown_chat), tmp_path / "chat.md")
+    _, participants_configs = compute_participants(front_matter, messages)
+    participants = list(participants_configs.keys())
+    recipient = compute_recipient(messages, participants)
     assert recipient == "user"  # The code cell output should be handled by the assistant that executed it
 
 
-@pytest.mark.asyncio
-async def test_code_cell_execution_and_user_interruption(taskmates_dir, tmp_path):
-    from taskmates.core.markdown_chat.parse_markdown_chat import parse_markdown_chat
+def test_code_cell_execution_and_user_interruption(taskmates_dir, tmp_path):
+    from taskmates.core.markdown_chat.participants.compute_participants import compute_participants
 
     markdown_chat = """\
     ---
@@ -395,14 +404,15 @@ async def test_code_cell_execution_and_user_interruption(taskmates_dir, tmp_path
     **user>** Good, calculate something more
     """
 
-    chat = await parse_markdown_chat(textwrap.dedent(markdown_chat), tmp_path / "chat.md", [taskmates_dir])
-    recipient = compute_recipient(chat['messages'], chat['participants'])
+    front_matter, messages = parse_front_matter_and_messages(textwrap.dedent(markdown_chat), tmp_path / "chat.md")
+    _, participants_configs = compute_participants(front_matter, messages)
+    participants = list(participants_configs.keys())
+    recipient = compute_recipient(messages, participants)
     assert recipient == "coder"  # The code cell output should be handled by the assistant that executed it
 
 
-@pytest.mark.asyncio
-async def test_code_cell_error_handling(taskmates_dir, tmp_path):
-    from taskmates.core.markdown_chat.parse_markdown_chat import parse_markdown_chat
+def test_code_cell_error_handling(taskmates_dir, tmp_path):
+    from taskmates.core.markdown_chat.participants.compute_participants import compute_participants
 
     markdown_chat = """\
     ---
@@ -433,6 +443,8 @@ async def test_code_cell_error_handling(taskmates_dir, tmp_path):
     **coder>** Done
     """
 
-    chat = await parse_markdown_chat(textwrap.dedent(markdown_chat), tmp_path / "chat.md", [taskmates_dir])
-    recipient = compute_recipient(chat['messages'], chat['participants'])
+    front_matter, messages = parse_front_matter_and_messages(textwrap.dedent(markdown_chat), tmp_path / "chat.md")
+    _, participants_configs = compute_participants(front_matter, messages)
+    participants = list(participants_configs.keys())
+    recipient = compute_recipient(messages, participants)
     assert recipient == "user"

@@ -11,3 +11,9 @@ class CurrentStep:
 
     def set(self, value: int):
         self.current_step = value
+
+    def __str__(self):
+        return str(self.current_step)
+
+    def __repr__(self):
+        return str(self.current_step)

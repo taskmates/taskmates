@@ -1,11 +1,11 @@
 from taskmates.core.workflows.markdown_completion.completions.code_cell_execution.execution.code_execution import CodeExecution
 from taskmates.core.workflows.markdown_completion.completions.tool_execution.editor_appender import EditorAppender
-from taskmates.core.workflows.signals.markdown_completion_signals import MarkdownCompletionSignals
+from taskmates.core.workflows.signals.execution_environment_signals import ExecutionEnvironmentSignals
 
 
 class ToolExecutionAppender:
-    def __init__(self, project_dir: str, chat_file: str, markdown_completion_signals: MarkdownCompletionSignals):
-        self.editor_appender = EditorAppender(project_dir, chat_file, markdown_completion_signals)
+    def __init__(self, project_dir: str, chat_file: str, execution_environment_signals: ExecutionEnvironmentSignals):
+        self.editor_appender = EditorAppender(project_dir, chat_file, execution_environment_signals)
 
     async def append(self, text: str):
         await self.editor_appender.append(text)

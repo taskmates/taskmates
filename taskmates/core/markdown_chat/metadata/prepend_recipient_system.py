@@ -10,18 +10,16 @@ from taskmates.core.markdown_chat.participants.format_username_prompt import for
 
 
 @typechecked
-def prepend_recipient_system(taskmates_dirs: list[str | Path],
-                             participants_configs: dict,
-                             recipient: str,
-                             recipient_config: dict,
-                             messages: list,
-                             inputs: dict | None):
+def prepend_recipient_system(participants_configs: dict, recipient_config: dict, messages: list, inputs: dict | None) -> list[dict]:
+    if "name" not in recipient_config:
+        return messages
+    recipient = recipient_config["name"]
     if inputs is None:
         inputs = {}
     recipient_system_parts = []
     if recipient_config.get("system", None):
         recipient_system_parts.append(recipient_config.get("system").rstrip("\n") + "\n")
-    introduction_message = compute_introduction_message(participants_configs, taskmates_dirs)
+    introduction_message = compute_introduction_message(participants_configs)
     if introduction_message:
         recipient_system_parts.append(introduction_message)
     if recipient != "assistant":

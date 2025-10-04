@@ -17,10 +17,10 @@ class StreamedResponse:
 
         # Handle tool_call_chunks (new streaming format)
         tool_call_chunks = getattr(chat_message_chunk, "tool_call_chunks", []) or []
-        
+
         # If we have tool_call_chunks, use them exclusively (don't also process additional_kwargs.tool_calls)
         has_tool_call_chunks = bool(tool_call_chunks)
-        
+
         for tool_call_chunk in tool_call_chunks:
             index = tool_call_chunk.get("index", 0)
 
@@ -49,14 +49,15 @@ class StreamedResponse:
         # Tool calls may also be carried as additional_kwargs (older format)
         # Only process these if we don't have tool_call_chunks
         tool_calls = []
-        if not has_tool_call_chunks and hasattr(chat_message_chunk, "additional_kwargs") and chat_message_chunk.additional_kwargs:
+        if not has_tool_call_chunks and hasattr(chat_message_chunk,
+                                                "additional_kwargs") and chat_message_chunk.additional_kwargs:
             tool_calls = chat_message_chunk.additional_kwargs.get("tool_calls", []) or []
 
         content = getattr(chat_message_chunk, "content", "")
 
         for tool_call in tool_calls:
             tool_call_id = tool_call.get('id', None)
-            
+
             # Handle both OpenAI format (with 'function' key) and Gemini format (direct 'name' and 'args')
             if 'function' in tool_call:
                 # OpenAI format

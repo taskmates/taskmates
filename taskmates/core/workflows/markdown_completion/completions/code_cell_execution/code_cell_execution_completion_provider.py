@@ -4,26 +4,26 @@ import pytest
 from typeguard import typechecked
 
 from taskmates.core.chat.openai.get_text_content import get_text_content
-from taskmates.core.workflow_engine.run import RUN
+from taskmates.core.workflow_engine.transaction import TRANSACTION, Transaction
 from taskmates.core.workflows.markdown_completion.completions.code_cell_execution.execute_markdown_on_local_kernel import \
     execute_markdown_on_local_kernel
 from taskmates.core.workflows.markdown_completion.completions.code_cell_execution.response.code_cell_execution_appender import \
     CodeCellExecutionAppender
 from taskmates.core.workflows.markdown_completion.completions.completion_provider import CompletionProvider
-from taskmates.core.workflows.signals.code_cell_output_signals import CodeCellOutputSignals
+from taskmates.core.workflows.markdown_completion.completions.has_truncated_code_cell import has_truncated_code_cell
 from taskmates.core.workflows.signals.control_signals import ControlSignals
-from taskmates.core.workflows.signals.markdown_completion_signals import MarkdownCompletionSignals
+from taskmates.core.workflows.signals.execution_environment_signals import ExecutionEnvironmentSignals
 from taskmates.core.workflows.signals.status_signals import StatusSignals
-from taskmates.types import Chat, RunnerEnvironment
+from taskmates.types import ChatCompletionRequest, RunnerEnvironment
 
 
 @typechecked
 class CodeCellExecutionCompletionProvider(CompletionProvider):
     def __init__(self):
-        self.code_cell_output_signals = CodeCellOutputSignals()
+        self.execution_environment_signals = ExecutionEnvironmentSignals(name="code_cell_output")
 
-    def can_complete(self, chat):
-        if self.has_truncated_code_cell(chat):
+    def can_complete(self, chat: ChatCompletionRequest):
+        if has_truncated_code_cell(chat):
             return False
 
         is_jupyter_enabled = chat.get("run_opts", {}).get("jupyter_enabled", True)
@@ -33,12 +33,12 @@ class CodeCellExecutionCompletionProvider(CompletionProvider):
 
     async def perform_completion(
             self,
-            chat: Chat,
+            chat: ChatCompletionRequest,
             control_signals: ControlSignals,
-            markdown_completion_signals: MarkdownCompletionSignals,
+            execution_environment_signals: ExecutionEnvironmentSignals,
             status_signals: StatusSignals
     ):
-        contexts = RUN.get().context
+        contexts = TRANSACTION.get().execution_context.context
 
         runner_environment: RunnerEnvironment = contexts["runner_environment"]
         markdown_path = runner_environment["markdown_path"]
@@ -49,18 +49,18 @@ class CodeCellExecutionCompletionProvider(CompletionProvider):
 
         editor_completion = CodeCellExecutionAppender(project_dir=cwd,
                                                       chat_file=markdown_path,
-                                                      markdown_completion_signals=markdown_completion_signals)
+                                                      execution_environment_signals=execution_environment_signals)
 
-        async def on_code_cell_chunk(code_cell_chunk):
-            await editor_completion.process_code_cell_output(code_cell_chunk)
+        async def on_code_cell_chunk(sender, value):
+            await editor_completion.process_code_cell_output(value)
 
-        with self.code_cell_output_signals.code_cell_output.connected_to(on_code_cell_chunk):
+        with self.execution_environment_signals.response.connected_to(on_code_cell_chunk, sender="code_cell_output"):
             text_content = get_text_content(messages[-1])
             # TODO pass env here
             await execute_markdown_on_local_kernel(
                 control=control_signals,
                 status=status_signals,
-                code_cell_output=self.code_cell_output_signals,
+                execution_environment_signals=self.execution_environment_signals,
                 content=text_content,
                 markdown_path=markdown_path,
                 cwd=cwd,
@@ -70,21 +70,16 @@ class CodeCellExecutionCompletionProvider(CompletionProvider):
 
 
 @pytest.mark.asyncio
-async def test_markdown_code_cells_assistance_streaming(tmp_path):
-    code_cell_chunks = []
+async def test_markdown_code_cells_assistance_streaming(tmp_path, run: Transaction):
     markdown_chunks = []
 
-    async def capture_code_cell_chunk(chunk):
-        code_cell_chunks.append(chunk)
-
-    async def capture_completion_chunk(chunk):
-        markdown_chunks.append(chunk)
+    async def capture_completion_chunk(sender, value):
+        markdown_chunks.append(value)
 
     async def capture_error(error):
         raise error
 
-    chat: Chat = {
-        "markdown_chat": "",
+    chat: ChatCompletionRequest = {
         "run_opts": {},
         "participants": {},
         "available_tools": [],
@@ -106,18 +101,19 @@ async def test_markdown_code_cells_assistance_streaming(tmp_path):
         ]
     }
 
-    signals = RUN.get().signals
-    execution_environment_signals = signals["execution_environment"]
-    markdown_completion_signals = signals["markdown_completion"]
-    markdown_completion_signals.response.connect(capture_completion_chunk)
+    control_signals = ControlSignals(name="test-control_signals =")
+    status_signals = StatusSignals(name="test-status_signals =")
+    execution_environment_signals = ExecutionEnvironmentSignals(name="test-execution_environment_signals")
+    execution_environment_signals.response.connect(capture_completion_chunk)
     execution_environment_signals.error.connect(capture_error)
     assistance = CodeCellExecutionCompletionProvider()
-    await assistance.perform_completion(
-        chat,
-        signals["control"],
-        markdown_completion_signals,
-        signals["status"],
-    )
+    async with run.async_transaction_context():
+        await assistance.perform_completion(
+            chat,
+            control_signals,
+            execution_environment_signals,
+            status_signals,
+        )
 
     assert "".join(markdown_chunks) == ('###### Cell Output: stdout [cell_0]\n'
                                         '\n'

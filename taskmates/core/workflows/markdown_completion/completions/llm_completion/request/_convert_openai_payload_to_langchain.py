@@ -2,11 +2,13 @@ import json
 
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, SystemMessage, ToolMessage, ToolCall
 from langchain_core.tools import BaseTool
+from typeguard import typechecked
 
 from taskmates.core.workflows.markdown_completion.completions.llm_completion.request._convert_function_to_langchain_tool import \
     _convert_function_to_langchain_tool
 
 
+@typechecked
 def _convert_openai_payload_to_langchain(payload: dict) -> tuple[list[BaseMessage], list[BaseTool]]:
     # Map OpenAI role strings to LangChain message classes
     role_map = {

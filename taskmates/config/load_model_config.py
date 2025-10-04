@@ -3,7 +3,7 @@ from typing import Union
 from typeguard import typechecked
 
 from taskmates.config.find_config_file import find_config_file
-from taskmates.config.load_participant_config import load_yaml_config
+from taskmates.config.load_yaml_config import load_yaml_config
 
 
 @typechecked
@@ -15,7 +15,7 @@ def load_model_config(model_alias: Union[str, dict], taskmates_dirs: list) -> di
             raise ValueError(f"Model dict must have a 'name' field: {model_alias}")
     else:
         model_name = model_alias
-    
+
     config_path = find_config_file("models.yaml", taskmates_dirs)
     if config_path is None:
         raise FileNotFoundError(
@@ -26,11 +26,11 @@ def load_model_config(model_alias: Union[str, dict], taskmates_dirs: list) -> di
         raise ValueError(f"Unknown model {model_name!r}")
 
     config = model_config[model_name].copy()
-    
+
     # If model_alias is a dict with kwargs, merge them into the config
     if isinstance(model_alias, dict) and "kwargs" in model_alias:
         config.update(model_alias["kwargs"])
-    
+
     return config
 
 

@@ -5,7 +5,7 @@ from quart import Quart
 
 from taskmates import logging, root_path
 from taskmates.config.find_config_file import find_config_file
-from taskmates.config.load_participant_config import load_yaml_config
+from taskmates.config.load_yaml_config import load_yaml_config
 from taskmates.lib.opentelemetry_.tracing import auto_instrument
 from taskmates.server.blueprints.api_completions import completions_bp as completions_v2_bp
 from taskmates.server.blueprints.echo import echo_pb

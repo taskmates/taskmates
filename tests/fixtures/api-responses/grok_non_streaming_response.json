@@ -1,0 +1,51 @@
+{
+  "content": "2",
+  "additional_kwargs": {
+    "refusal": null
+  },
+  "response_metadata": {
+    "token_usage": {
+      "completion_tokens": 1,
+      "prompt_tokens": 122,
+      "total_tokens": 165,
+      "completion_tokens_details": {
+        "accepted_prediction_tokens": 0,
+        "audio_tokens": 0,
+        "reasoning_tokens": 42,
+        "rejected_prediction_tokens": 0
+      },
+      "prompt_tokens_details": {
+        "audio_tokens": 0,
+        "cached_tokens": 121,
+        "text_tokens": 122,
+        "image_tokens": 0
+      },
+      "num_sources_used": 0
+    },
+    "model_name": "grok-4-fast-reasoning",
+    "system_fingerprint": "fp_9362061f30",
+    "id": "63c63cc5-4152-09a3-0ebd-11ed4839f0c0_us-east-1",
+    "service_tier": null,
+    "finish_reason": "stop",
+    "logprobs": null
+  },
+  "type": "ai",
+  "name": null,
+  "id": "run--a2c8ec6c-5cb2-4e37-8985-7e07f69c06b7-0",
+  "example": false,
+  "tool_calls": [],
+  "invalid_tool_calls": [],
+  "usage_metadata": {
+    "input_tokens": 122,
+    "output_tokens": 1,
+    "total_tokens": 165,
+    "input_token_details": {
+      "audio": 0,
+      "cache_read": 121
+    },
+    "output_token_details": {
+      "audio": 0,
+      "reasoning": 42
+    }
+  }
+}

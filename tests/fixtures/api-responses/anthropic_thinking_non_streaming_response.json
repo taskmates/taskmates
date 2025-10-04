@@ -1,0 +1,50 @@
+{
+  "content": [
+    {
+      "signature": "EqcCCkYICBgCKkBaSrUbCjwlOD+yM45gsKzE79unKcZkAm6L+2W5xJ4TcNPLUOwgK14Q6evkrQ+VsxtElI7ZENKMw3UXrCSuDtdzEgwscBDTJkxX/khYkvEaDEBDnOE5qv4JqzPvWCIw//lHiVJ+n/oHTKPOjyuOiEHnYh3kkiw0zFGBv9+bO/WxrQuNhuz9psA2nZzs+n6RKo4BHGk92E4rsJvU6tRtjt6n1OtQQursDrzDw1iAF8FuDRclsRMH7cW6YCH6N9rwPfJRZfBhHrfgWDz8/UTXCvKMGTOU16WyzY56ihsrTOzEbhM7NO+eTjbKOMM5toOMJwjYZ0Cp+eGIfii38JFZ/9AnwTCP9r3UKATEU6II009lIkpFeLdBOxGc5Xaibo3/gRgB",
+      "thinking": "The user is asking me to count from 1 to 5. This is a simple request - I just need to list the numbers 1, 2, 3, 4, 5 in order.",
+      "type": "thinking"
+    },
+    {
+      "text": "1\n2\n3\n4\n5",
+      "type": "text"
+    }
+  ],
+  "additional_kwargs": {},
+  "response_metadata": {
+    "id": "msg_01KDa46iVRyWAMiANWZbG2B3",
+    "model": "claude-sonnet-4-20250514",
+    "stop_reason": "end_turn",
+    "stop_sequence": null,
+    "usage": {
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 0,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "input_tokens": 43,
+      "output_tokens": 67,
+      "server_tool_use": null,
+      "service_tier": "standard"
+    },
+    "model_name": "claude-sonnet-4-20250514"
+  },
+  "type": "ai",
+  "name": null,
+  "id": "run--78bc8042-1fe6-4101-ab6c-79a3a90916f6-0",
+  "example": false,
+  "tool_calls": [],
+  "invalid_tool_calls": [],
+  "usage_metadata": {
+    "input_tokens": 43,
+    "output_tokens": 67,
+    "total_tokens": 110,
+    "input_token_details": {
+      "cache_read": 0,
+      "cache_creation": 0,
+      "ephemeral_1h_input_tokens": 0,
+      "ephemeral_5m_input_tokens": 0
+    }
+  }
+}

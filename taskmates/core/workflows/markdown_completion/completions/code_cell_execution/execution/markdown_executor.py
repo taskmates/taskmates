@@ -8,11 +8,11 @@ from taskmates.core.workflows.markdown_completion.completions.code_cell_executio
 from taskmates.core.workflows.markdown_completion.completions.code_cell_execution.execution.cell_status import KernelCellTracker
 from taskmates.core.workflows.markdown_completion.completions.code_cell_execution.execution.kernel_manager import KernelManager, get_kernel_manager
 from taskmates.core.workflows.markdown_completion.completions.code_cell_execution.execution.message_handler import MessageHandler
-from taskmates.core.workflows.markdown_completion.completions.code_cell_execution.execution.signal_handler import SignalHandler
+from taskmates.core.workflows.markdown_completion.completions.code_cell_execution.execution.code_cell_execution_signal_handler import CodeCellExecutionSignalHandler
 from taskmates.core.workflows.markdown_completion.completions.code_cell_execution.jupyter_notebook_logger import jupyter_notebook_logger
 from taskmates.core.workflows.markdown_completion.completions.code_cell_execution.parsing.parse_notebook import parse_notebook
-from taskmates.core.workflows.signals.code_cell_output_signals import CodeCellOutputSignals
 from taskmates.core.workflows.signals.control_signals import ControlSignals
+from taskmates.core.workflows.signals.execution_environment_signals import ExecutionEnvironmentSignals
 from taskmates.core.workflows.signals.status_signals import StatusSignals
 
 
@@ -23,17 +23,17 @@ class MarkdownExecutor:
     def __init__(self,
                  control: ControlSignals,
                  status: StatusSignals,
-                 code_cell_output: CodeCellOutputSignals,
+                 execution_environment_signals: ExecutionEnvironmentSignals,
                  kernel_manager: KernelManager | None = None,
                  bash_script_handler: BashScriptHandler | None = None):
         self.kernel_manager = kernel_manager or get_kernel_manager()
         self.bash_script_handler = bash_script_handler or BashScriptHandler()
         self.message_handler: MessageHandler | None = None
-        self.signal_handler: SignalHandler | None = None
+        self.signal_handler: CodeCellExecutionSignalHandler | None = None
         self.cell_executor: CellExecutor | None = None
         self.control: ControlSignals = control
         self.status: StatusSignals = status
-        self.code_cell_output: CodeCellOutputSignals = code_cell_output
+        self.execution_environment_signals: ExecutionEnvironmentSignals = execution_environment_signals
 
     async def setup(self, content: str, cwd: str | None = None, markdown_path: str | None = None,
                     env: Mapping | None = None) -> Tuple[
@@ -52,9 +52,9 @@ class MarkdownExecutor:
             self.kernel_manager._cell_trackers[key] = KernelCellTracker()
         cell_tracker = self.kernel_manager._cell_trackers[key]
 
-        self.signal_handler = SignalHandler(kernel_instance, self.message_handler, self.status)
+        self.signal_handler = CodeCellExecutionSignalHandler(kernel_instance, self.message_handler, self.status)
         self.cell_executor = CellExecutor(self.message_handler, self.bash_script_handler, cell_tracker,
-                                          self.code_cell_output)
+                                          self.execution_environment_signals)
 
         # Parse notebook cells
         notebook, code_cells = parse_notebook(content)
@@ -98,18 +98,17 @@ from pathlib import Path
 
 @pytest.mark.asyncio
 async def test_markdown_executor_simple_execution(tmp_path: Path):
-    from taskmates.core.workflow_engine.run import RUN
-
-    run = RUN.get()
     chunks = []
 
-    async def capture_chunk(chunk):
-        chunks.append(chunk)
+    async def capture_chunk(sender, value):
+        chunks.append(value)
 
-    run.signals["code_cell_output"] = CodeCellOutputSignals()
-    run.signals["code_cell_output"].code_cell_output.connect(capture_chunk)
+    control_signals = ControlSignals(name="test-control_signals")
+    status_signals = StatusSignals(name="test-status_signals")
+    execution_environment_signals_signals = ExecutionEnvironmentSignals(name="test-execution_environment_signals_signals")
+    execution_environment_signals_signals.response.connect(capture_chunk, sender="code_cell_output")
 
-    executor = MarkdownExecutor(run.signals["control"], run.signals["status"], run.signals["code_cell_output"])
+    executor = MarkdownExecutor(control_signals, status_signals, execution_environment_signals_signals)
 
     input_md = textwrap.dedent("""\
         ```python .eval
@@ -125,18 +124,17 @@ async def test_markdown_executor_simple_execution(tmp_path: Path):
 
 @pytest.mark.asyncio
 async def test_markdown_executor_error_handling(tmp_path: Path):
-    from taskmates.core.workflow_engine.run import RUN
-
-    run = RUN.get()
     chunks = []
 
-    async def capture_chunk(chunk):
-        chunks.append(chunk)
+    async def capture_chunk(sender, value):
+        chunks.append(value)
 
-    run.signals["code_cell_output"] = CodeCellOutputSignals()
-    run.signals["code_cell_output"].code_cell_output.connect(capture_chunk)
+    control_signals = ControlSignals(name="test-control_signals")
+    status_signals = StatusSignals(name="test-status_signals")
+    execution_environment_signals_signals = ExecutionEnvironmentSignals(name="test-execution_environment_signals_signals")
+    execution_environment_signals_signals.response.connect(capture_chunk, sender="code_cell_output")
 
-    executor = MarkdownExecutor(run.signals["control"], run.signals["status"], run.signals["code_cell_output"])
+    executor = MarkdownExecutor(control_signals, status_signals, execution_environment_signals_signals)
 
     input_md = textwrap.dedent("""\
         ```python .eval
@@ -153,23 +151,22 @@ async def test_markdown_executor_error_handling(tmp_path: Path):
 
 @pytest.mark.asyncio
 async def test_markdown_executor_interrupt(tmp_path: Path):
-    from taskmates.core.workflow_engine.run import RUN
-
-    run = RUN.get()
     chunks = []
     status_signals = []
 
-    async def capture_chunk(chunk):
-        chunks.append(chunk)
+    async def capture_chunk(sender, value):
+        chunks.append(value)
 
     async def capture_status(signal):
         status_signals.append(signal)
 
-    run.signals["code_cell_output"] = CodeCellOutputSignals()
-    run.signals["code_cell_output"].code_cell_output.connect(capture_chunk)
-    run.signals["status"].interrupted.connect(capture_status)
+    control_signals = ControlSignals(name="test-control_signals")
+    status_signals_obj = StatusSignals(name="test-status_signals_obj")
+    execution_environment_signals_signals = ExecutionEnvironmentSignals(name="test-execution_environment_signals_signals")
+    execution_environment_signals_signals.response.connect(capture_chunk, sender="code_cell_output")
+    status_signals_obj.interrupted.connect(capture_status)
 
-    executor = MarkdownExecutor(run.signals["control"], run.signals["status"], run.signals["code_cell_output"])
+    executor = MarkdownExecutor(control_signals, status_signals_obj, execution_environment_signals_signals)
 
     input_md = textwrap.dedent("""\
         ```python .eval
@@ -190,7 +187,7 @@ async def test_markdown_executor_interrupt(tmp_path: Path):
             lines = content.split("\n")
             if len(lines) >= 2:
                 break
-        await run.signals["control"].interrupt.send_async(None)
+        await control_signals.interrupt.send_async(None)
 
     interrupt_task = asyncio.create_task(send_interrupt())
 

@@ -1,29 +1,25 @@
-from taskmates.core.workflow_engine.composite_context_manager import CompositeContextManager
-from taskmates.core.workflow_engine.run import RUN
-from taskmates.lib.contextlib_.stacked_contexts import stacked_contexts
+from pathlib import Path
 
 
-class HistorySink(CompositeContextManager):
-    def __init__(self, path):
+class HistorySink:
+    def __init__(self,
+                 path: str | Path):
         super().__init__()
         self.path = path
         self.file = None
 
-    async def process_chunk(self, chunk):
+    async def process_chunk(self, sender, value):
+        if sender == "history":
+            return
+
         if self.file:
-            self.file.write(chunk)
+            self.file.write(value)
             self.file.flush()
 
     def __enter__(self):
-        run = RUN.get()
         if self.path:
             self.file = open(self.path, "a")
-            self.exit_stack.callback(self.file.close)
 
-        connections = [
-            run.signals["input_streams"].incoming_message.connected_to(self.process_chunk),
-            run.signals["input_streams"].formatting.connected_to(self.process_chunk),
-            run.signals["execution_environment"].stdout.connected_to(self.process_chunk)
-        ]
-
-        self.exit_stack.enter_context(stacked_contexts(connections))
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if self.file:
+            self.file.close()

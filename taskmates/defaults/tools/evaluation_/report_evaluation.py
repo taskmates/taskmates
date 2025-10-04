@@ -1,6 +1,6 @@
 from typing import Optional
 
-from taskmates.core.workflow_engine.run import RUN
+from taskmates.core.workflow_engine.transaction import TRANSACTION
 
 
 async def report_evaluation(summary: Optional[str], result: bool):
@@ -11,6 +11,6 @@ async def report_evaluation(summary: Optional[str], result: bool):
     :param result: the result of the evaluation
     :return: success
     """
-    signals = RUN.get()
-    await signals.signals["execution_environment"].result.send_async({"result": result, "summary": summary})
+    signals = TRANSACTION.get()
+    await signals.consumes["execution_environment"].result.send_async({"result": result, "summary": summary})
     return result

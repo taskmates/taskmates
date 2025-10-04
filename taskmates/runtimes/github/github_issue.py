@@ -6,7 +6,7 @@ from taskmates.core.workflow_engine.workflow import Workflow
 from taskmates.runtimes.github.compose_chat_from_github_issue import \
     compose_chat_from_github_issue
 from taskmates.runtimes.github.fetch_github_issue import fetch_github_issue
-from taskmates.core.workflows.markdown_completion.markdown_complete import MarkdownComplete
+from taskmates.core.workflows.markdown_completion.markdown_completion import MarkdownCompletion
 
 
 @fulfills(outcome="github_issue_markdown_chat")
@@ -40,7 +40,7 @@ class GithubIssue(Workflow):
         markdown_chat = await get_github_issue_markdown_chat(issue_number, repo_name)
 
         # TODO: CHANGE CWD TO DEMO
-        return await MarkdownComplete().fulfill(
+        return await MarkdownCompletion().fulfill(
             markdown_chat=markdown_chat + "\n\nHey @demo_dev please have a look \n\n")
 
 # @pytest.mark.integration

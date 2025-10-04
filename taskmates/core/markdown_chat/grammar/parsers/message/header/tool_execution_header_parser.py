@@ -3,7 +3,7 @@ import textwrap
 
 import pyparsing as pp
 
-from taskmates.core.markdown_chat.grammar.parsers.snake_case_action import snake_case_action
+from taskmates.core.markdown_chat.grammar.actions.snake_case_action import snake_case_action
 
 TOOL_EXECUTION_START_REGEX = r"^###### Execution: "
 

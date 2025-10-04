@@ -3,9 +3,13 @@ import json
 from quart import Blueprint, Response, websocket
 
 import taskmates
-from taskmates.runtimes.api.api_completion_runner import ApiCompletionRunner
+from taskmates.core.workflow_engine.transaction import Objective, ObjectiveKey
+from taskmates.core.workflows.markdown_completion.markdown_completion import MarkdownCompletion
 from taskmates.lib.json_.json_utils import snake_case
+from taskmates.logging import file_logger
 from taskmates.logging import logger
+from taskmates.runtimes.api.api_completion_transaction import ApiCompletionTransaction
+from taskmates.runtimes.api.api_context_builder import ApiContextBuilder
 from taskmates.taskmates_runtime import TASKMATES_RUNTIME
 from taskmates.types import ApiRequest
 
@@ -30,7 +34,29 @@ async def create_completion():
     if client_version != taskmates.__version__:
         raise ValueError(f"Incompatible client version: {client_version}. Expected: {taskmates.__version__}")
 
-    return await ApiCompletionRunner(websocket=websocket).run(payload=payload)
+    file_logger.debug("websockets_api_payload.json", content=payload)
+
+    api_completion_transaction = create_api_completion_transaction(payload)
+
+    async with api_completion_transaction.execution_context.async_transaction_context():
+        markdown_completion = api_completion_transaction.create_child_transaction(
+            outcome="MarkdownCompletion",
+            inputs={"markdown_chat": payload["markdown_chat"]},
+            transaction_class=MarkdownCompletion,
+            result_format={'format': 'completion', 'interactive': True}
+        )
+
+        return await markdown_completion.fulfill()
+
+
+def create_api_completion_transaction(payload):
+    # TODO: pass interactive here
+
+    return ApiCompletionTransaction(websocket=websocket,
+                                    objective=Objective(
+                                        key=ObjectiveKey(outcome="ApiCompletionTransaction")
+                                    ),
+                                    context=ApiContextBuilder(payload).build())
 
 
 @completions_bp.after_websocket

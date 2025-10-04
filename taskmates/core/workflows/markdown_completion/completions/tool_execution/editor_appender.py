@@ -1,6 +1,6 @@
 from typeguard import typechecked
 
-from taskmates.core.workflows.signals.markdown_completion_signals import MarkdownCompletionSignals
+from taskmates.core.workflows.signals.execution_environment_signals import ExecutionEnvironmentSignals
 
 
 # TODO: Remove this class
@@ -10,14 +10,14 @@ class EditorAppender:
             self,
             project_dir: str,
             chat_file: str,
-            markdown_completion_signals: MarkdownCompletionSignals):
+            execution_environment_signals: ExecutionEnvironmentSignals):
         self.chat_file = chat_file
         self.project_dir = project_dir
-        self.markdown_completion_signals = markdown_completion_signals
+        self.execution_environment_signals = execution_environment_signals
 
     async def append(self, text: str):
         sanitized = text.replace("\r", "")
         if not sanitized:
             return
 
-        await self.markdown_completion_signals.response.send_async(sanitized)
+        await self.execution_environment_signals.response.send_async(sender="response", value=sanitized)

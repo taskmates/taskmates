@@ -5,7 +5,7 @@ import textwrap
 import pyparsing as pp
 from commentjson import commentjson
 
-from taskmates.core.markdown_chat.grammar.parsers.snake_case import snake_case
+from taskmates.core.markdown_chat.grammar.actions.snake_case import snake_case
 
 TOOL_CALLS_START_REGEX = r"^###### Steps"
 
@@ -13,12 +13,12 @@ TOOL_CALLS_START_REGEX = r"^###### Steps"
 def parse_tool_call(string, location, tokens):
     tool_call = tokens[0]
     tool_call_name = tool_call['name']
-    
+
     # The arguments come with quotes, so we need to strip them and handle escapes
     raw_arguments = tool_call['arguments']
     if raw_arguments.startswith('`') and raw_arguments.endswith('`'):
         raw_arguments = raw_arguments[1:-1]
-    
+
     # Now handle the escape sequences manually
     # Replace \` with ` (escaped backticks)
     arguments = raw_arguments.replace('\\`', '`')
@@ -237,7 +237,7 @@ def test_tool_calls_parser_with_backtick_in_arguments():
     ]
 
     extra_content = pp.SkipTo(pp.StringEnd(), include=True)("extra_content")
-    
+
     # This test is expected to fail due to the backtick character in the arguments
     # The parser will likely fail or parse incorrectly when it encounters the backtick
     results = (tool_calls_parser() + extra_content).parseString(input)

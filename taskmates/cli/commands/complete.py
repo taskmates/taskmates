@@ -1,6 +1,6 @@
 import json
 
-from taskmates.runtimes.cli.cli_completion_runner import CliCompletionRunner
+from taskmates.runtimes.cli.cli_completion_transaction import CliCompletionTransaction
 
 
 class CompleteCommand:
@@ -18,7 +18,7 @@ class CompleteCommand:
         # parser.add_argument('--websocket-url', default='ws://localhost:8765',
         #                     help='WebSocket URL for websocket method')
 
-        parser.add_argument('--model', type=str, default='claude-3-7-sonnet-20250219', help='The model to use')
+        parser.add_argument('--model', type=str, default='claude-sonnet-4-20250514', help='The model to use')
         parser.add_argument('--workflow', type=str, default='cli_complete', help='The workflow to use')
         parser.add_argument('-n', '--max-steps', type=int, default=100,
                             help='The maximum number of steps')
@@ -28,4 +28,4 @@ class CompleteCommand:
                             help='Output format')
 
     async def execute(self, args):
-        await CliCompletionRunner(args=args).run()
+        await CliCompletionTransaction(args=args).run()

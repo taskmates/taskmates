@@ -7,14 +7,13 @@ from taskmates.core.workflows.markdown_completion.completions.code_cell_executio
 from taskmates.core.workflows.markdown_completion.completions.tool_execution.tool_execution_completion_provider import \
     ToolExecutionCompletionProvider
 from taskmates.sdk import TaskmatesExtension
-from taskmates.core.workflow_engine.run import RUN
+from taskmates.core.workflow_engine.transaction import TRANSACTION
 
 
 # @scope("app")
 class TaskmatesEnvInjector(TaskmatesExtension):
     def handle(self, wrapped, instance, args, kwargs):
-        run = RUN.get()
-        runner_environment = run.context["runner_environment"]
+        runner_environment = TRANSACTION.get().execution_context.context["runner_environment"]
 
         # markdown_path = runner_environment["markdown_path"]
         # outcome_id = os.path.splitext(Path(markdown_path).name)[0]

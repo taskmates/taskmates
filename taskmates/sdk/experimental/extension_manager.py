@@ -62,7 +62,6 @@ class ExtensionManager:
 # Last ones are run first
 DEFAULT_EXTENSIONS: list[str] = [
     'taskmates.extensions.taskmates_env_injector.TaskmatesEnvInjector',
-    'taskmates.extensions.taskmates_dirs_loader.TaskmatesDirsLoader',
     'taskmates.extensions.taskmates_working_dir_env_reader.TaskmatesWorkingDirEnvReader',
 ]
 
@@ -147,11 +146,10 @@ def test_load_extension_failure():
 #     assert os.environ['TASKMATES_ENV'] == 'test'  # Ensure we're not in development mode
 #
 #     os.environ[
-#         'TASKMATES_EXTENSIONS'] = 'taskmates.extensions.taskmates_dirs_loader.TaskmatesDirsLoader,taskmates.extensions.taskmates_working_dir_env_reader.TaskmatesWorkingDirEnvReader'
-#     manager = ExtensionManager(['taskmates.extensions.taskmates_dirs_loader.TaskmatesDirsLoader'])
+#         'TASKMATES_EXTENSIONS'] = 'taskmates.extensions.taskmates_working_dir_env_reader.TaskmatesWorkingDirEnvReader'
+#     manager = ExtensionManager([])
 #     manager.initialize()
-#     expected_extensions = ['taskmates.extensions.taskmates_dirs_loader.TaskmatesDirsLoader',
-#                            'taskmates.extensions.taskmates_working_dir_env_reader.TaskmatesWorkingDirEnvReader']
+#     expected_extensions = ['taskmates.extensions.taskmates_working_dir_env_reader.TaskmatesWorkingDirEnvReader']
 #     assert all(ext in manager.extensions + manager._get_additional_extensions() for ext in expected_extensions)
 #     assert len(manager.extensions + manager._get_additional_extensions()) == len(expected_extensions)
 #     del os.environ['TASKMATES_EXTENSIONS']

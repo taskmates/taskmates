@@ -1,0 +1,73 @@
+{
+  "content": "### World News Digest: September 14\u201321, 2025\n\nHere's a concise summary of major global events from the past week, drawn from international reports and social media discussions. Events are grouped by region or theme for clarity. Note that some details remain unverified amid ongoing developments.\n\n#### Middle East Conflicts\n- **Israel-Gaza Operations Intensify**: Israeli forces expanded ground operations in Gaza, destroying over 30 residential buildings in airstrikes. Reports highlighted continued assaults amid international calls for restraint. Separately, Israel conducted strikes against Houthi targets in Yemen. In Qatar, an earlier failed assassination attempt on Hamas leaders drew U.S. unease, with Secretary of State Marco Rubio meeting Israeli PM Benjamin Netanyahu to discuss de-escalation. A record 250 U.S. delegates visited Israel under the \"50 States, 1 Israel\" initiative, signaling strong bilateral ties.\n- **Iran and Regional Tensions**: The UN General Assembly (UNGA) in New York focused on Iran's nuclear program, with Arab-Islamic leaders condemning recent Israeli actions. Iraq's potential involvement in escalating conflicts was noted in diplomatic circles.\n\n#### Europe and Russia-Ukraine War\n- **EU Sanctions on Russia**: The European Union imposed fresh sanctions targeting Russian banks, LNG exports, and technology firms in response to the ongoing Ukraine invasion. Ukraine secured \u20ac3.5 billion ($3.9 billion) in EU funding for arms procurement.\n- **Russian Incidents**: F-16 jets were scrambled in Romania after a Russian drone was detected near the border. In Poland, reports of Russian drones over eastern regions heightened NATO alerts, though details were inconclusive.\n- **France in Turmoil**: Nationwide strikes over budget cuts drew 280,000 protesters, leading to over 140 arrests. The unrest underscored economic frustrations and political instability following the recent ousting of the French government.\n- **UK Protests and Diplomacy**: Anti-government demonstrations continued amid rising social tensions. UK PM Keir Starmer defended protest rights during violent clashes. A \u00a3150 billion trade deal was signed during a visit by former U.S. President Donald Trump, boosting post-Brexit ties. The UK also joined U.S.-Pakistan alliances on nuclear defense.\n- **Other European Notes**: Berlin experienced blackouts from reported terrorist attacks on electrical infrastructure (from earlier in the month, with lingering effects). The U.S. paused sales of Patriot missile systems to European allies due to domestic shortages.\n\n#### Asia and Pacific\n- **Nepal Political Upheaval**: Sushila Karki was appointed interim prime minister after deadly anti-government protests toppled the previous administration. Scores of government buildings were damaged in riots, marking a significant shift in South Asian stability.\n- **Indonesia Riots**: Youth-led protests escalated, with parliament buildings set ablaze amid demands for reforms. This followed similar unrest in Nepal.\n- **China-U.S. Relations**: Trade talks in Madrid progressed, including a deal on TikTok ownership. Tensions rose in the South China Sea, with a U.S.-Philippines clash at Scarborough Shoal. North Korea declared its nuclear status \"irreversible,\" prompting regional alerts.\n- **Other**: Japan and other nations saw ongoing political fallout from earlier PM resignations, with ripple effects on trade talks (e.g., Trump-Modi restarting U.S.-India negotiations).\n\n#### Americas and Global Economy\n- **U.S. Domestic and Foreign Policy**: The Federal Reserve cut interest rates, pushing the dollar to its lowest since 2022 and sparking market volatility. The U.S. authorized military actions against drug cartels, including a naval strike on a suspected narco vessel in the Caribbean. National Guard deployments increased in major cities like Chicago amid crime waves and protests. Internationally, the U.S. expressed concerns over global alliances, including Saudi-Pakistan nuclear pacts.\n- **Latin America**: Venezuela reported ongoing blackouts, exacerbating economic woes. Malawi held elections, with results pending but drawing regional attention.\n\n#### Africa and Global Health\n- **Ebola Outbreak**: The World Health Organization (WHO) announced a new Ebola outbreak in an unspecified African region, urging heightened surveillance.\n- **Protests and Stability**: Broader \"youth\" riots in parts of Africa and Asia reflected global discontent over governance and inequality.\n\n#### Broader Global Trends\n- **UN General Assembly**: World leaders gathered in New York to address wars in Gaza and Ukraine, climate crises, and nuclear proliferation. A UN Security Council draft resolution was rejected, stalling progress on key issues.\n- **Natural Disasters and Security**: Seismic activity increased worldwide, with aftershocks from earlier Afghan earthquakes. Volcanic alerts rose in multiple regions. Cyber and terror threats persisted, including U.S.-China tech frictions.\n- **Sentiment on Social Media**: Posts on X highlighted a sense of escalating global instability, with users noting \"biblical\" levels of protests, drone incursions, and leadership changes. Terms like \"peace and safety\" trended amid calls for de-escalation.\n\nThis digest reflects reported highlights; for deeper details, check sources like NPR, BBC, or Reuters. Events are fluid, and some claims (e.g., from social platforms) require verification. If you'd like focus on a specific region or topic, let me know!",
+  "additional_kwargs": {
+    "refusal": null,
+    "citations": [
+      "https://metro.co.uk/news/world/",
+      "https://www.express.co.uk/news/world",
+      "https://www.ndtv.com/world",
+      "https://www.npr.org/sections/world/",
+      "https://www.npr.org/sections/news/",
+      "https://www.foxnews.com/world",
+      "https://woonsocketcall.com/news/national_and_world_news/ap-news-summary-at-10-54-a-m-edt/article_a5f7d18d-db36-5144-8386-f95324e0d136.html",
+      "https://economist.com/the-world-in-brief",
+      "https://news.un.org/en/",
+      "https://www.ndtv.com/latest",
+      "https://x.com/s2_underground/status/1963017429711286491",
+      "https://x.com/AskPerplexity/status/1965965367081099578",
+      "https://x.com/s2_underground/status/1962646544458342712",
+      "https://x.com/CherylWroteIt/status/1963130407664173281",
+      "https://x.com/YearOfTheKraken/status/1965971863638561019",
+      "https://x.com/majeed66224499/status/1965567492752908495",
+      "https://x.com/s2_underground/status/1965180315887956216",
+      "https://x.com/s2_underground/status/1965436181132574949",
+      "https://x.com/GoodShepherd316/status/1965753101853585497",
+      "https://x.com/s2_underground/status/1963748833101537580"
+    ]
+  },
+  "response_metadata": {
+    "token_usage": {
+      "completion_tokens": 1058,
+      "prompt_tokens": 4168,
+      "total_tokens": 5782,
+      "completion_tokens_details": {
+        "accepted_prediction_tokens": 0,
+        "audio_tokens": 0,
+        "reasoning_tokens": 556,
+        "rejected_prediction_tokens": 0
+      },
+      "prompt_tokens_details": {
+        "audio_tokens": 0,
+        "cached_tokens": 148,
+        "text_tokens": 4168,
+        "image_tokens": 0
+      },
+      "num_sources_used": 2
+    },
+    "model_name": "grok-4-fast-reasoning",
+    "system_fingerprint": "fp_9362061f30",
+    "id": "81013a77-1691-ead2-84f5-a2021d16269f_us-east-1",
+    "service_tier": null,
+    "finish_reason": "stop",
+    "logprobs": null
+  },
+  "type": "ai",
+  "name": null,
+  "id": "run--236249c7-f2e5-492e-ac08-ef61ce4a0cb2-0",
+  "example": false,
+  "tool_calls": [],
+  "invalid_tool_calls": [],
+  "usage_metadata": {
+    "input_tokens": 4168,
+    "output_tokens": 1058,
+    "total_tokens": 5782,
+    "input_token_details": {
+      "audio": 0,
+      "cache_read": 148
+    },
+    "output_token_details": {
+      "audio": 0,
+      "reasoning": 556
+    }
+  }
+}

@@ -45,11 +45,30 @@ def get_model_conf(model_alias: Union[str, dict],
     model_config = load_model_config(model_alias, taskmates_dirs)
     max_tokens = calculate_max_tokens(messages, model_config)
 
-
     model_conf = {
         **model_config,
         "max_tokens": max_tokens
     }
+
+    if "gpt-oss" in model_conf["model"]:
+        model_conf.update({
+            "reasoning_effort": "high",
+        })
+
+    if "gpt-5" not in model_conf["model"]:
+        model_conf.update({
+            "temperature": 0.2,
+        })
+
+    # if "claude" in model_conf["model"]:
+    #     model_conf.update({
+    #         "thinking": {"type": "enabled", "budget_tokens": 2000},
+    #         "temperature": 1
+    #     })
+
+    model_conf.update({
+        "stop": ["^######"],
+    })
 
     # TODO: this only works with OpenAI models
     # "seed": int(random() * 1000000)

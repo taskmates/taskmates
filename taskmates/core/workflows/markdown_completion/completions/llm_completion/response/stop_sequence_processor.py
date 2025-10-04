@@ -1,4 +1,5 @@
-from typing import AsyncIterable, List, Optional
+import re
+from typing import AsyncIterable, List, Optional, Union, Tuple
 
 import pytest
 from langchain_core.messages import AIMessageChunk
@@ -8,21 +9,106 @@ class StopSequenceProcessor(AsyncIterable[AIMessageChunk]):
     """
     Processes a stream of AIMessageChunk objects to detect and stop at specified stop sequences.
     This processor correctly handles stop sequences that may span across multiple chunks.
+    Supports both literal strings and regex patterns for stop sequences.
     """
 
     def __init__(self, chat_completion: AsyncIterable[AIMessageChunk], stop_sequences: Optional[List[str]] = None):
         self.chat_completion = chat_completion
         self.stop_sequences = stop_sequences or []
+        # Compile regex patterns for stop sequences
+        self.stop_patterns = []
+        self.max_stop_len = 0
+        
+        for seq in self.stop_sequences:
+            # Check if it's a regex pattern (contains regex special chars or anchors)
+            if self._is_regex_pattern(seq):
+                try:
+                    # Use MULTILINE flag so ^ matches start of lines, not just start of string
+                    pattern = re.compile(seq, re.MULTILINE)
+                    self.stop_patterns.append((pattern, None))
+                    # For regex patterns, use a reasonable max length
+                    self.max_stop_len = max(self.max_stop_len, 100)
+                except re.error:
+                    # If regex compilation fails, treat as literal
+                    self.stop_patterns.append((None, seq))
+                    self.max_stop_len = max(self.max_stop_len, len(seq))
+            else:
+                # Literal string
+                self.stop_patterns.append((None, seq))
+                self.max_stop_len = max(self.max_stop_len, len(seq))
+        
         # A buffer to hold text that might be part of a stop sequence.
         self.buffer = ""
-        # The maximum possible length of a stop sequence, used to manage the buffer size.
-        self.max_stop_len = max(len(s) for s in self.stop_sequences) if self.stop_sequences else 0
+
+    async def aclose(self):
+        """Close the underlying stream."""
+        if hasattr(self.chat_completion, 'aclose'):
+            await self.chat_completion.aclose()
+
+    def _is_regex_pattern(self, seq: str) -> bool:
+        """Check if a sequence should be treated as a regex pattern."""
+        # Only treat as regex if it contains anchors or specific regex constructs
+        # that indicate intentional regex usage
+        regex_indicators = [
+            r'^',      # Start of string/line anchor
+            r'$',      # End of string/line anchor  
+            r'\(',     # Capturing group
+            r'(?:',    # Non-capturing group
+            r'(?=',    # Lookahead
+            r'(?!',    # Negative lookahead
+            r'(?<=',   # Lookbehind
+            r'(?<!',   # Negative lookbehind
+            r'\b',     # Word boundary
+            r'\d',     # Digit class
+            r'\w',     # Word class
+            r'\s',     # Whitespace class
+            r'.*',     # Any character repeated
+            r'.+',     # Any character one or more
+            r'.\?',    # Any character optional
+        ]
+        
+        for indicator in regex_indicators:
+            if indicator in seq:
+                return True
+        
+        # Check for unescaped special regex chars that suggest regex intent
+        # But exclude simple brackets which might be literal
+        if re.search(r'(?<!\\)[*+?{}|]', seq):
+            return True
+            
+        return False
 
     def _extract_text(self, chunk: AIMessageChunk) -> str:
         """Extracts text content from a chunk for stop sequence detection."""
         if not chunk.content or not isinstance(chunk.content, str):
             return ""
         return chunk.content
+
+    def _find_stop_sequence(self, text: str) -> Tuple[bool, Optional[str], Optional[int]]:
+        """
+        Find if any stop sequence exists in the text.
+        Returns (found, matched_text, index).
+        """
+        earliest_index = len(text)
+        found_match = None
+        
+        for pattern, literal in self.stop_patterns:
+            if pattern:
+                # Regex pattern
+                match = pattern.search(text)
+                if match and match.start() < earliest_index:
+                    earliest_index = match.start()
+                    found_match = match.group()
+            else:
+                # Literal string
+                index = text.find(literal)
+                if index != -1 and index < earliest_index:
+                    earliest_index = index
+                    found_match = literal
+        
+        if found_match is not None:
+            return True, found_match, earliest_index
+        return False, None, None
 
     async def __aiter__(self) -> AsyncIterable[AIMessageChunk]:
         """
@@ -44,17 +130,10 @@ class StopSequenceProcessor(AsyncIterable[AIMessageChunk]):
             self.buffer += chunk_text
 
             # Check if any stop sequence is now in the buffer
-            stop_found = False
-            found_seq = None
-            for seq in self.stop_sequences:
-                if seq in self.buffer:
-                    stop_found = True
-                    found_seq = seq
-                    break
+            stop_found, found_seq, stop_index = self._find_stop_sequence(self.buffer)
 
             if stop_found:
                 # A stop sequence was found. Truncate the buffer at the sequence.
-                stop_index = self.buffer.find(found_seq)
                 content_to_yield = self.buffer[:stop_index]
 
                 if content_to_yield:
@@ -66,6 +145,7 @@ class StopSequenceProcessor(AsyncIterable[AIMessageChunk]):
                         tool_calls=chunk.tool_calls,
                         tool_call_chunks=chunk.tool_call_chunks,
                         usage_metadata=chunk.usage_metadata,
+                        id=chunk.id,
                     )
                     yield new_chunk
                 # Stop the iteration.
@@ -86,6 +166,7 @@ class StopSequenceProcessor(AsyncIterable[AIMessageChunk]):
                     tool_calls=chunk.tool_calls,
                     tool_call_chunks=chunk.tool_call_chunks,
                     usage_metadata=chunk.usage_metadata,
+                    id=chunk.id,
                 )
                 yield new_chunk
 
@@ -93,16 +174,9 @@ class StopSequenceProcessor(AsyncIterable[AIMessageChunk]):
         if self.buffer:
             # Since the stream is finished, no more text will come.
             # Check one last time for a stop sequence.
-            stop_found = False
-            found_seq = None
-            for seq in self.stop_sequences:
-                if seq in self.buffer:
-                    stop_found = True
-                    found_seq = seq
-                    break
+            stop_found, found_seq, stop_index = self._find_stop_sequence(self.buffer)
 
             if stop_found:
-                stop_index = self.buffer.find(found_seq)
                 content_to_yield = self.buffer[:stop_index]
             else:
                 content_to_yield = self.buffer
@@ -121,6 +195,7 @@ class StopSequenceProcessor(AsyncIterable[AIMessageChunk]):
                     tool_calls=ref_chunk.tool_calls,
                     tool_call_chunks=ref_chunk.tool_call_chunks,
                     usage_metadata=ref_chunk.usage_metadata,
+                    id=ref_chunk.id,
                 )
                 yield final_chunk
 
@@ -480,3 +555,179 @@ async def test_stop_sequence_cell_output_spanning_chunks():
     chunks = await collect_chunks(processor)
     full_text = "".join(c.content for c in chunks if c.content)
     assert full_text == "This is output before the cell marker\n"
+
+
+# New tests for regex support
+
+@pytest.mark.asyncio
+async def test_stop_sequence_regex_start_of_line():
+    """StopSequenceProcessor must handle regex pattern for start of line."""
+
+    async def mock_stream():
+        yield AIMessageChunk(content="Some text\n")
+        yield AIMessageChunk(content="###### Cell Output: stdout [cell_0]\n")
+        yield AIMessageChunk(content="This should not appear")
+
+    # Use regex pattern to match ###### at start of line
+    processor = StopSequenceProcessor(
+        mock_stream(),
+        stop_sequences=[r"^######"]
+    )
+    chunks = await collect_chunks(processor)
+    full_text = "".join(c.content for c in chunks if c.content)
+    # When using ^###### with MULTILINE, it matches at start of line, preserving the newline before it
+    assert full_text == "Some text\n"
+
+
+@pytest.mark.asyncio
+async def test_stop_sequence_regex_start_of_text():
+    """StopSequenceProcessor must handle regex pattern for start of text."""
+
+    async def mock_stream():
+        yield AIMessageChunk(content="###### Cell Output: stdout [cell_0]\n")
+        yield AIMessageChunk(content="This should not appear")
+
+    # Use regex pattern to match ###### at start of text
+    processor = StopSequenceProcessor(
+        mock_stream(),
+        stop_sequences=[r"^######"]
+    )
+    chunks = await collect_chunks(processor)
+    full_text = "".join(c.content for c in chunks if c.content)
+    assert full_text == ""
+
+
+@pytest.mark.asyncio
+async def test_stop_sequence_literal_vs_regex():
+    """StopSequenceProcessor must distinguish between literal strings and regex patterns."""
+
+    async def mock_stream():
+        yield AIMessageChunk(content="Text with special chars: [test] and more")
+        yield AIMessageChunk(content=" text after")
+
+    # Literal string with regex special chars
+    processor = StopSequenceProcessor(
+        mock_stream(),
+        stop_sequences=["[test]"]
+    )
+    chunks = await collect_chunks(processor)
+    full_text = "".join(c.content for c in chunks if c.content)
+    assert full_text == "Text with special chars: "
+
+
+@pytest.mark.asyncio
+async def test_stop_sequence_mixed_literal_and_regex():
+    """StopSequenceProcessor must handle mix of literal strings and regex patterns."""
+
+    async def mock_stream():
+        yield AIMessageChunk(content="Line 1\nLine 2\n")
+        yield AIMessageChunk(content="###### Section\nLine 3")
+
+    # Mix of literal and regex patterns
+    processor = StopSequenceProcessor(
+        mock_stream(),
+        stop_sequences=["Line 3", r"^######"]
+    )
+    chunks = await collect_chunks(processor)
+    full_text = "".join(c.content for c in chunks if c.content)
+    assert full_text == "Line 1\nLine 2\n"
+
+
+@pytest.mark.asyncio
+async def test_stop_sequence_regex_multiline():
+    """StopSequenceProcessor must handle regex patterns with multiline flag."""
+
+    async def mock_stream():
+        yield AIMessageChunk(content="First paragraph\n\n")
+        yield AIMessageChunk(content="###### Cell Output\n")
+        yield AIMessageChunk(content="Should not appear")
+
+    # Regex pattern that matches ###### after newline or at start
+    processor = StopSequenceProcessor(
+        mock_stream(),
+        stop_sequences=[r"(?:^|\n)######"]
+    )
+    chunks = await collect_chunks(processor)
+    full_text = "".join(c.content for c in chunks if c.content)
+    assert full_text == "First paragraph\n"
+
+
+@pytest.mark.asyncio
+async def test_stop_sequence_invalid_regex_treated_as_literal():
+    """StopSequenceProcessor must treat invalid regex as literal string."""
+
+    async def mock_stream():
+        yield AIMessageChunk(content="Text with [invalid regex")
+        yield AIMessageChunk(content=" more text")
+
+    # Invalid regex should be treated as literal
+    processor = StopSequenceProcessor(
+        mock_stream(),
+        stop_sequences=["[invalid regex"]  # Missing closing bracket
+    )
+    chunks = await collect_chunks(processor)
+    full_text = "".join(c.content for c in chunks if c.content)
+    assert full_text == "Text with "
+
+
+@pytest.mark.asyncio
+async def test_stop_sequence_cell_output_without_leading_newline():
+    """StopSequenceProcessor must handle '###### Cell Output' at start of output."""
+
+    async def mock_stream():
+        yield AIMessageChunk(content="###### Cell Output: stdout [cell_0]\n")
+        yield AIMessageChunk(content="\n\nThis should not appear")
+
+    # Use regex pattern to match ###### at start of text or after newline
+    processor = StopSequenceProcessor(
+        mock_stream(),
+        stop_sequences=[r"(?:^|\n)######"]
+    )
+    chunks = await collect_chunks(processor)
+    full_text = "".join(c.content for c in chunks if c.content)
+    assert full_text == ""
+
+
+@pytest.mark.asyncio
+async def test_stop_sequence_recommended_pattern_for_cell_output():
+    """Test the recommended pattern for stopping at ###### Cell Output."""
+
+    async def mock_stream():
+        # Case 1: At start of text
+        yield AIMessageChunk(content="###### Cell Output: stdout [cell_0]\n")
+        yield AIMessageChunk(content="Should not appear")
+
+    processor = StopSequenceProcessor(
+        mock_stream(),
+        stop_sequences=[r"(?:^|\n)######"]
+    )
+    chunks = await collect_chunks(processor)
+    full_text = "".join(c.content for c in chunks if c.content)
+    assert full_text == ""
+
+    # Case 2: After newline
+    async def mock_stream2():
+        yield AIMessageChunk(content="Some output\n")
+        yield AIMessageChunk(content="###### Cell Output: stdout [cell_0]\n")
+        yield AIMessageChunk(content="Should not appear")
+
+    processor2 = StopSequenceProcessor(
+        mock_stream2(),
+        stop_sequences=[r"(?:^|\n)######"]
+    )
+    chunks2 = await collect_chunks(processor2)
+    full_text2 = "".join(c.content for c in chunks2 if c.content)
+    assert full_text2 == "Some output"
+
+    # Case 3: Not at line boundary (should not match)
+    async def mock_stream3():
+        yield AIMessageChunk(content="Text with ###### in middle")
+        yield AIMessageChunk(content=" continues")
+
+    processor3 = StopSequenceProcessor(
+        mock_stream3(),
+        stop_sequences=[r"(?:^|\n)######"]
+    )
+    chunks3 = await collect_chunks(processor3)
+    full_text3 = "".join(c.content for c in chunks3 if c.content)
+    assert full_text3 == "Text with ###### in middle continues"

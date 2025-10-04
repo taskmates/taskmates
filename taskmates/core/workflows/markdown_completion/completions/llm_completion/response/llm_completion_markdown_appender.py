@@ -6,7 +6,7 @@ from icecream import ic
 from langchain_core.messages import AIMessageChunk
 from typeguard import typechecked
 
-from taskmates.core.workflows.signals.markdown_completion_signals import MarkdownCompletionSignals
+from taskmates.core.workflows.signals.execution_environment_signals import ExecutionEnvironmentSignals
 
 
 def snake_case_to_title_case(text: str) -> str:
@@ -19,10 +19,10 @@ class LlmCompletionMarkdownAppender:
                  recipient: str,
                  last_tool_call_id: int,
                  is_resume_request: bool,
-                 markdown_completion_signals: MarkdownCompletionSignals):
+                 execution_environment_signals: ExecutionEnvironmentSignals):
         self.recipient = recipient
         self.last_tool_call_id = last_tool_call_id
-        self.markdown_completion_signals = markdown_completion_signals
+        self.execution_environment_signals = execution_environment_signals
         self.role = None
         self.name = None
         self.is_resume_request = is_resume_request
@@ -137,10 +137,10 @@ class LlmCompletionMarkdownAppender:
             self.role = "assistant"
             recipient = self.recipient
             if not self.is_resume_request:
-                await self.markdown_completion_signals.responder.send_async(f"**{recipient}>** ")
+                await self.execution_environment_signals.response.send_async(sender="responder", value=f"**{recipient}>** ")
 
     async def append(self, text: str):
-        await self.markdown_completion_signals.response.send_async(text)
+        await self.execution_environment_signals.response.send_async(sender="response", value=text)
 
     async def on_received_annotations(self, chunk: AIMessageChunk):
         # Check for annotations in the custom attribute
@@ -195,20 +195,20 @@ async def test_openai_web_search_tool_call_completion():
         LlmCompletionPreProcessor
 
     # Create a test signals class to capture outputs
-    class TestMarkdownCompletionSignals(MarkdownCompletionSignals):
-        def __init__(self):
-            super().__init__()
+    class TestExecutionEnvironmentSignals(ExecutionEnvironmentSignals):
+        def __init__(self, **kwargs):
+            super().__init__(**kwargs)
             self.responder_outputs = []
             self.response_outputs = []
 
-            async def capture_responder(sender, **kwargs):
-                self.responder_outputs.append(sender)
+            async def capture_responder(sender, value):
+                self.responder_outputs.append(value)
 
-            async def capture_response(sender, **kwargs):
-                self.response_outputs.append(sender)
+            async def capture_response(sender, value):
+                self.response_outputs.append(value)
 
-            self.responder.connect(capture_responder, weak=False)
-            self.response.connect(capture_response, weak=False)
+            self.response.connect(capture_responder, sender="responder", weak=False)
+            self.response.connect(capture_response, sender="response", weak=False)
 
     # Load OpenAI web search fixture
     fixture_path = os.path.join(
@@ -223,13 +223,13 @@ async def test_openai_web_search_tool_call_completion():
     chunks = [AIMessageChunk(**json.loads(line)) for line in lines]
 
     # Create test signals
-    markdown_completion_signals = TestMarkdownCompletionSignals()
+    execution_environment_signals = TestExecutionEnvironmentSignals(name="TestExecutionEnvironmentSignals")
 
     appender = LlmCompletionMarkdownAppender(
         recipient="assistant",
         last_tool_call_id=0,
         is_resume_request=False,
-        markdown_completion_signals=markdown_completion_signals
+        execution_environment_signals=execution_environment_signals
     )
 
     # Process chunks through pre-processor first
@@ -244,10 +244,10 @@ async def test_openai_web_search_tool_call_completion():
         await appender.process_chat_completion_chunk(processed_chunk)
 
     # Verify the responder was called with the assistant prompt
-    assert "**assistant>** " in markdown_completion_signals.responder_outputs
+    assert "**assistant>** " in execution_environment_signals.responder_outputs
 
     # Collect all the appended text
-    appended_text = "".join(markdown_completion_signals.response_outputs)
+    appended_text = "".join(execution_environment_signals.response_outputs)
 
     # Should contain the text response about AI news
     assert "Here are some of the latest developments in artificial intelligence" in appended_text

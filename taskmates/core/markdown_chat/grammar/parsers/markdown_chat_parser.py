@@ -309,3 +309,72 @@ def test_special_chars():
                                     'content': '\n<pre>\n    Special char: ·\n</pre>\n',
                                     'name': 'stdout',
                                     'role': 'cell_output'}]
+
+
+def test_markdown_with_html_meta_tags():
+    input = textwrap.dedent("""\
+        **user>** Message with HTML meta tags
+        
+        <meta name="foo" content="bar" />
+        <meta name="author" content="John Doe" />
+        
+        Some content after meta tags.
+        
+        **assistant>** Response message
+        
+        <meta name="model" content="gpt-4" />
+        
+        Response content.
+        """)
+
+    results = markdown_chat_parser().parseString(input)[0].as_dict()
+
+    assert results["messages"] == [
+        {
+            'content': 'Message with HTML meta tags\n\n\nSome content after meta tags.\n\n',
+            'name': 'user',
+            'meta': {
+                'foo': 'bar',
+                'author': 'John Doe'
+            }
+        },
+        {
+            'content': 'Response message\n\n\nResponse content.\n',
+            'name': 'assistant',
+            'meta': {
+                'model': 'gpt-4'
+            }
+        }
+    ]
+
+
+def test_markdown_with_mixed_metadata_formats():
+    input = textwrap.dedent("""\
+        ---
+        title: Test Document
+        ---
+        
+        **user>** Message with mixed metadata
+        
+        <meta name="description" content="A test message" />
+        [//]: # (meta:temperature = 0.7)
+        <meta charset="UTF-8" />
+        
+        Content here.
+        """)
+
+    results = markdown_chat_parser().parseString(input)[0].as_dict()
+
+    assert results == {
+        'front_matter': {'title': 'Test Document'},
+        'messages': [
+            {
+                'content': 'Message with mixed metadata\n\n\nContent here.\n',
+                'name': 'user',
+            'meta': {
+                'description': 'A test message',
+                'temperature': 0.7,
+                'charset': 'UTF-8'
+            }            }
+        ]
+    }

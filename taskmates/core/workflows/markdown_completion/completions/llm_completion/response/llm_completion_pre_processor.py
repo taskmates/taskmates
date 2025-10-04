@@ -10,6 +10,11 @@ class LlmCompletionPreProcessor(AsyncIterable[AIMessageChunk]):
         self.chat_completion = chat_completion
         self.first_chunk = True
 
+    async def aclose(self):
+        """Close the underlying stream."""
+        if hasattr(self.chat_completion, 'aclose'):
+            await self.chat_completion.aclose()
+
     async def __aiter__(self):
         async for chunk in self.chat_completion:
             # Extract annotations if present

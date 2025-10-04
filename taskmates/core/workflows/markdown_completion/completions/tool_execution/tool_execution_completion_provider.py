@@ -4,24 +4,25 @@ from typing import Dict
 from typeguard import typechecked
 
 from taskmates.core.tools_registry import tools_registry
-from taskmates.core.workflow_engine.run import RUN
-from taskmates.core.workflow_engine.run import Run
+from taskmates.core.workflow_engine.transaction import TRANSACTION
+from taskmates.core.workflow_engine.transaction import Transaction
 from taskmates.core.workflows.markdown_completion.completions.code_cell_execution.execution.code_execution import \
     CodeExecution
 from taskmates.core.workflows.markdown_completion.completions.completion_provider import CompletionProvider
+from taskmates.core.workflows.markdown_completion.completions.has_truncated_code_cell import has_truncated_code_cell
 from taskmates.core.workflows.markdown_completion.completions.tool_execution.invoke_function import invoke_function
 from taskmates.core.workflows.markdown_completion.completions.tool_execution.response.tool_execution_appender import \
     ToolExecutionAppender
 from taskmates.core.workflows.signals.control_signals import ControlSignals
-from taskmates.core.workflows.signals.markdown_completion_signals import MarkdownCompletionSignals
+from taskmates.core.workflows.signals.execution_environment_signals import ExecutionEnvironmentSignals
 from taskmates.core.workflows.signals.status_signals import StatusSignals
-from taskmates.types import Chat, RunnerEnvironment, ToolCall
+from taskmates.types import ChatCompletionRequest, RunnerEnvironment, ToolCall
 
 
 @typechecked
 class ToolExecutionCompletionProvider(CompletionProvider):
     def can_complete(self, chat: Dict) -> bool:
-        if self.has_truncated_code_cell(chat):
+        if has_truncated_code_cell(chat):
             return False
 
         messages = chat.get("messages", [])
@@ -31,13 +32,13 @@ class ToolExecutionCompletionProvider(CompletionProvider):
 
     async def perform_completion(
             self,
-            chat: Chat,
+            chat: ChatCompletionRequest,
             control_signals: ControlSignals,
-            markdown_completion_signals: MarkdownCompletionSignals,
+            execution_environment_signals: ExecutionEnvironmentSignals,
             status_signals: StatusSignals
     ):
-        contexts = RUN.get().context
-        run = RUN.get()
+        contexts = TRANSACTION.get().execution_context.context
+        run = TRANSACTION.get()
 
         runner_environment = contexts["runner_environment"]
         cwd = runner_environment["cwd"]
@@ -48,7 +49,7 @@ class ToolExecutionCompletionProvider(CompletionProvider):
         tool_calls = messages[-1].get("tool_calls", [])
 
         editor_completion = ToolExecutionAppender(project_dir=cwd, chat_file=markdown_path,
-                                                  markdown_completion_signals=markdown_completion_signals)
+                                                  execution_environment_signals=execution_environment_signals)
 
         for tool_call in tool_calls:
             function_title = tool_call["function"]["name"].replace("_", " ").title()
@@ -57,10 +58,10 @@ class ToolExecutionCompletionProvider(CompletionProvider):
             tool_call_obj = ToolCall.from_dict(tool_call)
 
             async def handle_interrupted(sender):
-                await markdown_completion_signals.response.send_async("--- INTERRUPT ---\n")
+                await execution_environment_signals.response.send_async(sender="response", value="--- INTERRUPT ---\n")
 
             async def handle_killed(sender):
-                await markdown_completion_signals.response.send_async("--- KILL ---\n")
+                await execution_environment_signals.response.send_async(sender="response", value="--- KILL ---\n")
 
             with status_signals.interrupted.connected_to(handle_interrupted), \
                     status_signals.killed.connected_to(handle_killed):
@@ -74,12 +75,12 @@ class ToolExecutionCompletionProvider(CompletionProvider):
                 finally:
                     os.chdir(original_cwd)
 
-            await markdown_completion_signals.response.send_async(CodeExecution.escape_pre_output(str(return_value)))
+            await execution_environment_signals.response.send_async(sender="response", value=CodeExecution.escape_pre_output(str(return_value)))
             await editor_completion.append_tool_execution_footer(function_title)
 
     @staticmethod
     @typechecked
-    async def execute_task(context: RunnerEnvironment, tool_call: ToolCall, run: Run):
+    async def execute_task(context: RunnerEnvironment, tool_call: ToolCall, run: Transaction):
         tool_call_id = tool_call.id
         function_name = tool_call.function.name
         arguments = tool_call.function.arguments

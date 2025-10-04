@@ -1,6 +1,6 @@
 import functools
 
-from taskmates.core.workflow_engine.run import to_daemons_dict
+from taskmates.core.workflow_engine.transaction import to_daemons_dict
 
 
 def merge_jobs(*jobs):

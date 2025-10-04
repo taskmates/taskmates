@@ -2,19 +2,17 @@ import asyncio
 import signal
 
 from taskmates.core.workflow_engine.composite_context_manager import CompositeContextManager
-from taskmates.core.workflow_engine.run import RUN
-from taskmates.core.workflow_engine.run import Run
+from taskmates.core.workflows.signals.control_signals import ControlSignals
 
 
 class SigIntAndSigTermController(CompositeContextManager):
-    def __init__(self):
+    def __init__(self, control_signals: ControlSignals):
         super().__init__()
+        self.control_signals = control_signals
         self.received_signal = None
         self.task = None
-        self.run: Run
 
     def __enter__(self):
-        self.run = RUN.get()
         signal.signal(signal.SIGINT, self.handle)
         signal.signal(signal.SIGTERM, self.handle)
         self.task = asyncio.create_task(self.run_loop())
@@ -33,11 +31,11 @@ class SigIntAndSigTermController(CompositeContextManager):
                 print(flush=True)
                 print("Interrupting...", flush=True)
                 print("Press Ctrl+C again to kill", flush=True)
-                await self.run.signals["control"].interrupt_request.send_async({})
+                await self.control_signals.interrupt_request.send_async({})
                 # await asyncio.sleep(5)
                 self.received_signal = None
             elif self.received_signal == signal.SIGTERM:
-                await self.run.signals["control"].kill.send_async({})
+                await self.control_signals.kill.send_async({})
                 # await asyncio.sleep(5)
                 break
             await asyncio.sleep(0.1)

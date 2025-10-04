@@ -3,7 +3,7 @@ from pathlib import Path
 import sys
 
 from taskmates.defaults.tools.filesystem_.is_path_allowed import is_path_allowed
-from taskmates.core.workflow_engine.run import RUN
+from taskmates.core.workflow_engine.transaction import TRANSACTION
 
 
 def read_file(path):
@@ -13,7 +13,7 @@ def read_file(path):
     :param path: the path
     :return: the content of the file or None if not allowed
     """
-    contexts = RUN.get().context
+    contexts = TRANSACTION.get().execution_context.context
     run_opts = contexts["run_opts"]
 
     allow = ((run_opts.get("tools") or {}).get("write_file") or {}).get("allow", "**")

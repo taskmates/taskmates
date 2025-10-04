@@ -6,15 +6,16 @@ import pytest_socket
 import tiktoken
 
 from taskmates.config.load_participant_config import load_cache
-from taskmates.core.workflows.markdown_completion.completions.code_cell_execution.execution.kernel_manager import get_kernel_manager
-from taskmates.runtimes.tests.test_context_builder import TestContextBuilder
-from taskmates.runtimes.tests.signals.captured_signals_daemon import CapturedSignalsDaemon
-from taskmates.runtimes.cli.signals.write_markdown_chat_to_stdout import WriteMarkdownChatToStdout
-from taskmates.core.workflows.states.captured_signals import CapturedSignals
+from taskmates.core.workflow_engine.run_context import RunContext
+from taskmates.core.workflow_engine.transaction import Objective, ObjectiveKey, \
+    Transaction
+from taskmates.core.workflows.markdown_completion.completions.code_cell_execution.execution.kernel_manager import \
+    get_kernel_manager
+from taskmates.defaults.settings import Settings
 from taskmates.load_env_files import load_env_for_environment
+from taskmates.runtimes.cli.signals.write_markdown_chat_to_stdout import WriteMarkdownChatToStdout
+from taskmates.runtimes.tests.signals.captured_signals_daemon import CapturedSignalsDaemon
 from taskmates.taskmates_runtime import TASKMATES_RUNTIME
-from taskmates.core.workflow_engine.default_environment_signals import default_environment_signals
-from taskmates.core.workflow_engine.run import Run, to_daemons_dict, Objective, ObjectiveKey
 
 
 # def pytest_configure(config):
@@ -71,23 +72,14 @@ def taskmates_runtime():
         TASKMATES_RUNTIME.get().shutdown()
 
 
-@pytest.fixture
-def run_opts(request):
-    if "integration" in request.node.keywords:
-        return {
-            "model": "claude-3-7-sonnet-20250219",
-            "max_steps": 100
-        }
-    else:
-        return {
-            "model": "quote",
-            "max_steps": 2
-        }
+@pytest.fixture(autouse=True)
+def change_dir_to_tmp_path(tmp_path):
+    os.chdir(tmp_path)
 
 
 @pytest.fixture
-def context(request, taskmates_runtime, run_opts, tmp_path):
-    return TestContextBuilder(tmp_path).build(run_opts)
+def context(request, taskmates_runtime) -> RunContext:
+    return Settings().get()
 
 
 @pytest.fixture
@@ -98,14 +90,20 @@ def daemons(request):
         return [CapturedSignalsDaemon()]
 
 
-@pytest.fixture(autouse=True)
-def run(request, taskmates_runtime, context, daemons) -> Iterable[Run]:
-    with Run(objective=Objective(key=ObjectiveKey(outcome=request.node.name)),
-             context=context,
-             daemons=to_daemons_dict(daemons),
-             signals=default_environment_signals(),
-             state={"captured_signals": CapturedSignals()}) as run:
-        yield run
+@pytest.fixture
+def run(request, taskmates_runtime, context, daemons) -> Iterable[Transaction]:
+    return Transaction(objective=Objective(key=ObjectiveKey(outcome=request.node.name)),
+                       context=context
+                       # daemons=to_daemons_dict(daemons),
+                       # emits={'control': ControlSignals(name="ControlSignals"),
+                       #           'input_streams': InputStreamsSignals(name="InputStreamsSignals")},
+                       # consumes={
+                       # 'status': StatusSignals(name="StatusSignals"),
+                       # 'execution_environment': ExecutionEnvironmentSignals(name="ExecutionEnvironmentSignals"),
+                       # 'markdown_completion': ExecutionEnvironmentSignals(name="ExecutionEnvironmentSignals")
+                       # },
+                       #         state={"captured_signals": CapturedSignals(name="CapturedSignals")}
+                       )
 
 
 @pytest.fixture(scope="function", autouse=True)
@@ -117,7 +115,6 @@ async def teardown_after_all_tests(taskmates_runtime):
     kernel_manager._kernel_pool.clear()
     kernel_manager._client_pool.clear()
     kernel_manager._cell_trackers.clear()
-
 
 # @pytest.fixture(autouse=True)
 # def event_loop_fixture():
