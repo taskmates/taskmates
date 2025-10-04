@@ -71,6 +71,7 @@ def _setup_anthropic_caching(messages: list[dict]) -> None:
                 break
 
 
+@pytest.mark.integration
 def test_configure_vendor_specifics_with_openai():
     """Test that OpenAI GPT-4 models get web search tool added."""
     client = ChatOpenAI(model="gpt-4")
