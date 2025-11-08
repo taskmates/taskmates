@@ -4,8 +4,7 @@ from typing import Dict
 from typeguard import typechecked
 
 from taskmates.core.tools_registry import tools_registry
-from taskmates.core.workflow_engine.transaction import TRANSACTION
-from taskmates.core.workflow_engine.transaction import Transaction
+from taskmates.core.workflow_engine.transactions.transaction import Transaction, TRANSACTION
 from taskmates.core.workflows.markdown_completion.completions.code_cell_execution.execution.code_execution import \
     CodeExecution
 from taskmates.core.workflows.markdown_completion.completions.completion_provider import CompletionProvider
@@ -16,35 +15,36 @@ from taskmates.core.workflows.markdown_completion.completions.tool_execution.res
 from taskmates.core.workflows.signals.control_signals import ControlSignals
 from taskmates.core.workflows.signals.execution_environment_signals import ExecutionEnvironmentSignals
 from taskmates.core.workflows.signals.status_signals import StatusSignals
-from taskmates.types import ChatCompletionRequest, RunnerEnvironment, ToolCall
+from taskmates.types import CompletionRequest, RunnerEnvironment, ToolCall
 
 
 @typechecked
 class ToolExecutionCompletionProvider(CompletionProvider):
-    def can_complete(self, chat: Dict) -> bool:
-        if has_truncated_code_cell(chat):
+    def can_complete(self, chat: CompletionRequest) -> bool:
+        messages = chat.get("messages", [])
+        if has_truncated_code_cell(messages):
             return False
 
-        messages = chat.get("messages", [])
         last_message = messages[-1] if messages else {}
         tool_calls = last_message.get("tool_calls", [])
         return len(tool_calls) > 0
 
     async def perform_completion(
             self,
-            chat: ChatCompletionRequest,
+            chat: CompletionRequest,
             control_signals: ControlSignals,
             execution_environment_signals: ExecutionEnvironmentSignals,
             status_signals: StatusSignals
     ):
-        contexts = TRANSACTION.get().execution_context.context
+        messages = chat.get("messages", [])
+
+        contexts = TRANSACTION.get().context
         run = TRANSACTION.get()
 
         runner_environment = contexts["runner_environment"]
         cwd = runner_environment["cwd"]
         markdown_path = runner_environment["markdown_path"]
 
-        messages = chat.get("messages", [])
 
         tool_calls = messages[-1].get("tool_calls", [])
 
@@ -84,6 +84,9 @@ class ToolExecutionCompletionProvider(CompletionProvider):
         tool_call_id = tool_call.id
         function_name = tool_call.function.name
         arguments = tool_call.function.arguments
+
+        if tuple(arguments.keys()) == ("kwargs",):
+            arguments = arguments["kwargs"]
 
         child_context = context.copy()
         child_context["env"] = {**context["env"]}

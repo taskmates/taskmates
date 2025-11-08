@@ -19,6 +19,7 @@ class HistorySink:
     def __enter__(self):
         if self.path:
             self.file = open(self.path, "a")
+        return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         if self.file:

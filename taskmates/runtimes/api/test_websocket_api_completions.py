@@ -206,14 +206,14 @@ async def test_error_completion(app, tmp_path, context):
     assert markdown_response.endswith(expected_completion_suffix)
 
 
-@pytest.mark.timeout(5)
+@pytest.mark.timeout(15)
 async def test_interrupt_tool(app, tmp_path, context):
     test_client = app.test_client()
 
     if platform.system() == "Windows":
-        cmd = "for /L %i in (1,1,10) do @(echo %i & timeout /t 1 > nul)"
+        cmd = "echo 1 & echo 2 & echo 3 & echo 4 & echo 5 & timeout /t 10 > nul & echo fail"
     else:
-        cmd = "seq 5; sleep 1; seq 6 10"
+        cmd = "echo 1; echo 2; echo 3; echo 4; echo 5; sleep 10; echo fail"
 
     markdown_chat = textwrap.dedent(f"""\
     Run a command that prints numbers from 1 to 10 with a 1-second delay between each number.
@@ -235,6 +235,8 @@ async def test_interrupt_tool(app, tmp_path, context):
                              '1\n'
                              '2\n'
                              '3\n'
+                             '4\n'
+                             '5\n'
                              '--- INTERRUPT ---\n'
                              '\n'
                              'Exit Code: 1\n'

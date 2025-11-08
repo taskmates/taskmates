@@ -19,7 +19,7 @@
         "cached_tokens": 0
       }
     },
-    "model_name": "gpt-3.5-turbo-0125",
+    "model_name": "gpt-4o-mini-0125",
     "system_fingerprint": null,
     "id": "chatcmpl-BiFaPITfNtqqJ3FIPmHnINVRuGRZb",
     "service_tier": "default",

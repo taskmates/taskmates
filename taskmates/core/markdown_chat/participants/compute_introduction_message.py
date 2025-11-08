@@ -5,7 +5,7 @@ import pytest
 from typeguard import typechecked
 
 from taskmates.config.find_config_file import find_config_file
-from taskmates.core.workflow_engine.transaction import TRANSACTION
+from taskmates.core.workflow_engine.transactions.transaction import TRANSACTION
 from taskmates.defaults.settings import Settings
 
 
@@ -46,7 +46,7 @@ def test_recipient_is_the_only_participant_with_description(taskmates_dir):
     assert compute_introduction_message(recipient_is_the_only_participant_with_description) == ""
 
 
-def test_multiple_participants_with_description(taskmates_dir, run):
+def test_multiple_participants_with_description(taskmates_dir, transaction):
     participants_dicts = {
         "coder": {"description": "CODER_ROLE"},
         "browser": {"description": "BROWSER_ROLE"}

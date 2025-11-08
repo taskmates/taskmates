@@ -8,7 +8,6 @@ from taskmates.config.load_yaml_config import load_yaml_config
 
 @typechecked
 def load_model_config(model_alias: Union[str, dict], taskmates_dirs: list) -> dict:
-    # Handle dict case
     if isinstance(model_alias, dict):
         model_name = model_alias.get("name")
         if not model_name:
@@ -27,50 +26,66 @@ def load_model_config(model_alias: Union[str, dict], taskmates_dirs: list) -> di
 
     config = model_config[model_name].copy()
 
-    # If model_alias is a dict with kwargs, merge them into the config
+    # If model_alias is a dict with kwargs, merge them into client.kwargs
     if isinstance(model_alias, dict) and "kwargs" in model_alias:
-        config.update(model_alias["kwargs"])
+        if "client" not in config:
+            config["client"] = {}
+        if "kwargs" not in config["client"]:
+            config["client"]["kwargs"] = {}
+        config["client"]["kwargs"].update(model_alias["kwargs"])
 
     return config
 
 
-
 @pytest.fixture
 def temp_config_structure(tmp_path):
-    # Create a temporary directory structure
     temp_dir = tmp_path / "temp_taskmates"
     temp_dir.mkdir(parents=True)
 
-    # Create config directories
     (temp_dir / ".taskmates").mkdir()
     (temp_dir / "home" / ".taskmates").mkdir(parents=True)
     (temp_dir / "taskmates" / "config").mkdir(parents=True)
     (temp_dir / "taskmates" / "defaults").mkdir(parents=True)
 
-    # Create config files
     (temp_dir / ".taskmates" / "models.yaml").write_text("""
-    model1:
-        type: gpt
-        max_tokens: 100
-    """)
+model1:
+  metadata:
+    max_context_window: 100
+  client:
+    type: gpt
+    kwargs:
+      model: gpt-1
+""")
 
     (temp_dir / "home" / ".taskmates" / "models.yaml").write_text("""
-    model2:
-        type: gpt
-        max_tokens: 200
-    """)
+model2:
+  metadata:
+    max_context_window: 200
+  client:
+    type: gpt
+    kwargs:
+      model: gpt-2
+""")
 
     (temp_dir / "taskmates" / "config" / "models.yaml").write_text("""
-    model3:
-        type: gpt
-        max_tokens: 300
-    """)
+model3:
+  metadata:
+    max_context_window: 300
+  client:
+    type: gpt
+    kwargs:
+      model: gpt-3
+""")
 
     (temp_dir / "taskmates" / "defaults" / "models.yaml").write_text("""
-    model4:
-        type: gpt
-        max_tokens: 400
-    """)
+model4:
+  metadata:
+    max_context_window: 400
+  client:
+    type: gpt
+    kwargs:
+      model: gpt-4
+""")
 
     return temp_dir
 
@@ -83,29 +98,41 @@ def test_load_model_config(temp_config_structure):
         str(temp_config_structure / "taskmates" / "defaults")
     ]
 
-    # Test loading model from current directory
     config = load_model_config("model1", taskmates_dirs)
-    assert config["type"] == "gpt"
-    assert config["max_tokens"] == 100
+    assert config["metadata"]["max_context_window"] == 100
+    assert config["client"]["type"] == "gpt"
+    assert config["client"]["kwargs"]["model"] == "gpt-1"
 
-    # Remove current directory config and test loading from home directory
     (temp_config_structure / ".taskmates" / "models.yaml").unlink()
     config = load_model_config("model2", taskmates_dirs)
-    assert config["type"] == "gpt"
-    assert config["max_tokens"] == 200
+    assert config["metadata"]["max_context_window"] == 200
+    assert config["client"]["type"] == "gpt"
+    assert config["client"]["kwargs"]["model"] == "gpt-2"
 
-    # Remove home directory config and test loading from taskmates directory
     (temp_config_structure / "home" / ".taskmates" / "models.yaml").unlink()
     config = load_model_config("model3", taskmates_dirs)
-    assert config["type"] == "gpt"
-    assert config["max_tokens"] == 300
+    assert config["metadata"]["max_context_window"] == 300
+    assert config["client"]["type"] == "gpt"
+    assert config["client"]["kwargs"]["model"] == "gpt-3"
 
-    # Remove taskmates directory config and test loading from default config
     (temp_config_structure / "taskmates" / "config" / "models.yaml").unlink()
     config = load_model_config("model4", taskmates_dirs)
-    assert config["type"] == "gpt"
-    assert config["max_tokens"] == 400
+    assert config["metadata"]["max_context_window"] == 400
+    assert config["client"]["type"] == "gpt"
+    assert config["client"]["kwargs"]["model"] == "gpt-4"
 
-    # Test unknown model
     with pytest.raises(ValueError, match="Unknown model 'unknown_model'"):
         load_model_config("unknown_model", taskmates_dirs)
+
+
+def test_load_model_config_with_kwargs_override(temp_config_structure):
+    taskmates_dirs = [str(temp_config_structure / ".taskmates")]
+    
+    model_alias = {
+        "name": "model1",
+        "kwargs": {"temperature": 0.5}
+    }
+    
+    config = load_model_config(model_alias, taskmates_dirs)
+    assert config["client"]["kwargs"]["temperature"] == 0.5
+    assert config["client"]["kwargs"]["model"] == "gpt-1"

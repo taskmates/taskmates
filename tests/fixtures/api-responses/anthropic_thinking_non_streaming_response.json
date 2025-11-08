@@ -13,7 +13,7 @@
   "additional_kwargs": {},
   "response_metadata": {
     "id": "msg_01KDa46iVRyWAMiANWZbG2B3",
-    "model": "claude-sonnet-4-20250514",
+    "model": "claude-sonnet-4-5",
     "stop_reason": "end_turn",
     "stop_sequence": null,
     "usage": {
@@ -28,7 +28,7 @@
       "server_tool_use": null,
       "service_tier": "standard"
     },
-    "model_name": "claude-sonnet-4-20250514"
+    "model_name": "claude-sonnet-4-5"
   },
   "type": "ai",
   "name": null,

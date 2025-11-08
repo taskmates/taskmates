@@ -1,5 +1,4 @@
 import datetime
-from pathlib import Path
 
 import jinja2
 from jinja2 import Environment
@@ -10,15 +9,25 @@ from taskmates.core.markdown_chat.participants.format_username_prompt import for
 
 
 @typechecked
-def prepend_recipient_system(participants_configs: dict, recipient_config: dict, messages: list, inputs: dict | None) -> list[dict]:
+def prepend_recipient_system(participants_configs: dict, recipient_config: dict, messages: list, inputs: dict | None) \
+        -> list[dict]:
     if "name" not in recipient_config:
         return messages
     recipient = recipient_config["name"]
     if inputs is None:
         inputs = {}
+
+    # Build context with message metadata
+    context = {
+        "inputs": inputs,
+        "messages": messages
+    }
+
     recipient_system_parts = []
     if recipient_config.get("system", None):
-        recipient_system_parts.append(recipient_config.get("system").rstrip("\n") + "\n")
+        # Render the recipient system message with context
+        rendered_system = render_template(recipient_config.get("system"), context)
+        recipient_system_parts.append(rendered_system.rstrip("\n") + "\n")
     introduction_message = compute_introduction_message(participants_configs)
     if introduction_message:
         recipient_system_parts.append(introduction_message)
@@ -34,7 +43,7 @@ def prepend_recipient_system(participants_configs: dict, recipient_config: dict,
             messages = [{"role": "system", "content": recipient_system}, *messages]
 
     if messages[0]["role"] == "system":
-        messages[0]["content"] = render_template(messages[0]["content"], inputs)
+        messages[0]["content"] = render_template(messages[0]["content"], context)
 
     return messages
 
@@ -48,6 +57,123 @@ def create_env():
     env = Environment(
         autoescape=False,
         keep_trailing_newline=True,
-        undefined=jinja2.StrictUndefined)
+        undefined=jinja2.Undefined)
     env.globals['datetime'] = datetime
     return env
+
+
+def test_prepend_recipient_system_with_message_metadata(tmp_path):
+    """Test that message metadata is available in template context."""
+    participants_configs = {
+        "assistant": {
+            "name": "assistant",
+            "role": "assistant",
+            "system": "You are an assistant. {% if messages[-1].meta.type == 'question' %}Answer the question.{% else %}Process the request.{% endif %}"
+        }
+    }
+
+    recipient_config = participants_configs["assistant"]
+
+    messages = [
+        {
+            "role": "user",
+            "name": "user",
+            "content": "What is 2+2?",
+            "meta": {"type": "question"}
+        }
+    ]
+
+    result = prepend_recipient_system(participants_configs, recipient_config, messages, {})
+
+    assert result[0]["role"] == "system"
+    assert "Answer the question" in result[0]["content"]
+    assert "Process the request" not in result[0]["content"]
+
+
+def test_prepend_recipient_system_with_different_metadata(tmp_path):
+    """Test that different metadata values produce different outputs."""
+    participants_configs = {
+        "assistant": {
+            "name": "assistant",
+            "role": "assistant",
+            "system": "{% if messages[-1].meta.type == 'command' %}Execute the command.{% else %}Respond normally.{% endif %}"
+        }
+    }
+
+    recipient_config = participants_configs["assistant"]
+
+    messages = [
+        {
+            "role": "user",
+            "name": "user",
+            "content": "Run ls",
+            "meta": {"type": "command"}
+        }
+    ]
+
+    result = prepend_recipient_system(participants_configs, recipient_config, messages, {})
+
+    assert result[0]["role"] == "system"
+    assert "Execute the command" in result[0]["content"]
+    assert "Respond normally" not in result[0]["content"]
+
+
+def test_prepend_recipient_system_with_last_message_object(tmp_path):
+    """Test that last_message object is available in template."""
+    participants_configs = {
+        "assistant": {
+            "name": "assistant",
+            "role": "assistant",
+            "system": "User {{ messages[-1].name }} said: {{ messages[-1].content[:10] }}"
+        }
+    }
+
+    recipient_config = participants_configs["assistant"]
+
+    messages = [
+        {
+            "role": "user",
+            "name": "john",
+            "content": "Hello there, how are you?",
+            "meta": {}
+        }
+    ]
+
+    result = prepend_recipient_system(participants_configs, recipient_config, messages, {})
+
+    assert result[0]["role"] == "system"
+    assert "User john said: Hello ther" in result[0]["content"]
+
+
+def test_prepend_recipient_system_with_complex_conditionals(tmp_path):
+    """Test complex conditional logic based on metadata."""
+    participants_configs = {
+        "assistant": {
+            "name": "assistant",
+            "role": "assistant",
+            "system": """{% if messages[-1].meta.priority == 'high' %}
+URGENT: Handle this immediately.
+{% elif messages[-1].meta.priority == 'medium' %}
+Handle this soon.
+{% else %}
+Handle this when convenient.
+{% endif %}"""
+        }
+    }
+
+    recipient_config = participants_configs["assistant"]
+
+    messages = [
+        {
+            "role": "user",
+            "name": "user",
+            "content": "Fix the bug",
+            "meta": {"priority": "high"}
+        }
+    ]
+
+    result = prepend_recipient_system(participants_configs, recipient_config, messages, {})
+
+    assert result[0]["role"] == "system"
+    assert "URGENT: Handle this immediately" in result[0]["content"]
+    assert "Handle this soon" not in result[0]["content"]

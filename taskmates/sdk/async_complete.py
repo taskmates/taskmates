@@ -3,7 +3,6 @@ from typing import Unpack
 import pytest
 from typeguard import typechecked
 
-from taskmates.core.workflow_engine.transaction import Objective, ObjectiveKey
 from taskmates.core.workflows.markdown_completion.markdown_completion import MarkdownCompletion
 from taskmates.defaults.settings import Settings
 from taskmates.types import RunOpts
@@ -14,14 +13,17 @@ async def async_complete(markdown: str, **run_opts: Unpack[RunOpts]):
     context = Settings().get()
     context["run_opts"].update(run_opts)
 
-    instance = MarkdownCompletion(
-        objective=Objective(key=ObjectiveKey(
-            outcome=MarkdownCompletion.__name__,
-            inputs={"markdown_chat": markdown}
-        )),
-        context=context
+    from taskmates.core.workflow_engine.transaction_manager import runtime
+    workflow = MarkdownCompletion()
+    manager = runtime.transaction_manager()
+    transaction = manager.build_executable_transaction(
+        operation=workflow.fulfill.operation,
+        outcome=workflow.fulfill.outcome,
+        inputs={"markdown_chat": markdown},
+        context=context,
+        workflow_instance=workflow
     )
-    return await instance.fulfill()
+    return await transaction()
 
 
 @pytest.mark.asyncio

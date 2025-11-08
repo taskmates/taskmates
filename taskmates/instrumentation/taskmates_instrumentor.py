@@ -1,6 +1,6 @@
 import taskmates.core.markdown_chat.parse_front_matter_and_messages
 import taskmates.core.workflows.markdown_completion.completions.code_cell_execution.execute_markdown_on_local_kernel
-from taskmates.core.workflow_engine.transaction import Transaction
+from taskmates.core.workflow_engine.transactions.transaction import Transaction
 from taskmates.core.workflows.markdown_completion.completions.code_cell_execution import \
     execute_markdown_on_local_kernel
 from taskmates.core.workflows.markdown_completion.completions.completion_provider import CompletionProvider

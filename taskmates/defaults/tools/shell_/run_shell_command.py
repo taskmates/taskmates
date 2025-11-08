@@ -8,8 +8,7 @@ from typing import TextIO
 
 import pytest
 
-from taskmates.core.workflow_engine.transaction import Transaction, Objective
-from taskmates.core.workflow_engine.transaction import TRANSACTION
+from taskmates.core.workflow_engine.transactions.transaction import Transaction, TRANSACTION
 from taskmates.core.workflows.signals.execution_environment_signals import ExecutionEnvironmentSignals
 from taskmates.lib.restore_stdout_and_stderr import restore_stdout_and_stderr
 
@@ -58,19 +57,19 @@ async def run_shell_command(cmd: str) -> str:
             process.send_signal(signal.CTRL_BREAK_EVENT)
         else:
             os.killpg(os.getpgid(process.pid), signal.SIGINT)
-        await run.execution_context.consumes["status"].interrupted.send_async(None)
+        await run.consumes["status"].interrupted.send_async(None)
 
     async def kill_handler(sender):
         if platform.system() == "Windows":
             process.kill()
         else:
             os.killpg(os.getpgid(process.pid), signal.SIGKILL)
-        await run.execution_context.consumes["status"].killed.send_async(None)
+        await run.consumes["status"].killed.send_async(None)
 
-    with run.execution_context.emits["control"].interrupt.connected_to(interrupt_handler), \
-            run.execution_context.emits["control"].kill.connected_to(kill_handler):
+    with run.emits["control"].interrupt.connected_to(interrupt_handler), \
+            run.emits["control"].kill.connected_to(kill_handler):
 
-        execution_environment = run.execution_context.consumes["execution_environment"]
+        execution_environment = run.consumes["execution_environment"]
 
         stdout_task = asyncio.create_task(stream_output(sys.stdout, process.stdout, execution_environment))
         stderr_task = asyncio.create_task(stream_output(sys.stderr, process.stderr, execution_environment))
@@ -82,20 +81,20 @@ async def run_shell_command(cmd: str) -> str:
 
 
 @pytest.mark.asyncio
-async def test_run_shell_command(capsys, run):
+async def test_run_shell_command(capsys, transaction: Transaction):
     chunks = []
 
     async def capture_chunk(sender, value):
         chunks.append(value)
 
-    run.execution_context.consumes["execution_environment"].response.connect(capture_chunk)
+    transaction.consumes["execution_environment"].response.connect(capture_chunk)
 
     if platform.system() == "Windows":
         cmd = "echo Hello, World!"
     else:
         cmd = "echo 'Hello, World!'"
 
-    async with run.async_transaction_context():
+    async with transaction.async_transaction_context():
         return_code = await run_shell_command(cmd)
 
     assert return_code == '\nExit Code: 0'
@@ -103,7 +102,7 @@ async def test_run_shell_command(capsys, run):
 
 
 @pytest.mark.asyncio
-async def test_run_shell_command_interrupt(capsys, run):
+async def test_run_shell_command_interrupt(capsys, transaction: Transaction):
     chunks = []
 
     async def capture_chunk(sender, value):
@@ -112,22 +111,22 @@ async def test_run_shell_command_interrupt(capsys, run):
     async def noop(value):
         pass
 
-    run.execution_context.consumes["status"].interrupted.connect(noop)
-    run.execution_context.consumes["execution_environment"].response.connect(capture_chunk)
+    transaction.consumes["status"].interrupted.connect(noop)
+    transaction.consumes["execution_environment"].response.connect(capture_chunk)
 
     async def send_interrupt():
         while len(chunks) < 5:
             await asyncio.sleep(0.1)
-        await run.execution_context.emits["control"].interrupt.send_async(None)
+        await transaction.emits["control"].interrupt.send_async(None)
 
     interrupt_task = asyncio.create_task(send_interrupt())
 
     if platform.system() == "Windows":
         cmd = "for /L %i in (1,1,10) do @(echo %i & timeout /t 1 > nul)"
     else:
-        cmd = "seq 5; sleep 1; seq 6 10"
+        cmd = "seq 5; sleep 10; seq 6 10"
 
-    async with run.async_transaction_context():
+    async with transaction.async_transaction_context():
         return_code = await run_shell_command(cmd)
 
     await interrupt_task
@@ -140,7 +139,7 @@ async def test_run_shell_command_interrupt(capsys, run):
 
 
 @pytest.mark.asyncio
-async def test_run_shell_command_kill(capsys, run):
+async def test_run_shell_command_kill(capsys, transaction: Transaction):
     chunks = []
 
     async def capture_chunk(sender, value):
@@ -149,22 +148,22 @@ async def test_run_shell_command_kill(capsys, run):
     async def noop(value):
         pass
 
-    run.execution_context.consumes["status"].killed.connect(noop)
-    run.execution_context.consumes["execution_environment"].response.connect(capture_chunk)
+    transaction.consumes["status"].killed.connect(noop)
+    transaction.consumes["execution_environment"].response.connect(capture_chunk)
 
     async def send_kill():
         while len(chunks) < 3:
             await asyncio.sleep(0.1)
-        await run.execution_context.emits["control"].kill.send_async(None)
+        await transaction.emits["control"].kill.send_async(None)
 
     kill_task = asyncio.create_task(send_kill())
 
     if platform.system() == "Windows":
         cmd = "for /L %i in (1,1,5) do @(echo %i & timeout /t 1 > nul) & timeout /t 1 > nul & for /L %i in (6,1,10) do @echo %i"
     else:
-        cmd = "seq 5; sleep 1; seq 6 10"
+        cmd = "seq 5; sleep 10; seq 6 10"
 
-    async with run.async_transaction_context():
+    async with transaction.async_transaction_context():
         return_code = await run_shell_command(cmd)
 
     await kill_task

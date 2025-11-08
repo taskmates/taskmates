@@ -5,8 +5,6 @@ import textwrap
 
 import pytest
 
-from taskmates.types import ChatCompletionRequest
-
 
 @pytest.fixture
 def cli_runner(tmp_path):
@@ -50,11 +48,10 @@ def test_parse_basic(cli_runner):
     assert "available_tools" in result
     assert "run_opts" in result
 
-    assert len(result["messages"]) == 4  # system message + empty message + user message + assistant message
-    assert result["messages"][0]["role"] == "system"
-    assert "Your username is `user`" in result["messages"][0]["content"]
+    # No system message in CompletionRequest (it's added in build_llm_args)
+    assert len(result["messages"]) == 3  # empty message + user message + assistant message
 
-    non_system_messages = [msg for msg in result["messages"] if msg["role"] != "system"]
+    non_system_messages = result["messages"]
     assert len(non_system_messages) == 3
 
     message_contents = [msg["content"].strip() for msg in non_system_messages if msg["content"].strip()]
@@ -87,9 +84,10 @@ def test_parse_with_mention(cli_runner, tmp_path):
     assert returncode == 0
     assert not stderr
 
-    result: ChatCompletionRequest = json.loads(stdout)
+    result = json.loads(stdout)
 
-    assert len(result["messages"]) == 2
+    # No system message in CompletionRequest (it's added in build_llm_args)
+    assert len(result["messages"]) == 1
 
     assert result["messages"][-1]["recipient"] == "jeff"
     assert result["messages"][-1]["recipient_role"] == "assistant"

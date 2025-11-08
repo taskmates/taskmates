@@ -71,7 +71,7 @@ def load_participant_config(participants_configs: dict, participant_name: str) -
 
 
 @pytest.fixture
-def sample_data(tmp_path, run):
+def sample_data(tmp_path, transaction):
     participants_configs = {
         "assistant1": {"role": "assistant", "system": "existing system info"}
     }
@@ -82,7 +82,7 @@ def sample_data(tmp_path, run):
     (taskmates_config_dir1 / f"{participant_name}.md").write_text("""---
 role: assistant
 description: Description of assistant1
-model: gpt-3.5-turbo
+model: gpt-4o-mini
 ---
 System message
 """)
@@ -99,7 +99,7 @@ def test_load_participant_config(sample_data):
     assert config["role"] == "assistant"
     assert config["system"] == "System message\n"
     assert config["description"] == "Description of assistant1"
-    assert config["model"] == "gpt-3.5-turbo"
+    assert config["model"] == "gpt-4o-mini"
 
 
 def test_load_participant_config_missing_fields(sample_data):
@@ -131,7 +131,7 @@ def test_load_participant_config_caching(sample_data):
     config_file.write_text("""---
 role: assistant
 description: Updated description
-model: gpt-3.5-turbo
+model: gpt-4o-mini
 ---
 System message
 """)
@@ -168,7 +168,7 @@ System message
 #
 #     config = load_participant_config(participants_configs, participant_name)
 #
-#     assert config["model"] == "gpt-3.5-turbo"  # Should use the file from the first directory
+#     assert config["model"] == "gpt-4o-mini"  # Should use the file from the first directory
 #
 #     # Remove the file from the first directory
 #     os.remove(taskmates_dirs[0] / "taskmates" / f"{participant_name}.md")

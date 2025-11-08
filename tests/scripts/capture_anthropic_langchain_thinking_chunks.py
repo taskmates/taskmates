@@ -18,7 +18,7 @@ async def capture_streaming_chunks_with_thinking():
 
     # Initialize the model with thinking enabled
     model = ChatAnthropic(
-        model="claude-sonnet-4-20250514",
+        model="claude-sonnet-4-5",
         temperature=1,
         streaming=True,
         api_key=os.getenv("ANTHROPIC_API_KEY"),
@@ -46,7 +46,7 @@ async def capture_streaming_chunks_with_thinking():
 
     # Also capture a non-streaming response for comparison
     model_sync = ChatAnthropic(
-        model="claude-sonnet-4-20250514",
+        model="claude-sonnet-4-5",
         temperature=1,
         streaming=False,
         api_key=os.getenv("ANTHROPIC_API_KEY"),

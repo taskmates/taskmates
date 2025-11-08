@@ -13,33 +13,36 @@ from taskmates.core.workflows.markdown_completion.completions.llm_completion.res
 from taskmates.core.workflows.signals.control_signals import ControlSignals
 from taskmates.core.workflows.signals.execution_environment_signals import ExecutionEnvironmentSignals
 from taskmates.core.workflows.signals.status_signals import StatusSignals
-from taskmates.types import ChatCompletionRequest
+from taskmates.types import CompletionRequest
 
 
 @typechecked
 class LlmChatCompletionProvider(CompletionProvider):
-    def can_complete(self, chat: ChatCompletionRequest):
-        if has_truncated_code_cell(chat):
+    def can_complete(self, chat: CompletionRequest):
+        messages = chat["messages"]
+
+        if has_truncated_code_cell(messages):
             return True
 
-        last_message = chat["messages"][-1]
+        last_message = messages[-1]
         recipient_role = last_message["recipient_role"]
         return recipient_role is not None and not recipient_role == "user"
 
     @typechecked
     async def perform_completion(
             self,
-            chat: ChatCompletionRequest,
+            chat: CompletionRequest,
             control_signals: ControlSignals,
             execution_environment_signals: ExecutionEnvironmentSignals,
             status_signals: StatusSignals,
     ):
+        messages = chat["messages"]
         request = LlmCompletionRequest(chat)
 
         markdown_appender = LlmCompletionMarkdownAppender(
-            recipient=chat["messages"][-1]["recipient"],
+            recipient=messages[-1]["recipient"],
             last_tool_call_id=_get_last_tool_call_index(chat),
-            is_resume_request=has_truncated_code_cell(chat),
+            is_resume_request=has_truncated_code_cell(messages),
             execution_environment_signals=execution_environment_signals
         )
 

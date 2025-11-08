@@ -153,13 +153,18 @@ def test_interrupt_tool(cli_runner, tmp_path):
 
     """)
 
+    taskmates_home = tmp_path / ".taskmates"
+    env = os.environ.copy()
+    env["TASKMATES_HOME"] = str(taskmates_home)
+
     args = ["complete", "--model=quote", "--max-steps=1", markdown_chat]
     process = subprocess.Popen(
         ["taskmates"] + args,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         text=True,
-        cwd=str(tmp_path)
+        cwd=str(tmp_path),
+        env=env
     )
 
     output = ""
@@ -217,13 +222,18 @@ def test_kill_tool(cli_runner, tmp_path):
 
     """)
 
+    taskmates_home = tmp_path / ".taskmates"
+    env = os.environ.copy()
+    env["TASKMATES_HOME"] = str(taskmates_home)
+
     args = ["complete", "--model=quote", "--max-steps=1", markdown_chat]
     process = subprocess.Popen(
         ["taskmates"] + args,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         text=True,
-        cwd=str(tmp_path)
+        cwd=str(tmp_path),
+        env=env
     )
 
     output = ""
@@ -283,13 +293,18 @@ def test_kill_code_cell(cli_runner, tmp_path):
     
     """)
 
+    taskmates_home = tmp_path / ".taskmates"
+    env = os.environ.copy()
+    env["TASKMATES_HOME"] = str(taskmates_home)
+
     args = ["complete", "--model=quote", "--max-steps=1", markdown_chat]
     process = subprocess.Popen(
         ["taskmates"] + args,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         text=True,
-        cwd=str(tmp_path)
+        cwd=str(tmp_path),
+        env=env
     )
 
     output = ""

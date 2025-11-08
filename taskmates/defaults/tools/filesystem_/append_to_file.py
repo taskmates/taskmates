@@ -2,7 +2,7 @@ import sys
 from pathlib import Path
 
 from taskmates.defaults.tools.filesystem_.is_path_allowed import is_path_allowed
-from taskmates.core.workflow_engine.transaction import TRANSACTION
+from taskmates.core.workflow_engine.transactions.transaction import TRANSACTION
 
 
 def append_to_file(path, content):
@@ -13,7 +13,7 @@ def append_to_file(path, content):
     :return: None
     """
 
-    contexts = TRANSACTION.get().execution_context.context
+    contexts = TRANSACTION.get().context
     run_opts = contexts["run_opts"]
 
     allow = ((run_opts.get("tools") or {}).get("append_to_file") or {}).get("allow", "**")

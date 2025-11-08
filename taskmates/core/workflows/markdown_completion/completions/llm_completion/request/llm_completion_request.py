@@ -8,13 +8,12 @@ from opentelemetry import trace
 from typeguard import typechecked
 
 from taskmates.core.markdown_chat.metadata.get_model_client import get_model_client
-from taskmates.core.markdown_chat.metadata.get_model_conf import get_model_conf
+from taskmates.core.markdown_chat.metadata.config_model_conf import config_model_conf
+from taskmates.core.markdown_chat.metadata.calculate_input_tokens import calculate_input_tokens
 from taskmates.core.workflows.markdown_completion.completions.llm_completion._get_usernames_stop_sequences import \
     _get_usernames_stop_sequences
-from taskmates.core.workflows.markdown_completion.completions.llm_completion.request._convert_openai_payload_to_langchain import \
-    _convert_openai_payload_to_langchain
-from taskmates.core.workflows.markdown_completion.completions.llm_completion.request.prepare_request_payload import \
-    prepare_request_payload
+from taskmates.core.workflows.markdown_completion.completions.llm_completion.request.build_llm_args import \
+    build_llm_args
 from taskmates.core.workflows.markdown_completion.completions.llm_completion.request.request_interruption_monitor import \
     RequestInterruptionMonitor
 from taskmates.core.workflows.markdown_completion.completions.llm_completion.response.llm_completion_pre_processor import \
@@ -28,34 +27,55 @@ from taskmates.core.workflows.signals.llm_chat_completion_signals import LlmChat
 from taskmates.core.workflows.signals.status_signals import StatusSignals
 from taskmates.defaults.settings import Settings
 from taskmates.logging import file_logger
-from taskmates.types import ChatCompletionRequest
+from taskmates.types import CompletionRequest
 
 tracer = trace.get_tracer_provider().get_tracer(__name__)
 
 
 @typechecked
 class LlmCompletionRequest:
-    def __init__(self, chat: ChatCompletionRequest):
-        self.chat = chat
+    def __init__(self, chat: CompletionRequest, stop_sequences: list | None = None):
+        run_opts = chat["run_opts"]
+        model_alias = run_opts["model"]
+        participants = chat.get("participants", {})
+        messages = chat["messages"]
+        available_tools = chat["available_tools"]
 
-        model_alias = chat["run_opts"]["model"]
-        taskmates_dirs = Settings.get()["runner_environment"]["taskmates_dirs"]
+        if stop_sequences is None:
+            stop_sequences = ["^######"] + _get_usernames_stop_sequences(participants)
+
+        input_tokens = calculate_input_tokens(messages)
 
         # Get model configuration
-        self.model_conf = get_model_conf(
+        # TODO: config_model_conf is adding dynamic config to model conf
+        # maybe we should move all dynamic logic there
+        model_conf = config_model_conf(
             model_alias=model_alias,
-            messages=chat["messages"],
-            taskmates_dirs=taskmates_dirs
+            stop_sequences=stop_sequences,
+            input_tokens=input_tokens
         )
 
-        # TODO we shouldn't mutate this
-        self.model_conf["stop"].extend(_get_usernames_stop_sequences(chat))
+        self.stop_sequences = model_conf.get("client", {}).get("kwargs", {}).get("stop", [])
+
+        if "claude" not in model_alias:
+            model_conf.get("client", {}).get("kwargs", {}).pop("stop", [])
 
         # Get client
-        self.client = get_model_client(model_spec=self.model_conf)
+        self.client = get_model_client(model_conf=model_conf)
 
         # Prepare request payload
-        self.request_payload = prepare_request_payload(chat, self.model_conf, self.client)
+        inputs = run_opts.get("inputs", {})
+        self.llm_args = build_llm_args(
+            messages=messages,
+            available_tools=available_tools,
+            participants=participants,
+            inputs=inputs,
+            model_conf=model_conf,
+            client=self.client
+        )
+        self.messages = self.llm_args["messages"]
+        self.tools = self.llm_args["tools"]
+        self.model_params: dict = self.llm_args["model_params"]
 
         # Signals
         self.control_signals = ControlSignals(name="ControlSignals")
@@ -72,22 +92,20 @@ class LlmCompletionRequest:
             raise RuntimeError("Request already executed")
         self._executed = True
 
-        file_logger.debug("request_payload.json", content=self.request_payload)
+        file_logger.debug("llm_args.json", content=self.llm_args)
 
         with tracer.start_as_current_span(name="chat-completion"):
             llm = self.client
-            messages, tools = _convert_openai_payload_to_langchain(self.request_payload)
 
-            if tools:
-                llm = llm.bind_tools(tools)
+            if self.tools:
+                llm = llm.bind_tools(self.tools)
 
             async with RequestInterruptionMonitor(
                     status=self.status_signals,
                     control=self.control_signals
             ) as request_interruption_monitor:
-                stop_sequences = self.request_payload.pop("stop", [])
                 await self._stream_and_emit(
-                    llm, messages, stop_sequences, request_interruption_monitor
+                    llm, self.messages, self.stop_sequences, request_interruption_monitor
                 )
 
     async def execute_non_streaming(self):
@@ -96,16 +114,17 @@ class LlmCompletionRequest:
             raise RuntimeError("Request already executed")
         self._executed = True
 
-        file_logger.debug("request_payload.json", content=self.request_payload)
+        file_logger.debug("messages.json", content=[msg.model_dump() for msg in self.messages])
+        file_logger.debug("tools.json", content=[tool.name for tool in self.tools])
+        file_logger.debug("model_params.json", content=self.model_params)
 
         with tracer.start_as_current_span(name="chat-completion"):
             llm = self.client
-            messages, tools = _convert_openai_payload_to_langchain(self.request_payload)
 
-            if tools:
-                llm = llm.bind_tools(tools)
+            if self.tools:
+                llm = llm.bind_tools(self.tools)
 
-            result = await llm.ainvoke(messages)
+            result = await llm.ainvoke(self.messages)
 
             file_logger.debug("response.json", content=result)
 
@@ -158,7 +177,7 @@ class LlmCompletionRequest:
 
 
 @pytest.mark.integration
-async def test_llm_completion_request_happy_path(run):
+async def test_llm_completion_request_happy_path(transaction):
     # Create a chat
     chat = {
         "messages": [
@@ -167,7 +186,7 @@ async def test_llm_completion_request_happy_path(run):
         ],
         "participants": {"assistant": {"role": "assistant"}},
         "available_tools": [],
-        "run_opts": {"model": "gpt-3.5-turbo"}
+        "run_opts": {"model": "gpt-4o-mini"}
     }
 
     # Create and execute request
@@ -180,7 +199,7 @@ async def test_llm_completion_request_happy_path(run):
 
 
 @pytest.mark.integration
-async def test_llm_completion_request_who_are_you(run):
+async def test_llm_completion_request_who_are_you(transaction):
     # Create a chat
     chat = {
         "messages": [
@@ -189,7 +208,7 @@ async def test_llm_completion_request_who_are_you(run):
         ],
         "participants": {"assistant": {"role": "assistant"}},
         "available_tools": [],
-        "run_opts": {"model": "gpt-3.5-turbo"}
+        "run_opts": {"model": "gpt-4o-mini"}
     }
 
     # Create and execute request
@@ -203,7 +222,7 @@ async def test_llm_completion_request_who_are_you(run):
 
 
 @pytest.mark.integration
-async def test_llm_completion_request_with_tool_calls(run, tmp_path):
+async def test_llm_completion_request_with_tool_calls(transaction, tmp_path):
     # Create a temp file
     test_file = tmp_path / "test.txt"
     test_file.write_text("Hello from test file")
@@ -258,7 +277,7 @@ async def test_llm_completion_request_with_tool_calls(run, tmp_path):
 
 
 @pytest.mark.asyncio
-async def test_llm_completion_request_streaming_with_fixture(run):
+async def test_llm_completion_request_streaming_with_fixture(transaction):
     """Test LlmCompletionRequest with streaming response using fixture."""
     # Create a chat
     chat = {
@@ -299,7 +318,7 @@ async def test_llm_completion_request_streaming_with_fixture(run):
 
 
 @pytest.mark.asyncio
-async def test_llm_completion_request_non_streaming_with_fixture(run):
+async def test_llm_completion_request_non_streaming_with_fixture(transaction):
     """Test LlmCompletionRequest with non-streaming response using fixture."""
     # Create a chat
     chat = {
@@ -329,7 +348,7 @@ async def test_llm_completion_request_non_streaming_with_fixture(run):
 
 
 @pytest.mark.asyncio
-async def test_llm_completion_request_tool_call_streaming_with_fixture(run):
+async def test_llm_completion_request_tool_call_streaming_with_fixture(transaction):
     """Test LlmCompletionRequest with tool call streaming response using fixture."""
     # Create a chat
     chat = {
@@ -373,7 +392,7 @@ async def test_llm_completion_request_tool_call_streaming_with_fixture(run):
 
 
 @pytest.mark.asyncio
-async def test_llm_completion_request_with_stop_sequences(run):
+async def test_llm_completion_request_with_stop_sequences(transaction):
     """Test that stop sequences are properly handled during streaming."""
     # Create a chat - stop sequences will be added via model_conf
     chat = {
@@ -398,12 +417,12 @@ async def test_llm_completion_request_with_stop_sequences(run):
             "name": "fixture",
             "kwargs": {
                 "fixture_path": "tests/fixtures/api-responses/openai_streaming_response.jsonl"
-            }
+            },
         }
     }
-    request = LlmCompletionRequest(chat)
+    request = LlmCompletionRequest(chat, stop_sequences=[", 3"])
     # Manually add stop sequence to test
-    request.request_payload["stop"] = [", 3"]  # This should stop the stream at "1, 2"
+
     request.llm_chat_completion_signals.llm_chat_completion.connect(capture_chunk, weak=False)
 
     await request.execute_streaming()
@@ -420,7 +439,7 @@ async def test_llm_completion_request_with_stop_sequences(run):
 
 # New tests for the LlmCompletionRequest class
 @pytest.mark.asyncio
-async def test_llm_completion_request_class(run):
+async def test_llm_completion_request_class(transaction):
     """Test the new LlmCompletionRequest class directly."""
     # Create a chat
     chat = {
@@ -465,7 +484,7 @@ async def test_llm_completion_request_class(run):
 
 
 @pytest.mark.asyncio
-async def test_llm_completion_request_status_forwarding(run):
+async def test_llm_completion_request_status_forwarding(transaction):
     """Test that status signals are properly forwarded."""
     # Create a chat
     chat = {

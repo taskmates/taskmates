@@ -3,12 +3,13 @@ import json
 from quart import Blueprint, Response, websocket
 
 import taskmates
-from taskmates.core.workflow_engine.transaction import Objective, ObjectiveKey
-from taskmates.core.workflows.markdown_completion.markdown_completion import MarkdownCompletion
+from taskmates.core.workflow_engine.transactions.transaction import Transaction
+from taskmates.core.workflow_engine.objective import ObjectiveKey, Objective
 from taskmates.lib.json_.json_utils import snake_case
 from taskmates.logging import file_logger
 from taskmates.logging import logger
-from taskmates.runtimes.api.api_completion_transaction import ApiCompletionTransaction
+from taskmates.core.workflows.markdown_completion.markdown_completion import MarkdownCompletion
+from taskmates.runtimes.api.websocket_bindings import WebsocketBindings
 from taskmates.runtimes.api.api_context_builder import ApiContextBuilder
 from taskmates.taskmates_runtime import TASKMATES_RUNTIME
 from taskmates.types import ApiRequest
@@ -36,27 +37,24 @@ async def create_completion():
 
     file_logger.debug("websockets_api_payload.json", content=payload)
 
-    api_completion_transaction = create_api_completion_transaction(payload)
+    transaction = Transaction(
+        objective=Objective(
+            key=ObjectiveKey(
+                outcome="ApiCompletionTransaction",
+                inputs={"markdown_chat": payload["markdown_chat"]}
+            )
+        ),
+        context=ApiContextBuilder(payload).build()
+    )
 
-    async with api_completion_transaction.execution_context.async_transaction_context():
-        markdown_completion = api_completion_transaction.create_child_transaction(
-            outcome="MarkdownCompletion",
+    async with WebsocketBindings(transaction, websocket):
+        markdown_completion_transaction = transaction.create_bound_transaction(
+            operation=MarkdownCompletion().fulfill,
             inputs={"markdown_chat": payload["markdown_chat"]},
-            transaction_class=MarkdownCompletion,
             result_format={'format': 'completion', 'interactive': True}
         )
 
-        return await markdown_completion.fulfill()
-
-
-def create_api_completion_transaction(payload):
-    # TODO: pass interactive here
-
-    return ApiCompletionTransaction(websocket=websocket,
-                                    objective=Objective(
-                                        key=ObjectiveKey(outcome="ApiCompletionTransaction")
-                                    ),
-                                    context=ApiContextBuilder(payload).build())
+        return await markdown_completion_transaction()
 
 
 @completions_bp.after_websocket

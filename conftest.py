@@ -7,8 +7,8 @@ import tiktoken
 
 from taskmates.config.load_participant_config import load_cache
 from taskmates.core.workflow_engine.run_context import RunContext
-from taskmates.core.workflow_engine.transaction import Objective, ObjectiveKey, \
-    Transaction
+from taskmates.core.workflow_engine.transactions.transaction import Transaction
+from taskmates.core.workflow_engine.objective import ObjectiveKey, Objective
 from taskmates.core.workflows.markdown_completion.completions.code_cell_execution.execution.kernel_manager import \
     get_kernel_manager
 from taskmates.defaults.settings import Settings
@@ -78,7 +78,11 @@ def change_dir_to_tmp_path(tmp_path):
 
 
 @pytest.fixture
-def context(request, taskmates_runtime) -> RunContext:
+def context(request, taskmates_runtime, tmp_path) -> RunContext:
+    # Reset the global transaction manager to use in-memory cache
+    from taskmates.core.workflow_engine import transaction_manager
+    transaction_manager._default_manager = None
+    
     return Settings().get()
 
 
@@ -91,19 +95,9 @@ def daemons(request):
 
 
 @pytest.fixture
-def run(request, taskmates_runtime, context, daemons) -> Iterable[Transaction]:
+def transaction(request, taskmates_runtime, context, daemons) -> Transaction:
     return Transaction(objective=Objective(key=ObjectiveKey(outcome=request.node.name)),
-                       context=context
-                       # daemons=to_daemons_dict(daemons),
-                       # emits={'control': ControlSignals(name="ControlSignals"),
-                       #           'input_streams': InputStreamsSignals(name="InputStreamsSignals")},
-                       # consumes={
-                       # 'status': StatusSignals(name="StatusSignals"),
-                       # 'execution_environment': ExecutionEnvironmentSignals(name="ExecutionEnvironmentSignals"),
-                       # 'markdown_completion': ExecutionEnvironmentSignals(name="ExecutionEnvironmentSignals")
-                       # },
-                       #         state={"captured_signals": CapturedSignals(name="CapturedSignals")}
-                       )
+                       context=context)
 
 
 @pytest.fixture(scope="function", autouse=True)

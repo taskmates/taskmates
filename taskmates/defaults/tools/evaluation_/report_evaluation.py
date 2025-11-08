@@ -1,6 +1,6 @@
 from typing import Optional
 
-from taskmates.core.workflow_engine.transaction import TRANSACTION
+from taskmates.core.workflow_engine.transactions.transaction import TRANSACTION
 
 
 async def report_evaluation(summary: Optional[str], result: bool):

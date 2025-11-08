@@ -5,19 +5,19 @@ from typeguard import typechecked
 from taskmates.core.workflows.signals.control_signals import ControlSignals
 from taskmates.core.workflows.signals.execution_environment_signals import ExecutionEnvironmentSignals
 from taskmates.core.workflows.signals.status_signals import StatusSignals
-from taskmates.types import ChatCompletionRequest
+from taskmates.types import CompletionRequest
 
 
 @typechecked
 class CompletionProvider(ABC):
     @abstractmethod
-    def can_complete(self, chat: ChatCompletionRequest):
+    def can_complete(self, chat: CompletionRequest):
         raise NotImplemented
 
     @abstractmethod
     async def perform_completion(
             self,
-            chat: ChatCompletionRequest,
+            chat: CompletionRequest,
             control_signals: ControlSignals,
             execution_environment_signals: ExecutionEnvironmentSignals,
             status_signals: StatusSignals

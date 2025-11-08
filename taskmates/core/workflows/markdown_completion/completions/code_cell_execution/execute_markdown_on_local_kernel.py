@@ -8,7 +8,7 @@ from typing import Mapping, Optional
 import pytest
 from typeguard import typechecked
 
-from taskmates.core.workflow_engine.transaction import TRANSACTION
+from taskmates.core.workflow_engine.transactions.transaction import TRANSACTION
 from taskmates.core.workflows.markdown_completion.completions.code_cell_execution.execution.kernel_manager import \
     get_kernel_manager
 from taskmates.core.workflows.markdown_completion.completions.code_cell_execution.execution.markdown_executor import \
@@ -49,9 +49,9 @@ async def main(argv=None):
     args = parser.parse_args(argv)
 
     # Execute markdown
-    control = TRANSACTION.get().execution_context.emits["control"]
-    status = TRANSACTION.get().execution_context.consumes["status"]
-    execution_environment_signals = TRANSACTION.get().execution_context.consumes["execution_environment_signals"]
+    control = TRANSACTION.get().current_transaction.emits["control"]
+    status = TRANSACTION.get().current_transaction.consumes["status"]
+    execution_environment_signals = TRANSACTION.get().current_transaction.consumes["execution_environment_signals"]
 
     await execute_markdown_on_local_kernel(control=control, status=status,
                                            execution_environment_signals=execution_environment_signals,

@@ -1,12 +1,12 @@
 import time
 from pathlib import Path
-from typing import MutableMapping, Dict, Any, Union
+from typing import MutableMapping, Dict, Any, Union, List, Callable
 
 from typeguard import typechecked
 from typing_extensions import TypedDict, NotRequired, Literal
 
 
-class ChatCompletionRequest(TypedDict):
+class CompletionRequest(TypedDict):
     messages: list[dict]
     available_tools: list[str]
     participants: dict
@@ -31,6 +31,7 @@ class RunOpts(TypedDict):
     max_steps: NotRequired[int]
     workflow: NotRequired[str]
     participants: NotRequired[dict]
+    inputs: NotRequired[dict]
 
 
 class RunnerEnvironment(TypedDict):
@@ -55,6 +56,27 @@ class ResultFormat(TypedDict):
     # request
     format: NotRequired[Literal["full", "text", "input", "completion"]]
     interactive: NotRequired[bool]
+
+
+class LlmRequestPayload(TypedDict, total=False):
+    """
+    Payload for LLM requests.
+
+    Note: This TypedDict defines the common structure, but the actual payload
+    may contain additional keys from model_conf (e.g., client_type, fixture_path,
+    max_context_window, reasoning_effort, etc.). When using with typeguard,
+    consider using Dict[str, Any] for the return type instead.
+    """
+    messages: List[Dict[str, Any]]
+    tools: List[Union[Callable, Dict[str, Any]]]
+    tool_choice: Any
+    model: str
+    temperature: float
+    max_tokens: int
+    top_p: float
+    frequency_penalty: float
+    presence_penalty: float
+    stop: List[str]
 
 
 @typechecked

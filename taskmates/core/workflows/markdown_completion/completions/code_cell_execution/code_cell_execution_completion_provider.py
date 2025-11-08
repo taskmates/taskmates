@@ -4,7 +4,7 @@ import pytest
 from typeguard import typechecked
 
 from taskmates.core.chat.openai.get_text_content import get_text_content
-from taskmates.core.workflow_engine.transaction import TRANSACTION, Transaction
+from taskmates.core.workflow_engine.transactions.transaction import Transaction, TRANSACTION
 from taskmates.core.workflows.markdown_completion.completions.code_cell_execution.execute_markdown_on_local_kernel import \
     execute_markdown_on_local_kernel
 from taskmates.core.workflows.markdown_completion.completions.code_cell_execution.response.code_cell_execution_appender import \
@@ -14,7 +14,7 @@ from taskmates.core.workflows.markdown_completion.completions.has_truncated_code
 from taskmates.core.workflows.signals.control_signals import ControlSignals
 from taskmates.core.workflows.signals.execution_environment_signals import ExecutionEnvironmentSignals
 from taskmates.core.workflows.signals.status_signals import StatusSignals
-from taskmates.types import ChatCompletionRequest, RunnerEnvironment
+from taskmates.types import CompletionRequest, RunnerEnvironment
 
 
 @typechecked
@@ -22,30 +22,30 @@ class CodeCellExecutionCompletionProvider(CompletionProvider):
     def __init__(self):
         self.execution_environment_signals = ExecutionEnvironmentSignals(name="code_cell_output")
 
-    def can_complete(self, chat: ChatCompletionRequest):
-        if has_truncated_code_cell(chat):
+    def can_complete(self, chat: CompletionRequest):
+        messages = chat["messages"]
+
+        if has_truncated_code_cell(messages):
             return False
 
-        is_jupyter_enabled = chat.get("run_opts", {}).get("jupyter_enabled", True)
-        last_message = chat['messages'][-1]
-        code_cells = last_message.get("code_cells", [])
-        return is_jupyter_enabled and len(code_cells) > 0
+        code_cells = messages[-1].get("code_cells", [])
+        return len(code_cells) > 0
 
     async def perform_completion(
             self,
-            chat: ChatCompletionRequest,
+            chat: CompletionRequest,
             control_signals: ControlSignals,
             execution_environment_signals: ExecutionEnvironmentSignals,
             status_signals: StatusSignals
     ):
-        contexts = TRANSACTION.get().execution_context.context
+        messages = chat.get("messages", [])
+        contexts = TRANSACTION.get().context
 
         runner_environment: RunnerEnvironment = contexts["runner_environment"]
         markdown_path = runner_environment["markdown_path"]
         cwd = runner_environment["cwd"]
         env = runner_environment["env"]
 
-        messages = chat.get("messages", [])
 
         editor_completion = CodeCellExecutionAppender(project_dir=cwd,
                                                       chat_file=markdown_path,
@@ -70,7 +70,7 @@ class CodeCellExecutionCompletionProvider(CompletionProvider):
 
 
 @pytest.mark.asyncio
-async def test_markdown_code_cells_assistance_streaming(tmp_path, run: Transaction):
+async def test_markdown_code_cells_assistance_streaming(tmp_path, transaction: Transaction):
     markdown_chunks = []
 
     async def capture_completion_chunk(sender, value):
@@ -79,7 +79,7 @@ async def test_markdown_code_cells_assistance_streaming(tmp_path, run: Transacti
     async def capture_error(error):
         raise error
 
-    chat: ChatCompletionRequest = {
+    chat: CompletionRequest = {
         "run_opts": {},
         "participants": {},
         "available_tools": [],
@@ -107,7 +107,7 @@ async def test_markdown_code_cells_assistance_streaming(tmp_path, run: Transacti
     execution_environment_signals.response.connect(capture_completion_chunk)
     execution_environment_signals.error.connect(capture_error)
     assistance = CodeCellExecutionCompletionProvider()
-    async with run.async_transaction_context():
+    async with transaction.async_transaction_context():
         await assistance.perform_completion(
             chat,
             control_signals,

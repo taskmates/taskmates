@@ -5,7 +5,7 @@ import signal
 import websockets
 from websockets.exceptions import ConnectionClosed
 
-from taskmates.core.workflow_engine.transaction import TRANSACTION
+from taskmates.core.workflow_engine.transactions.transaction import TRANSACTION
 
 
 async def on_message(message):
@@ -61,7 +61,7 @@ async def perform_websocket_completion(markdown, endpoint: str):
 
     async with websockets.connect(endpoint) as websocket:
         try:
-            context = TRANSACTION.get().execution_context.context["runner_environment"]
+            context = TRANSACTION.get().context["runner_environment"]
 
             await websocket.send(json.dumps({
                 "type": "completions_request",

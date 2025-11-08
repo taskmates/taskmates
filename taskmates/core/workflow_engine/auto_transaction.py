@@ -2,7 +2,7 @@ import asyncio
 from functools import wraps
 from typing import Callable
 
-from taskmates.core.workflow_engine.transaction import Transaction
+from taskmates.core.workflow_engine.transactions.transaction import Transaction
 
 
 def auto_transaction():

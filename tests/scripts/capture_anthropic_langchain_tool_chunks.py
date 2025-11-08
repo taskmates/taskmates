@@ -18,7 +18,7 @@ async def capture_tool_calling_chunks():
     fixtures_dir.mkdir(parents=True, exist_ok=True)
 
     model = ChatAnthropic(
-        model="claude-sonnet-4-20250514",
+        model="claude-sonnet-4-5",
         temperature=0,
         streaming=True,
         api_key=os.getenv("ANTHROPIC_API_KEY")

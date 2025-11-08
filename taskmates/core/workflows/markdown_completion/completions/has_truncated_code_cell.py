@@ -1,11 +1,8 @@
-from taskmates.types import ChatCompletionRequest
-
-
-def has_truncated_code_cell(chat: ChatCompletionRequest) -> bool:
-    if not chat["messages"]:
+def has_truncated_code_cell(messages: list[dict]) -> bool:
+    if not messages:
         return False
 
-    last_message = chat["messages"][-1]
+    last_message = messages[-1]
     role = last_message.get("role", "")
 
     # Messages from users or system are never resume requests

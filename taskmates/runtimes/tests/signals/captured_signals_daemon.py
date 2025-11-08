@@ -1,7 +1,7 @@
 import functools
 
 from taskmates.core.workflow_engine.composite_context_manager import CompositeContextManager
-from taskmates.core.workflow_engine.transaction import TRANSACTION, Transaction
+from taskmates.core.workflow_engine.transactions.transaction import Transaction, TRANSACTION
 from taskmates.core.workflow_engine.base_signals import BaseSignals
 from taskmates.lib.contextlib_.stacked_contexts import stacked_contexts
 
@@ -11,7 +11,7 @@ class CapturedSignalsDaemon(CompositeContextManager):
         super().__init__()
 
     async def capture_signal(self, signal_name: str, payload, run: Transaction):
-        run.execution_context.state["captured_signals"].append((signal_name, payload))
+        run.state["captured_signals"].append((signal_name, payload))
 
     def __enter__(self):
         run = TRANSACTION.get()

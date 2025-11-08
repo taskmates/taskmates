@@ -18,7 +18,7 @@ async def capture_streaming_chunks():
 
     # Initialize the model
     model = ChatOpenAI(
-        model="gpt-3.5-turbo",
+        model="gpt-4o-mini",
         temperature=0,
         streaming=True,
         api_key=os.getenv("OPENAI_API_KEY")
@@ -44,7 +44,7 @@ async def capture_streaming_chunks():
 
     # Also capture a non-streaming response for comparison
     model_sync = ChatOpenAI(
-        model="gpt-3.5-turbo",
+        model="gpt-4o-mini",
         temperature=0,
         streaming=False,
         api_key=os.getenv("OPENAI_API_KEY")

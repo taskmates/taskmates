@@ -2,7 +2,7 @@ import asyncio
 from contextlib import redirect_stdout, redirect_stderr
 from io import StringIO
 
-from taskmates.core.workflow_engine.transaction import Transaction
+from taskmates.core.workflow_engine.transactions.transaction import Transaction
 from taskmates.lib.context_.temp_cwd import temp_cwd
 from taskmates.lib.context_.temp_environ import temp_environ
 from taskmates.lib.restore_stdout_and_stderr import restore_stdout_and_stderr
@@ -16,7 +16,7 @@ async def stream_output(stream_name, stream, run: Transaction):
         if not line:
             break
         with restore_stdout_and_stderr():
-            await run.execution_context.consumes["execution_environment"].response.send_async(sender="response", value=line)
+            await run.consumes["execution_environment"].response.send_async(sender="response", value=line)
 
 
 async def invoke_function(function, arguments, context: RunnerEnvironment, run: Transaction):

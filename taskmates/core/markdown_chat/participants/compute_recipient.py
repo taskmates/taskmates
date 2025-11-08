@@ -83,7 +83,7 @@ def compute_recipient(messages, participants: list[str]) -> str | None:
 # Test cases
 
 @pytest.fixture
-def taskmates_dir(tmp_path, run):
+def taskmates_dir(tmp_path, transaction):
     base_dir = tmp_path / ".taskmates"
     (base_dir / "engine").mkdir(parents=True)
     (base_dir / "engine" / "chat_introduction.md").write_text("CHAT_INTRODUCTION\n")

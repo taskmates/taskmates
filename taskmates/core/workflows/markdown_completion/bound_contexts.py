@@ -1,7 +1,7 @@
 from typeguard import typechecked
 
 from taskmates.core.workflow_engine.base_signals import connected_signals
-from taskmates.core.workflow_engine.transaction import Transaction
+from taskmates.core.workflow_engine.transactions.transaction import Transaction
 
 
 @typechecked

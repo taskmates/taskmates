@@ -184,7 +184,7 @@ def test_parse_chat_messages_with_metadata(tmp_path):
     input = """\
         **user {"name": "john", "age": 30}>** Here is a message from John.
         
-        **assistant {"model": "gpt-3.5-turbo"}>** Here is a response from the assistant.
+        **assistant {"model": "gpt-4o-mini"}>** Here is a response from the assistant.
         """
     front_matter, messages = parse_front_matter_and_messages(textwrap.dedent(input), tmp_path / "main.md", "user")
     assert len(messages) == 2
@@ -194,7 +194,7 @@ def test_parse_chat_messages_with_metadata(tmp_path):
     assert messages[0]['age'] == 30
     assert messages[1]['role'] == 'assistant'
     assert messages[1]['content'] == 'Here is a response from the assistant.\n'
-    assert messages[1]['model'] == 'gpt-3.5-turbo'
+    assert messages[1]['model'] == 'gpt-4o-mini'
 
 
 def test_parse_chat_messages_with_system_in_frontmatter(tmp_path):
@@ -538,9 +538,9 @@ def test_parse_chat_messages_with_html_meta_tags(tmp_path):
         Response content.
         """
     front_matter, messages = parse_front_matter_and_messages(textwrap.dedent(input), tmp_path / "main.md", "user")
-    
+
     assert len(messages) == 2
-    
+
     # Check user message with meta tags
     assert messages[0]['role'] == 'user'
     assert messages[0]['name'] == 'user'
@@ -548,7 +548,7 @@ def test_parse_chat_messages_with_html_meta_tags(tmp_path):
     # Meta attributes should be under 'meta' key
     assert messages[0]['meta']['priority'] == 'high'
     assert messages[0]['meta']['category'] == 'support'
-    
+
     # Check assistant message with meta tag
     assert messages[1]['role'] == 'assistant'
     assert messages[1]['name'] == 'assistant'
@@ -568,7 +568,7 @@ def test_parse_chat_messages_with_mixed_metadata_formats(tmp_path):
         Content here.
         """
     front_matter, messages = parse_front_matter_and_messages(textwrap.dedent(input), tmp_path / "main.md", "user")
-    
+
     assert len(messages) == 1
     assert messages[0]['role'] == 'user'
     assert messages[0]['name'] == 'user'
@@ -593,7 +593,7 @@ def test_parse_chat_messages_with_meta_in_code_blocks(tmp_path):
         Done.
         """
     front_matter, messages = parse_front_matter_and_messages(textwrap.dedent(input), tmp_path / "main.md", "user")
-    
+
     assert len(messages) == 1
     assert messages[0]['role'] == 'user'
     assert messages[0]['name'] == 'user'

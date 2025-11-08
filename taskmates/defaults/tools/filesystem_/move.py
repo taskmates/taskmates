@@ -1,7 +1,7 @@
 import sys
 from pathlib import Path
 
-from taskmates.core.workflow_engine.transaction import TRANSACTION
+from taskmates.core.workflow_engine.transactions.transaction import TRANSACTION
 from taskmates.defaults.tools.filesystem_.is_path_allowed import is_path_allowed
 
 
@@ -13,7 +13,7 @@ def move(source_path, destination_path):
     :return: None
     """
 
-    contexts = TRANSACTION.get().execution_context.context
+    contexts = TRANSACTION.get().context
     run_opts = contexts["run_opts"]
 
     allow = ((run_opts.get("tools") or {}).get("move") or {}).get("allow", "**")

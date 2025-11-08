@@ -1,220 +1,364 @@
+# Model configurations for Taskmates
+# Structure:
+#   metadata: Taskmates-specific settings (not passed to LLM client)
+#   client: LLM client configuration
+#     type: Full import path to the client class
+#     kwargs: Arguments passed directly to the client constructor
+
 default:
-  client_type: langchain_anthropic.ChatAnthropic
-  max_context_window: 4096
-  model: claude-sonnet-4-5-20250929
+  metadata:
+    max_context_window: 200000
+    max_output_tokens: 64000
+  client:
+    type: langchain_anthropic.ChatAnthropic
+    kwargs:
+      model: claude-sonnet-4-5
+      temperature: 0.2
 
 gpt-5:
-  client_type: langchain_openai.ChatOpenAI
-  max_context_window: 400000
-  model: gpt-5
+  metadata:
+    max_context_window: 400000
+  client:
+    type: langchain_openai.ChatOpenAI
+    kwargs:
+      model: gpt-5
 
 gpt-5-mini:
-  client_type: langchain_openai.ChatOpenAI
-  max_context_window: 400000
-  model: gpt-5-mini
+  metadata:
+    max_context_window: 400000
+  client:
+    type: langchain_openai.ChatOpenAI
+    kwargs:
+      model: gpt-5-mini
 
 gpt-5-nano:
-  client_type: langchain_openai.ChatOpenAI
-  max_context_window: 400000
-  model: gpt-5-nano
+  metadata:
+    max_context_window: 400000
+  client:
+    type: langchain_openai.ChatOpenAI
+    kwargs:
+      model: gpt-5-nano
 
 gpt-5-chat-latest:
-  client_type: langchain_openai.ChatOpenAI
-  max_context_window: 400000
-  model: gpt-5-chat-latest
-
+  metadata:
+    max_context_window: 400000
+  client:
+    type: langchain_openai.ChatOpenAI
+    kwargs:
+      model: gpt-5-chat-latest
 
 gpt-4.1:
-  client_type: langchain_openai.ChatOpenAI
-  max_context_window: 1000000
-  model: gpt-4.1
+  metadata:
+    max_context_window: 1000000
+  client:
+    type: langchain_openai.ChatOpenAI
+    kwargs:
+      model: gpt-4.1
+      temperature: 0.2
 
 gpt-4o:
-  client_type: langchain_openai.ChatOpenAI
-  endpoint: https://api.openai.com/v1
-  max_context_window: 128000
-  model: gpt-4o
+  metadata:
+    max_context_window: 128000
+  client:
+    type: langchain_openai.ChatOpenAI
+    kwargs:
+      model: gpt-4o
+      openai_api_base: https://api.openai.com/v1
+      temperature: 0.2
 
 gpt-4o-mini:
-  client_type: langchain_openai.ChatOpenAI
-  endpoint: https://api.openai.com/v1
-  max_context_window: 128000
-  model: gpt-4o-mini
+  metadata:
+    max_context_window: 128000
+  client:
+    type: langchain_openai.ChatOpenAI
+    kwargs:
+      model: gpt-4o-mini
+      openai_api_base: https://api.openai.com/v1
+      temperature: 0.2
 
-gpt-3.5-turbo:
-  client_type: langchain_openai.ChatOpenAI
-  endpoint: https://api.openai.com/v1
-  max_context_window: 4096
-  model: gpt-3.5-turbo
-
-claude-3-5-haiku-latest:
-  client_type: langchain_anthropic.ChatAnthropic
-  max_context_window: 4096
-  model: claude-3-5-haiku-latest
+claude-haiku-4-5:
+  metadata:
+    max_context_window: 200000
+    max_output_tokens: 64000
+  client:
+    type: langchain_anthropic.ChatAnthropic
+    kwargs:
+      model: claude-haiku-4-5
+      temperature: 0.2
 
 claude-opus-4-1:
-  client_type: langchain_anthropic.ChatAnthropic
-  max_context_window: 4096
-  model: claude-opus-4-1
+  metadata:
+    max_context_window: 200000
+    max_output_tokens: 64000
+  client:
+    type: langchain_anthropic.ChatAnthropic
+    kwargs:
+      model: claude-opus-4-1
+      temperature: 0.2
 
-claude-opus-4-20250514:
-  client_type: langchain_anthropic.ChatAnthropic
-  max_context_window: 4096
-  model: claude-opus-4-20250514
 
-claude-sonnet-4-20250514:
-  client_type: langchain_anthropic.ChatAnthropic
-  max_context_window: 4096
-  model: claude-sonnet-4-20250514
-
-claude-sonnet-4-5-20250929:
-  client_type: langchain_anthropic.ChatAnthropic
-  max_context_window: 4096
-  model: claude-sonnet-4-5-20250929
+claude-sonnet-4-5:
+  metadata:
+    max_context_window: 200000
+    max_output_tokens: 64000
+  client:
+    type: langchain_anthropic.ChatAnthropic
+    kwargs:
+      model: claude-sonnet-4-5
+      temperature: 0.2
 
 grok-4:
-  client_type: langchain_xai.ChatXAI
-  max_context_window: 256000
-  model: grok-4-latest
-  api_key: env:XAI_API_KEY
+  metadata:
+    max_context_window: 256000
+  client:
+    type: langchain_xai.ChatXAI
+    kwargs:
+      model: grok-4-latest
+      temperature: 0.2
+      api_key: env:XAI_API_KEY
 
 grok-4-fast-reasoning:
-  client_type: langchain_xai.ChatXAI
-  max_context_window: 2000000
-  model: grok-4-fast-reasoning
-  api_key: env:XAI_API_KEY
+  metadata:
+    max_context_window: 2000000
+  client:
+    type: langchain_xai.ChatXAI
+    kwargs:
+      model: grok-4-fast-reasoning
+      temperature: 0.2
+      api_key: env:XAI_API_KEY
 
 grok-4-fast-non-reasoning:
-  client_type: langchain_xai.ChatXAI
-  max_context_window: 2000000
-  model: grok-4-fast-non-reasoning
-  api_key: env:XAI_API_KEY
+  metadata:
+    max_context_window: 2000000
+  client:
+    type: langchain_xai.ChatXAI
+    kwargs:
+      model: grok-4-fast-non-reasoning
+      temperature: 0.2
+      api_key: env:XAI_API_KEY
 
 gemini-2.5-pro:
-  client_type: langchain_google_genai.ChatGoogleGenerativeAI
-  max_context_window: 128000
-  model: gemini-2.5-pro
+  metadata:
+    max_context_window: 2000000
+  client:
+    type: langchain_google_genai.ChatGoogleGenerativeAI
+    kwargs:
+      model: gemini-2.5-pro
+      temperature: 0.2
 
 gemini-2.5-flash:
-  client_type: langchain_google_genai.ChatGoogleGenerativeAI
-  max_context_window: 128000
-  model: gemini-2.5-flash
+  metadata:
+    max_context_window: 1000000
+  client:
+    type: langchain_google_genai.ChatGoogleGenerativeAI
+    kwargs:
+      model: gemini-2.5-flash
+      temperature: 0.2
 
 gemini-2.5-flash-lite:
-  client_type: langchain_google_genai.ChatGoogleGenerativeAI
-  max_context_window: 128000
-  model: gemini-2.5-flash-lite-preview-06-17
+  metadata:
+    max_context_window: 1000000
+  client:
+    type: langchain_google_genai.ChatGoogleGenerativeAI
+    kwargs:
+      model: gemini-2.5-flash-lite-preview-06-17
+      temperature: 0.2
 
 mixtral-8x7b-32768:
-  client_type: langchain_openai.ChatOpenAI
-  endpoint: https://api.groq.com/openai/v1
-  max_context_window: 32768
-  model: mixtral-8x7b-32768
-  api_key: env:GROQ_API_KEY
+  metadata:
+    max_context_window: 32768
+  client:
+    type: langchain_openai.ChatOpenAI
+    kwargs:
+      model: mixtral-8x7b-32768
+      openai_api_base: https://api.groq.com/openai/v1
+      temperature: 0.2
+      api_key: env:GROQ_API_KEY
 
 echo:
-  client_type: taskmates.core.workflows.markdown_completion.completions.llm_completion.testing.echo.Echo
-  max_context_window: 64000
-  model: echo
+  metadata:
+    max_context_window: 64000
+  client:
+    type: taskmates.core.workflows.markdown_completion.completions.llm_completion.testing.echo.Echo
+    kwargs:
+      model: echo
 
 quote:
-  client_type: taskmates.core.workflows.markdown_completion.completions.llm_completion.testing.quote.Quote
-  max_context_window: 64000
-  model: quote
+  metadata:
+    max_context_window: 64000
+  client:
+    type: taskmates.core.workflows.markdown_completion.completions.llm_completion.testing.quote.Quote
+    kwargs:
+      model: quote
 
 fixture:
-  client_type: taskmates.core.workflows.markdown_completion.completions.llm_completion.testing.fixture_chat_model.FixtureChatModel
-  max_context_window: 4096
-  model: fixture
+  metadata:
+    max_context_window: 4096
+  client:
+    type: taskmates.core.workflows.markdown_completion.completions.llm_completion.testing.fixture_chat_model.FixtureChatModel
+    kwargs:
+      model: fixture
 
 codeqwen:
-  client_type: langchain_ollama.ChatOllama
-  endpoint: http://localhost:11434/v1
-  max_context_window: 64000
-  model: qwen2.5-coder:32b
+  metadata:
+    max_context_window: 32768
+  client:
+    type: langchain_ollama.ChatOllama
+    kwargs:
+      model: qwen2.5-coder:32b
+      temperature: 0.2
+      base_url: http://localhost:11434
 
 codellama:
-  client_type: langchain_ollama.ChatOllama
-  endpoint: http://localhost:11434/v1
-  max_context_window: 2048
-  model: codellama:70b
+  metadata:
+    max_context_window: 2048
+  client:
+    type: langchain_ollama.ChatOllama
+    kwargs:
+      model: codellama:70b
+      temperature: 0.2
+      base_url: http://localhost:11434
 
 deepseek-r1:
-  client_type: langchain_ollama.ChatOllama
-  endpoint: http://localhost:11434/v1
-  max_context_window: 131072
-  model: deepseek-r1:70b
+  metadata:
+    max_context_window: 131072
+  client:
+    type: langchain_ollama.ChatOllama
+    kwargs:
+      model: deepseek-r1:70b
+      temperature: 0.2
+      base_url: http://localhost:11434
 
 llama4:
-  client_type: langchain_ollama.ChatOllama
-  endpoint: http://localhost:11434/v1
-  max_context_window: 10485760
-  model: llama4:latest
+  metadata:
+    max_context_window: 10485760
+  client:
+    type: langchain_ollama.ChatOllama
+    kwargs:
+      model: llama4:latest
+      temperature: 0.2
+      base_url: http://localhost:11434
 
 llava:
-  client_type: langchain_ollama.ChatOllama
-  endpoint: http://localhost:11434/v1
-  max_context_window: 128000
-  model: llava:34b
+  metadata:
+    max_context_window: 4096
+  client:
+    type: langchain_ollama.ChatOllama
+    kwargs:
+      model: llava:34b
+      temperature: 0.2
+      base_url: http://localhost:11434
 
 llava-phi3:
-  client_type: langchain_ollama.ChatOllama
-  endpoint: http://localhost:11434/v1
-  max_context_window: 4096
-  model: llava-phi3:latest
+  metadata:
+    max_context_window: 4096
+  client:
+    type: langchain_ollama.ChatOllama
+    kwargs:
+      model: llava-phi3:latest
+      temperature: 0.2
+      base_url: http://localhost:11434
 
 minicpm-v:
-  client_type: langchain_ollama.ChatOllama
-  endpoint: http://localhost:11434/v1
-  max_context_window: 32768
-  model: minicpm-v:latest
+  metadata:
+    max_context_window: 32768
+  client:
+    type: langchain_ollama.ChatOllama
+    kwargs:
+      model: minicpm-v:latest
+      temperature: 0.2
+      base_url: http://localhost:11434
 
 moondream:
-  client_type: langchain_ollama.ChatOllama
-  endpoint: http://localhost:11434/v1
-  max_context_window: 2048
-  model: moondream:latest
+  metadata:
+    max_context_window: 2048
+  client:
+    type: langchain_ollama.ChatOllama
+    kwargs:
+      model: moondream:latest
+      temperature: 0.2
+      base_url: http://localhost:11434
 
 phi4:
-  client_type: langchain_ollama.ChatOllama
-  endpoint: http://localhost:11434/v1
-  max_context_window: 16384
-  model: phi4:latest
+  metadata:
+    max_context_window: 16384
+  client:
+    type: langchain_ollama.ChatOllama
+    kwargs:
+      model: phi4:latest
+      temperature: 0.2
+      base_url: http://localhost:11434
 
 qwen2.5:
-  client_type: langchain_ollama.ChatOllama
-  endpoint: http://localhost:11434/v1
-  max_context_window: 32768
-  model: qwen2.5:72b
+  metadata:
+    max_context_window: 32768
+  client:
+    type: langchain_ollama.ChatOllama
+    kwargs:
+      model: qwen2.5:72b
+      temperature: 0.2
+      base_url: http://localhost:11434
+
+qwen3-vl:32b:
+  metadata:
+    max_context_window: 32768
+  client:
+    type: langchain_ollama.ChatOllama
+    kwargs:
+      model: qwen3-vl:32b
+      temperature: 0.2
+      base_url: http://localhost:11434
 
 qwen2.5-coder:
-  client_type: langchain_ollama.ChatOllama
-  endpoint: http://localhost:11434/v1
-  max_context_window: 32768
-  model: qwen2.5-coder:32b
+  metadata:
+    max_context_window: 32768
+  client:
+    type: langchain_ollama.ChatOllama
+    kwargs:
+      model: qwen2.5-coder:32b
+      temperature: 0.2
+      base_url: http://localhost:11434
 
 qwen3:
-  client_type: langchain_ollama.ChatOllama
-  endpoint: http://localhost:11434/v1
-  max_context_window: 40960
-  model: qwen3:32b
+  metadata:
+    max_context_window: 40960
+  client:
+    type: langchain_ollama.ChatOllama
+    kwargs:
+      model: qwen3:32b
+      temperature: 0.2
+      base_url: http://localhost:11434
 
 qwq:
-  client_type: langchain_ollama.ChatOllama
-  endpoint: http://localhost:11434/v1
-  max_context_window: 131072
-  model: qwq:latest
+  metadata:
+    max_context_window: 131072
+  client:
+    type: langchain_ollama.ChatOllama
+    kwargs:
+      model: qwq:latest
+      temperature: 0.2
+      base_url: http://localhost:11434
 
-gpt-oss-20g:
-  client_type: langchain_ollama.ChatOllama
-  endpoint: http://localhost:11434/v1
-  max_context_window: 120000
-  reasoning: true
-  model: gpt-oss:latest
+gpt-oss-20b:
+  metadata:
+    max_context_window: 131072
+  client:
+    type: langchain_ollama.ChatOllama
+    kwargs:
+      model: gpt-oss:20b
+      base_url: http://localhost:11434
+      temperature: 0.2
+      reasoning: true
+      reasoning_effort: high
 
 gpt-oss-120b:
-  client_type: langchain_ollama.ChatOllama
-  endpoint: http://localhost:11434/v1
-  max_context_window: 120000
-  reasoning: true
-  model: gpt-oss:120b
+  metadata:
+    max_context_window: 131072
+  client:
+    type: langchain_ollama.ChatOllama
+    kwargs:
+      model: gpt-oss:120b
+      base_url: http://localhost:11434
+      temperature: 0.2
+      reasoning: true
+      reasoning_effort: high
