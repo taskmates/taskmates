@@ -6,7 +6,7 @@ from taskmates.core.workflow_engine.transaction_manager import runtime
 from taskmates.core.workflow_engine.transactions.transactional import transactional
 from taskmates.core.workflows.markdown_completion.append_trailing_newlines import append_trailing_newlines
 from taskmates.core.workflows.markdown_completion.build_completion_request import build_completion_request
-from taskmates.core.workflows.markdown_completion.completion_step import CompletionStep
+from taskmates.core.workflows.markdown_completion.completion_section import CompletionSection
 from taskmates.core.workflows.markdown_completion.completions.has_truncated_code_cell import has_truncated_code_cell
 from taskmates.core.workflows.markdown_completion.interrupt_signals_bindings import InterruptSignalsBindings
 from taskmates.core.workflows.markdown_completion.markdown_completion_state import MarkdownCompletionState
@@ -48,7 +48,7 @@ class MarkdownCompletion:
                     state.state["current_step"].current_step,
                     self.current_chat(state))
 
-                workflow = CompletionStep()
+                workflow = CompletionSection()
 
                 async with child_transaction.async_transaction_context():
                     should_continue = await workflow.fulfill(child_transaction)

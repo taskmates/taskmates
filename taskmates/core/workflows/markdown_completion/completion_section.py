@@ -9,7 +9,7 @@ from taskmates.logging import logger, file_logger
 
 
 @typechecked
-class CompletionStep:
+class CompletionSection:
     async def fulfill(self, transaction: Transaction) -> bool:
         """Execute a single completion step and return whether to continue."""
         inputs = transaction.objective.key['inputs']
@@ -80,10 +80,10 @@ async def test_completion_step_transaction(tmp_path):
         inputs={"chat_payload": chat_payload}
     )
 
-    workflow = CompletionStep()
+    workflow = CompletionSection()
 
     # Verify it's the correct type
-    assert isinstance(workflow, CompletionStep)
+    assert isinstance(workflow, CompletionSection)
     assert child_transaction.objective.of is parent.objective
     assert child_transaction.objective.key['outcome'] == "MarkdownCompletion-step-1"
 
