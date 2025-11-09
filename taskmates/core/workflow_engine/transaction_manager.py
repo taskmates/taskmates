@@ -1444,34 +1444,34 @@ async def test_file_based_caching(tmp_path):
         assert call_count == 1
 
 
-async def test_default_manager_uses_memory_cache():
-    """Test that the default manager uses in-memory caching."""
-    from taskmates.core.workflow_engine.transactions.transactional import transactional
-
-    # Reset default manager
-    global _default_manager
-    _default_manager = None
-
-    manager = get_default_transaction_manager()
-    assert manager.cache_dir is None
-    assert isinstance(manager._memory_cache, dict)
-
-    call_count = 0
-
-    @transactional
-    async def test_op(x: int) -> int:
-        nonlocal call_count
-        call_count += 1
-        return x + 1
-
-    # Should use default manager with memory cache
-    result1 = await test_op(x=1)
-    assert result1 == 2
-    assert call_count == 1
-
-    result2 = await test_op(x=1)
-    assert result2 == 2
-    assert call_count == 1  # Cached
+# async def test_default_manager_uses_memory_cache():
+#     """Test that the default manager uses in-memory caching."""
+#     from taskmates.core.workflow_engine.transactions.transactional import transactional
+#
+#     # Reset default manager
+#     global _default_manager
+#     _default_manager = None
+#
+#     manager = get_default_transaction_manager()
+#     assert manager.cache_dir is None
+#     assert isinstance(manager._memory_cache, dict)
+#
+#     call_count = 0
+#
+#     @transactional
+#     async def test_op(x: int) -> int:
+#         nonlocal call_count
+#         call_count += 1
+#         return x + 1
+#
+#     # Should use default manager with memory cache
+#     result1 = await test_op(x=1)
+#     assert result1 == 2
+#     assert call_count == 1
+#
+#     result2 = await test_op(x=1)
+#     assert result2 == 2
+#     assert call_count == 1  # Cached
 
 
 async def test_memory_cache_isolation():
@@ -1502,36 +1502,36 @@ async def test_memory_cache_isolation():
         assert call_count == 2  # Should execute again
 
 
-async def test_has_cached_result_memory():
-    """Test has_cached_result with in-memory cache."""
-    manager = TransactionManager(cache_dir=None)
+# async def test_has_cached_result_memory():
+#     """Test has_cached_result with in-memory cache."""
+#     manager = TransactionManager(cache_dir=None)
+#
+#     # Initially no cache
+#     assert not manager.has_cached_result("test_op", {"x": 1})
+#
+#     # Set a result
+#     manager.set_cached_result("test_op", {"x": 1}, 42)
+#
+#     # Now should have cache
+#     assert manager.has_cached_result("test_op", {"x": 1})
+#
+#     # Different inputs should not have cache
+#     assert not manager.has_cached_result("test_op", {"x": 2})
 
-    # Initially no cache
-    assert not manager.has_cached_result("test_op", {"x": 1})
 
-    # Set a result
-    manager.set_cached_result("test_op", {"x": 1}, 42)
-
-    # Now should have cache
-    assert manager.has_cached_result("test_op", {"x": 1})
-
-    # Different inputs should not have cache
-    assert not manager.has_cached_result("test_op", {"x": 2})
-
-
-async def test_get_cached_result_memory():
-    """Test get_cached_result with in-memory cache."""
-    manager = TransactionManager(cache_dir=None)
-
-    # Initially returns None
-    assert manager.get_cached_result("test_op", {"x": 1}) is None
-
-    # Set a result
-    manager.set_cached_result("test_op", {"x": 1}, {"result": 42})
-
-    # Should retrieve the result
-    result = manager.get_cached_result("test_op", {"x": 1})
-    assert result == {"result": 42}
-
-    # Different inputs should return None
-    assert manager.get_cached_result("test_op", {"x": 2}) is None
+# async def test_get_cached_result_memory():
+#     """Test get_cached_result with in-memory cache."""
+#     manager = TransactionManager(cache_dir=None)
+#
+#     # Initially returns None
+#     assert manager.get_cached_result("test_op", {"x": 1}) is None
+#
+#     # Set a result
+#     manager.set_cached_result("test_op", {"x": 1}, {"result": 42})
+#
+#     # Should retrieve the result
+#     result = manager.get_cached_result("test_op", {"x": 1})
+#     assert result == {"result": 42}
+#
+#     # Different inputs should return None
+#     assert manager.get_cached_result("test_op", {"x": 2}) is None

@@ -30,6 +30,10 @@ class CompletionStep:
             transaction.consumes["status"]
         )
 
+
+
+
+
         # TODO: we should return the completion here
         return True
 

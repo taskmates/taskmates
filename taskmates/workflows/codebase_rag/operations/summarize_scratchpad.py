@@ -1,3 +1,5 @@
+import pytest
+
 from taskmates.workflows.codebase_rag.constants import DEFAULT_MODEL_NAME
 from taskmates.core.workflow_engine.transaction_manager import runtime
 from taskmates.core.workflow_engine.transactions.transactional import transactional
@@ -36,7 +38,8 @@ Focus on what code was selected and why, removing verbose explanations."""
 
     messages_data = [
         {'role': 'system', 'content': system_prompt},
-        {'role': 'user', 'content': f"QUESTION: {question}\n\nSummarize this navigation reasoning, removing duplicates and noise:\n\n{scratchpad}"}
+        {'role': 'user',
+         'content': f"QUESTION: {question}\n\nSummarize this navigation reasoning, removing duplicates and noise:\n\n{scratchpad}"}
     ]
 
     response = await invoke_llm(messages_data=messages_data, model_name=model_name)
@@ -47,6 +50,7 @@ Focus on what code was selected and why, removing verbose explanations."""
     return summarized
 
 
+@pytest.mark.integration
 async def test_summarize_scratchpad():
     """Test scratchpad summarization."""
     scratchpad = """BATCH 0 REASONING:
