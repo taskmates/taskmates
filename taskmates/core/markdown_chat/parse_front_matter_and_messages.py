@@ -20,7 +20,7 @@ from taskmates.logging import logger, file_logger
 @typechecked
 def parse_front_matter_and_messages(content: str,
                                     path: Union[str, Path] | None,
-                                    default_sender: str = "user") -> Tuple[
+                                    implicit_role: str = "user") -> Tuple[
     Dict[str, any],
     List[Dict[str, Union[str, list[dict]]]]
 ]:
@@ -38,7 +38,7 @@ def parse_front_matter_and_messages(content: str,
     logger.debug(f"[parse_front_matter_and_messages] Parsing markdown: {start_time}-parsed-{path.name}")
     logger.debug("Markdown Content:\n" + content)
 
-    parser = markdown_chat_parser(implicit_role=default_sender)
+    parser = markdown_chat_parser(implicit_role=implicit_role)
 
     end_time = time.time()  # Record the end time
     time_taken = end_time - start_time

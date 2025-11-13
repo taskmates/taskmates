@@ -6,6 +6,7 @@ from io import StringIO
 from typeguard import typechecked
 
 from taskmates.cli.commands.base import Command
+from taskmates.core.workflow_engine.run_context import RunContext
 from taskmates.core.workflow_engine.transactions.transaction import Transaction
 from taskmates.core.workflow_engine.objective import ObjectiveKey, Objective
 from taskmates.core.workflows.markdown_completion.build_completion_request import build_completion_request
@@ -33,7 +34,7 @@ class ParseCommand(Command):
 
     async def execute(self, args: argparse.Namespace):
         async def attempt_parse_markdown():
-            context = CliContextBuilder(args).build()
+            context: RunContext = CliContextBuilder(args).build()
             async with Transaction(objective=Objective(key=ObjectiveKey(outcome="cli_parse_markdown_runner")),
                                    context=context).async_transaction_context():
 
@@ -129,7 +130,7 @@ async def test_parse(tmp_path):
                                         'role': 'assistant'}],
                           'participants': {'assistant': {'name': 'assistant', 'role': 'assistant'},
                                            'user': {'name': 'user', 'role': 'user'}},
-                          'run_opts': {'inputs': {}, 'max_steps': 2, 'model': 'quote'}}
+                          'run_opts': {'max_steps': 2, 'model': 'quote'}}
 
     finally:
         # Restore stdin and stdout

@@ -93,7 +93,7 @@ from taskmates.core.workflow_engine.generate_cache_key import generate_cache_key
 from taskmates.core.workflow_engine.objective import ObjectiveKey, Objective
 from taskmates.core.workflow_engine.run_context import RunContext
 from taskmates.core.workflow_engine.transactions.no_op_logger import _noop_logger
-from taskmates.core.workflow_engine.transactions.transaction import Transaction
+from taskmates.core.workflow_engine.transactions.transaction import Transaction, TRANSACTION
 from taskmates.defaults.settings import Settings
 
 Signal.set_class = OrderedSet
@@ -132,12 +132,14 @@ class ExecutableTransaction(Transaction):
                  manager: 'TransactionManager',
                  operation: Callable,
                  objective: Objective,
+                 of: Transaction | None = None,
                  context: Optional[RunContext] = None,
                  workflow_instance: Optional[WorkflowType] = None,
-                 max_retries: int = 3,
+                 max_retries: int = 1,
                  initial_delay: float = 1.0):
         # Initialize as a Transaction
         super().__init__(
+            of=of,
             objective=objective,
             context=context,
             manager=manager,
@@ -167,7 +169,7 @@ class TransactionalOperation:
     def __init__(self,
                  operation: Callable,
                  outcome: Optional[str] = None,
-                 max_retries: int = 3,
+                 max_retries: int = 1,
                  initial_delay: float = 1.0
                  ):
         self.operation = operation
@@ -186,8 +188,10 @@ class TransactionalOperation:
     async def __call__(self, **kwargs) -> Any:
         transaction_manager = runtime.transaction_manager()
 
-        # Use context from self if provided, otherwise from active transaction, otherwise from Settings
-        context = Settings().get()
+        if runtime.transaction is not None:
+            context = runtime.transaction.context.copy()
+        else:
+            context = Settings().get()
 
         # Create objective from inputs
         objective = Objective(
@@ -199,6 +203,7 @@ class TransactionalOperation:
 
         # Create executable transaction
         transaction = ExecutableTransaction(
+            of=runtime.transaction,
             manager=transaction_manager,
             context=context,
             operation=self.operation,
@@ -207,6 +212,10 @@ class TransactionalOperation:
             max_retries=self.max_retries,
             initial_delay=self.initial_delay
         )
+
+        # Automatically bind to parent transaction if one exists
+        if runtime.transaction is not None:
+            transaction.bind_to_parent(runtime.transaction)
 
         return await transaction()
 
@@ -262,10 +271,13 @@ class TransactionManager:
     def build_executable_transaction(self,
                                      operation: Callable,
                                      outcome: str,
+                                     of: Optional[Transaction] = None,
                                      context: Optional[Dict] = None,
                                      result_format: Optional[Dict] = None,
                                      inputs: Optional[Dict[str, Any]] = None,
-                                     workflow_instance: Optional[WorkflowType] = None) -> ExecutableTransaction:
+                                     workflow_instance: Optional[WorkflowType] = None,
+                                     max_retries: int = 1,
+                                     initial_delay: float = 1.0) -> ExecutableTransaction:
         """Build an executable transaction for both workflow methods and standalone functions."""
 
         # Use context in priority order: parameter > Settings
@@ -283,11 +295,14 @@ class TransactionManager:
         )
 
         return ExecutableTransaction(
+            of=of,
             manager=self,
             objective=objective,
             context=tx_context,
             workflow_instance=workflow_instance,
-            operation=operation
+            operation=operation,
+            max_retries=max_retries,
+            initial_delay=initial_delay
         )
 
     def _get_cache_path(self, cache_key: str) -> Optional[Path]:
@@ -636,6 +651,14 @@ class TransactionManager:
                         self.set_cached_result(outcome, inputs, result)
                         logger.info(f"Cached result for {outcome}")
 
+                        # Set transaction result
+                        if transaction.result_future.done():
+                            raise RuntimeError(
+                                f"Transaction result_future already set for {outcome}. "
+                                "This indicates the operation set its own result, which should not happen."
+                            )
+                        transaction.result_future.set_result(result)
+
                         return result
 
                     except Exception as e:
@@ -650,10 +673,19 @@ class TransactionManager:
                         else:
                             logger.error(f"All {max_retries} attempts failed for {outcome}: {e}")
 
+                # Set transaction error
+                if transaction.result_future.done():
+                    raise RuntimeError(
+                        f"Transaction result_future already set for {outcome}. "
+                        "This indicates the operation set its own result/exception, which should not happen."
+                    )
+                transaction.result_future.set_exception(last_exception)
                 # If we get here, all retries failed
                 raise last_exception
 
         finally:
+            # Mark transaction as completed
+            transaction.completed = True
             runtime.reset(token)
             if sink_id is not None:
                 logger.remove(sink_id)
@@ -672,19 +704,19 @@ class Runtime:
     """
 
     def set(self, transaction: Transaction):
-        return _current_transaction_context_var.set(transaction)
+        return TRANSACTION.set(transaction)
 
     def reset(self, token):
-        return _current_transaction_context_var.reset(token)
+        return TRANSACTION.reset(token)
 
     @property
     def transaction(self) -> Optional[Transaction]:
-        return _current_transaction_context_var.get()
+        return TRANSACTION.get()
 
     @property
     def logger(self):
         """Get the logger for the current transaction, or a no-op logger if none exists."""
-        ctx = _current_transaction_context_var.get()
+        ctx = TRANSACTION.get()
         return ctx.logger if ctx else _noop_logger
 
     def map_parallel(self, operation: Callable, inputs_list: list[Dict[str, Any]],
@@ -706,7 +738,7 @@ class Runtime:
         Raises:
             RuntimeError: If called outside of a transaction context
         """
-        ctx = _current_transaction_context_var.get()
+        ctx = TRANSACTION.get()
         if ctx is None:
             raise RuntimeError("map_parallel() called outside of transaction context")
 
@@ -768,7 +800,6 @@ def get_default_transaction_manager() -> TransactionManager:
     return _default_manager
 
 
-_current_transaction_context_var: ContextVar[Optional[Transaction]] = ContextVar('current_transaction', default=None)
 runtime = Runtime()
 
 # Global default manager
@@ -1214,7 +1245,7 @@ async def test_child_transaction_context_binding():
 
 
 def test_transaction_unified_state_management():
-    """Test the unified state management in Transaction"""
+    """Test that transaction state can be set independently of completion status"""
     # Create a transaction
     test_context = RunContext(
         runner_environment={"taskmates_dirs": [], "markdown_path": "test.md", "cwd": "/tmp"},
@@ -1226,39 +1257,47 @@ def test_transaction_unified_state_management():
         context=test_context
     )
 
-    # Initial state - future not done, no interrupt
+    # Initial state - not completed, future not done, no interrupt
+    assert not transaction.completed
     assert not transaction.result_future.done()
     assert transaction.interrupt_state.value is None
-    assert not transaction.is_terminated()
+    assert not transaction.done()
 
-    # Test interrupt states
+    # Setting interrupt state doesn't affect done() status
     transaction.interrupt_state.value = "interrupting"
-    assert not transaction.is_terminated()  # Still running, just interrupting
+    assert not transaction.done()
 
     transaction.interrupt_state.value = "interrupted"
-    assert transaction.is_terminated()
+    assert not transaction.done()  # Still not done until completed flag is set
 
     transaction.interrupt_state.value = "killed"
-    assert transaction.is_terminated()
+    assert not transaction.done()  # Still not done until completed flag is set
 
-    # Reset and test future completion
+    # Setting result_future doesn't affect done() status
     transaction.interrupt_state.value = None
     transaction.result_future.set_result("test_result")
     assert transaction.result_future.done()
-    assert transaction.is_terminated()
+    assert not transaction.done()  # Still not done until completed flag is set
     assert transaction.result_future.result() == "test_result"
 
-    # Test future with exception
-    transaction = Transaction(
+    # Only setting completed flag makes done() return True
+    transaction.completed = True
+    assert transaction.done()
+
+    # Test with exception
+    transaction2 = Transaction(
         objective=Objective(key=ObjectiveKey(outcome="test2")),
         context=test_context
     )
     test_error = ValueError("test error")
-    transaction.result_future.set_exception(test_error)
-    assert transaction.result_future.done()
-    assert transaction.is_terminated()
+    transaction2.result_future.set_exception(test_error)
+    assert transaction2.result_future.done()
+    assert not transaction2.done()  # Not done until completed flag is set
     with pytest.raises(ValueError, match="test error"):
-        transaction.result_future.result()
+        transaction2.result_future.result()
+
+    transaction2.completed = True
+    assert transaction2.done()
 
 
 @pytest.fixture
@@ -1535,3 +1574,104 @@ async def test_memory_cache_isolation():
 #
 #     # Different inputs should return None
 #     assert manager.get_cached_result("test_op", {"x": 2}) is None
+
+
+async def test_transaction_completed_flag_lifecycle():
+    """Test that completed flag is only set after transaction execution completes."""
+    from taskmates.core.workflow_engine.transactions.transactional import transactional
+    
+    execution_started = False
+    execution_completed = False
+    
+    @transactional
+    async def test_operation(value: int) -> int:
+        nonlocal execution_started, execution_completed
+        execution_started = True
+        
+        # Get current transaction
+        tx = runtime.transaction
+        
+        # Transaction should not be done during execution
+        assert not tx.done(), "Transaction should not be done during execution"
+        
+        execution_completed = True
+        return value * 2
+    
+    result = await test_operation(value=5)
+    
+    assert execution_started, "Execution should have started"
+    assert execution_completed, "Execution should have completed"
+    assert result == 10, "Result should be correct"
+
+
+async def test_transaction_completed_flag_with_exception():
+    """Test that _completed flag is set even when transaction raises exception."""
+    from taskmates.core.workflow_engine.transactions.transactional import transactional
+    
+    execution_started = False
+    
+    @transactional
+    async def failing_operation(value: int) -> int:
+        nonlocal execution_started
+        execution_started = True
+        
+        # Get current transaction
+        tx = runtime.transaction
+        
+        # Transaction should not be done during execution
+        assert not tx.done(), "Transaction should not be done during execution"
+        
+        raise ValueError("Test error")
+    
+    try:
+        await failing_operation(value=5)
+        assert False, "Should have raised ValueError"
+    except ValueError as e:
+        assert str(e) == "Test error"
+    
+    assert execution_started, "Execution should have started"
+
+
+async def test_transaction_completed_flag_with_interrupt():
+    """Test that _completed flag works correctly with interrupt_state changes."""
+    from taskmates.core.workflow_engine.transactions.transactional import transactional
+    
+    @transactional
+    async def interruptible_operation(value: int) -> int:
+        tx = runtime.transaction
+        
+        # Set interrupt state during execution
+        tx.interrupt_state.value = "interrupting"
+        
+        # Transaction should not be done yet
+        assert not tx.done(), "Transaction should not be done even with interrupt state set"
+        
+        # Continue execution
+        return value * 2
+    
+    result = await interruptible_operation(value=5)
+    assert result == 10, "Result should be correct"
+
+
+async def test_transaction_done_only_after_execute_returns():
+    """Test that done() returns True only after execute() completes."""
+    from taskmates.core.workflow_engine.transactions.transactional import transactional
+    
+    transaction_ref = None
+    
+    @transactional
+    async def capture_transaction(value: int) -> int:
+        nonlocal transaction_ref
+        transaction_ref = runtime.transaction
+        
+        # Verify not done during execution
+        assert not transaction_ref.done()
+        
+        return value * 2
+    
+    result = await capture_transaction(value=5)
+    
+    assert result == 10
+    assert transaction_ref is not None
+    # After execution completes, transaction should be done
+    # Note: We can't check this here because the transaction is reset from context

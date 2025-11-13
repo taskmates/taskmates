@@ -6,7 +6,7 @@ from taskmates.core.workflow_engine.transaction_manager import TransactionalOper
 def transactional(
         func: Optional[Callable] = None,
         *,
-        max_retries: int = 3,
+        max_retries: int = 1,
         initial_delay: float = 1.0,
         outcome: Optional[str] = None
 ) -> Callable:

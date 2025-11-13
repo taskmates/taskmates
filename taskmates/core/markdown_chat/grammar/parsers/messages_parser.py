@@ -176,13 +176,20 @@ def message_content_parser():
     code_cell = code_cell_parser().setName("code_cell")
     pre_tag = pre_tag_parser().setName("pre_tag_with_content_parser")
 
-    # Regular text content (catch-all)
+    # Regular text content (catch-all) - OPTIMIZED with two-tier regex
+    # Fast path: greedy match for common characters (letters, numbers, spaces, common punctuation)
+    # Slow path: when hitting special characters, use negative lookahead to check for section markers
+    # This optimization reduces backtracking for plain text (the most common case)
     text_content = (
-        pp.Regex(fr"({NOT_BEGINNING_OF_SECTION_AHEAD}.)+", re.DOTALL | re.MULTILINE)
+        pp.Regex(
+            fr"(?:[^`<#*\[]+|{NOT_BEGINNING_OF_SECTION_AHEAD}.)+",
+            re.DOTALL | re.MULTILINE
+        )
     ).setName("text_content").set_parse_action(TextContentNode.from_tokens)
 
     # Define a single line that can be either metadata, comment, or text
-    line = (html_meta | meta | comment | text_content)
+    # OPTIMIZATION: text_content moved FIRST to prioritize the common case (plain text)
+    line = (text_content | html_meta | meta | comment)
 
     return pp.Group(
         (line | code_cell | pre_tag)[...]

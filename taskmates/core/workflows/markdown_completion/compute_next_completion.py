@@ -4,17 +4,17 @@ import pytest
 from loguru import logger
 
 from taskmates.core.workflows.markdown_completion.build_completion_request import build_completion_request
-from taskmates.core.workflows.markdown_completion.completions.code_cell_execution.code_cell_execution_completion_provider import \
-    CodeCellExecutionCompletionProvider
-from taskmates.core.workflows.markdown_completion.completions.completion_provider import CompletionProvider
-from taskmates.core.workflows.markdown_completion.completions.llm_completion.llm_chat_completion_provider import \
-    LlmChatCompletionProvider
-from taskmates.core.workflows.markdown_completion.completions.tool_execution.tool_execution_completion_provider import \
-    ToolExecutionCompletionProvider
+from taskmates.core.workflows.markdown_completion.completions.code_cell_execution.code_cell_execution_section_completion import \
+    CodeCellExecutionSectionCompletion
+from taskmates.core.workflows.markdown_completion.completions.section_completion import SectionCompletion
+from taskmates.core.workflows.markdown_completion.completions.llm_completion.llm_chat_section_completion import \
+    LlmChatSectionCompletion
+from taskmates.core.workflows.markdown_completion.completions.tool_execution.tool_execution_section_completion import \
+    ToolExecutionSectionCompletion
 from taskmates.types import CompletionRequest
 
 
-def compute_next_completion(chat: CompletionRequest) -> CompletionProvider | None:
+def compute_next_completion(chat: CompletionRequest) -> SectionCompletion | None:
     logger.debug("Computing next completion")
 
     assistances = []
@@ -23,11 +23,11 @@ def compute_next_completion(chat: CompletionRequest) -> CompletionProvider | Non
     is_jupyter_enabled = run_opts.get("jupyter_enabled", True)
 
     if is_jupyter_enabled:
-        assistances.append(CodeCellExecutionCompletionProvider())
+        assistances.append(CodeCellExecutionSectionCompletion())
 
     assistances.extend([
-        ToolExecutionCompletionProvider(),
-        LlmChatCompletionProvider()
+        ToolExecutionSectionCompletion(),
+        LlmChatSectionCompletion()
     ])
 
     for assistance in assistances:
@@ -68,7 +68,7 @@ async def test_compute_next_completion_code_cell(taskmates_dir, tmp_path):
 
     chat = build_completion_request(markdown_chat, markdown_path=str(tmp_path / "test.md"))
     result = compute_next_completion(chat)
-    assert isinstance(result, CodeCellExecutionCompletionProvider)
+    assert isinstance(result, CodeCellExecutionSectionCompletion)
 
 
 @pytest.mark.asyncio
@@ -91,7 +91,7 @@ async def test_compute_next_completion_tool(taskmates_dir, tmp_path):
 
     chat = build_completion_request(markdown_chat, markdown_path=str(tmp_path / "test.md"))
     result = compute_next_completion(chat)
-    assert isinstance(result, ToolExecutionCompletionProvider)
+    assert isinstance(result, ToolExecutionSectionCompletion)
 
 
 @pytest.mark.asyncio
@@ -106,7 +106,7 @@ async def test_compute_next_completion_chat(taskmates_dir, tmp_path):
 
     chat = build_completion_request(markdown_chat, markdown_path=str(tmp_path / "test.md"))
     result = compute_next_completion(chat)
-    assert isinstance(result, LlmChatCompletionProvider)
+    assert isinstance(result, LlmChatSectionCompletion)
 
 
 @pytest.mark.asyncio
@@ -127,7 +127,7 @@ async def test_compute_next_completion_incomplete_code_cell(taskmates_dir, tmp_p
 
     chat = build_completion_request(markdown_chat, markdown_path=str(tmp_path / "test.md"))
     result = compute_next_completion(chat)
-    assert isinstance(result, LlmChatCompletionProvider)
+    assert isinstance(result, LlmChatSectionCompletion)
 
 
 # TODO: not supported yet
@@ -207,7 +207,7 @@ async def test_compute_next_completion_code_cell_with_error(taskmates_dir, tmp_p
 
     chat = build_completion_request(markdown_chat, markdown_path=str(tmp_path / "test.md"))
     result = compute_next_completion(chat)
-    assert isinstance(result, LlmChatCompletionProvider)
+    assert isinstance(result, LlmChatSectionCompletion)
 
 
 @pytest.mark.asyncio
@@ -242,7 +242,7 @@ async def test_compute_next_completion_mixed_incomplete_states(taskmates_dir, tm
 
     chat = build_completion_request(markdown_chat, markdown_path=str(tmp_path / "test.md"))
     result = compute_next_completion(chat)
-    assert isinstance(result, ToolExecutionCompletionProvider)
+    assert isinstance(result, ToolExecutionSectionCompletion)
 
 
 @pytest.mark.asyncio
@@ -261,4 +261,4 @@ async def test_compute_next_completion_malformed_chat(taskmates_dir, tmp_path):
 
     chat = build_completion_request(markdown_chat, markdown_path=str(tmp_path / "test.md"))
     result = compute_next_completion(chat)
-    assert isinstance(result, LlmChatCompletionProvider)
+    assert isinstance(result, LlmChatSectionCompletion)

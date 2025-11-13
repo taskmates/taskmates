@@ -45,7 +45,7 @@ def load_participant_config(participants_configs: dict, participant_name: str) -
     # process system, description, and model from frontmatter
     if participant_md_path and participant_md_path.exists():
         content = participant_md_path.read_text()
-        front_matter, messages = parse_front_matter_and_messages(content, participant_md_path, "system")
+        front_matter, messages = parse_front_matter_and_messages(content, participant_md_path, implicit_role="system")
         if len(messages) != 1:
             raise ValueError("Multi-messages taskmate definitions not supported yet")
 

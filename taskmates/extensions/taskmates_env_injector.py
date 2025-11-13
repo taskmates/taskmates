@@ -2,10 +2,10 @@ import os
 
 from wrapt import wrap_function_wrapper
 
-from taskmates.core.workflows.markdown_completion.completions.code_cell_execution.code_cell_execution_completion_provider import \
-    CodeCellExecutionCompletionProvider
-from taskmates.core.workflows.markdown_completion.completions.tool_execution.tool_execution_completion_provider import \
-    ToolExecutionCompletionProvider
+from taskmates.core.workflows.markdown_completion.completions.code_cell_execution.code_cell_execution_section_completion import \
+    CodeCellExecutionSectionCompletion
+from taskmates.core.workflows.markdown_completion.completions.tool_execution.tool_execution_section_completion import \
+    ToolExecutionSectionCompletion
 from taskmates.sdk import TaskmatesExtension
 from taskmates.core.workflow_engine.transactions.transaction import TRANSACTION
 
@@ -33,5 +33,5 @@ class TaskmatesEnvInjector(TaskmatesExtension):
         return result
 
     def initialize(self):
-        wrap_function_wrapper(CodeCellExecutionCompletionProvider, 'perform_completion', self.handle)
-        wrap_function_wrapper(ToolExecutionCompletionProvider, 'perform_completion', self.handle)
+        wrap_function_wrapper(CodeCellExecutionSectionCompletion, 'perform_completion', self.handle)
+        wrap_function_wrapper(ToolExecutionSectionCompletion, 'perform_completion', self.handle)

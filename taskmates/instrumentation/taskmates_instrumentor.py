@@ -3,7 +3,7 @@ import taskmates.core.workflows.markdown_completion.completions.code_cell_execut
 from taskmates.core.workflow_engine.transactions.transaction import Transaction
 from taskmates.core.workflows.markdown_completion.completions.code_cell_execution import \
     execute_markdown_on_local_kernel
-from taskmates.core.workflows.markdown_completion.completions.completion_provider import CompletionProvider
+from taskmates.core.workflows.markdown_completion.completions.section_completion import SectionCompletion
 from taskmates.lib.opentelemetry_.wrap_function import wrap_function
 from taskmates.lib.opentelemetry_.wrap_module import wrap_module
 from taskmates.sdk.experimental.subclass_extension_points import SubclassExtensionPoints
@@ -11,6 +11,6 @@ from taskmates.sdk.experimental.subclass_extension_points import SubclassExtensi
 
 def instrument():
     SubclassExtensionPoints.subscribe(Transaction, wrap_module)
-    SubclassExtensionPoints.subscribe(CompletionProvider, wrap_module)
+    SubclassExtensionPoints.subscribe(SectionCompletion, wrap_module)
     wrap_function(taskmates.core.markdown_chat.parse_front_matter_and_messages, 'parse_front_matter_and_messages')
     wrap_function(execute_markdown_on_local_kernel, 'execute_markdown_on_local_kernel')

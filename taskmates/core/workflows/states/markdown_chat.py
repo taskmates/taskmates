@@ -2,10 +2,10 @@ from typing import Dict
 
 
 class MarkdownChat:
-    def __init__(self):
+    def __init__(self, initial=""):
         super().__init__()
         self.outputs = {
-            "full": "",
+            "full": initial,
             "completion": "",
             "text": ""
         }

@@ -33,6 +33,8 @@ class Transaction(BaseModel):
         arbitrary_types_allowed=True,
     )
 
+    of: Any = Field(default=None, exclude=True)
+
     objective: Objective
 
     context: RunContext = Field(default_factory=dict)
@@ -45,6 +47,7 @@ class Transaction(BaseModel):
     # Unified state management
     result_future: asyncio.Future = Field(default_factory=asyncio.Future, exclude=True)
     interrupt_state: 'InterruptState' = Field(default_factory=lambda: InterruptState(), exclude=True)
+    completed: bool = Field(default=False, exclude=True)
 
     # Logger for transaction-scoped logging
     logger: Any = Field(default=None, exclude=True)
@@ -139,9 +142,8 @@ class Transaction(BaseModel):
             **({"result_format": result_format} if result_format else {})
         )
 
-        parent_transaction = self if isinstance(self, Transaction) else self.current_transaction
-        child_transaction = Transaction(objective=child_objective, context=self.context.copy())
-        child_transaction.bind_to_parent(parent_transaction)
+        child_transaction = Transaction(of=self, objective=child_objective, context=self.context.copy())
+        child_transaction.bind_to_parent(self)
 
         return child_transaction
 
@@ -152,21 +154,23 @@ class Transaction(BaseModel):
 
         from taskmates.core.workflow_engine.transaction_manager import runtime
         manager = runtime.transaction_manager()
-        parent_transaction = self
         child_transaction = manager.build_executable_transaction(
+            of=self,
             operation=operation.operation,
             outcome=operation.outcome,
             inputs=inputs,
             result_format=result_format,
-            context=parent_transaction.context.copy(),
-            workflow_instance=operation._instance
+            context=self.context.copy(),
+            workflow_instance=operation._instance,
+            max_retries=operation.max_retries,
+            initial_delay=operation.initial_delay
         )
-        child_transaction.bind_to_parent(parent_transaction)
+        child_transaction.bind_to_parent(self)
 
         return child_transaction
 
-    def is_terminated(self) -> bool:
-        return self.result_future.done() or self.interrupt_state.is_terminated()
+    def done(self) -> bool:
+        return self.completed
 
     # @model_validator(mode='before')
     # @classmethod
@@ -244,4 +248,4 @@ class Transaction(BaseModel):
     #     return value
 
 
-TRANSACTION: contextvars.ContextVar[Transaction] = contextvars.ContextVar(Transaction.__class__.__name__)
+TRANSACTION: contextvars.ContextVar[Transaction] = contextvars.ContextVar('Transaction', default=None)
